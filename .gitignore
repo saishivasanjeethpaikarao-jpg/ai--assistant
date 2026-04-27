@@ -1,0 +1,26 @@
+.env
+firebase_secrets.py
+__pycache__/
+*.pyc
+# Packaging artifacts
+dist/
+build/
+*.spec
+bin/
+*.log
+*.tmp
+*.toc
+*.manifest
+*.exe
+*.zip
+*.bak
+
+# Python / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini

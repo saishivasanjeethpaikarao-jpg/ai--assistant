@@ -1,0 +1,27 @@
+[build]
+command = "echo 'Static site - no build required'"
+publish = "."
+
+[dev]
+command = "python -m http.server 8000"
+port = 8000
+
+# Redirect all requests to index.html for SPA support
+[[redirects]]
+from = "/*"
+to = "/"
+status = 200
+
+# Enable compression
+[build.environment]
+PYTHON_VERSION = "3.11"
+
+# Headers for security
+[[headers]]
+for = "/*"
+[headers.values]
+  X-Frame-Options = "SAMEORIGIN"
+  X-Content-Type-Options = "nosniff"
+  X-XSS-Protection = "1; mode=block"
+  Referrer-Policy = "strict-origin-when-cross-origin"
+  Permissions-Policy = "geolocation=(), microphone=()"
