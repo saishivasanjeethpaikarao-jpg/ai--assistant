@@ -63,7 +63,18 @@ from files import create_file, read_file
 from git_auto import git_commit, git_status
 from memory.reminders import add_reminder, list_reminders, clear_reminder, due_reminders
 from assistant_persona import ASSISTANT_NAME, ASSISTANT_PERSONA
+from system_prompt_config import load_system_prompt, is_system_prompt_enabled
+from advanced_system import is_advanced_system_enabled, get_all_layers, get_layer_count
+from autonomous_executor import get_executor, execute as autonomous_execute
+from adaptive_memory import get_memory, store_learning, get_memory_stats
 from actions.data_agent import execute_python_code
+
+# Smart Orchestrator V2 integration
+try:
+    from orchestrator_v2 import SmartOrchestrator
+    _orchestrator_available = True
+except ImportError:
+    _orchestrator_available = False
 
 # Trading advisor integration
 try:
@@ -140,6 +151,10 @@ SAFE_MODE = True
 PENDING_CONFIRMATION = None
 _REMINDER_MONITOR_THREAD = None
 _REMINDER_MONITOR_LOCK = threading.Lock()
+
+# Smart Orchestrator V2 instance
+_smart_orchestrator = SmartOrchestrator(max_loops=3) if _orchestrator_available else None
+
 SELF_IMPROVE_EXCLUDE_DIRS = {
     ".git", ".venv", "__pycache__", "build", "dist", "node_modules"
 }
@@ -677,7 +692,13 @@ def chat(message: str) -> str:
     if profile_memory:
         profile_memory_section = f"Profile memory:\n{profile_memory}\n\n"
 
+    # Build prompt with master system prompt if enabled
+    system_prompt_prefix = ""
+    if is_system_prompt_enabled():
+        system_prompt_prefix = load_system_prompt() + "\n\n"
+
     prompt = (
+        f"{system_prompt_prefix}"
         f"{ASSISTANT_PERSONA}\n"
         f"Current Date and Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
         "You should aim to continuously learn about the user to provide better answers.\n"
@@ -1019,25 +1040,47 @@ def detect_double_clap(max_wait_seconds: float = 5.0) -> bool:
 
 
 def voice_loop():
+    """Enhanced voice loop with Jarvis Mode integration."""
     if sr is None or pyaudio is None:
         return
+    
+    # Import JarvisMode
+    try:
+        from jarvis_mode import get_jarvis_mode
+        jarvis = get_jarvis_mode()
+        jarvis_mode_available = True
+    except ImportError:
+        jarvis_mode_available = False
+    
     while True:
         activated = detect_double_clap()
         if not activated:
             time.sleep(0.3)
             continue
+        
         speak("Wake phrase?")
         wake_text = listen_voice_once()
         if not wake_text:
             time.sleep(0.3)
             continue
+        
         wake_normalized = wake_text.lower().strip()
         if "hey ai" not in wake_normalized and "assistant" not in wake_normalized and "hey 23" not in wake_normalized:
             continue
-        speak("Listening for command.")
-        command = listen_voice_once()
-        if command:
-            handle_command(command)
+        
+        # Check for conversation mode trigger
+        if "conversation" in wake_normalized or "continuous" in wake_normalized:
+            if jarvis_mode_available:
+                speak("Starting conversation mode. Say exit to stop.")
+                jarvis.start_conversation()
+            else:
+                speak("Conversation mode not available.")
+        else:
+            # Single command mode
+            speak("Listening for command.")
+            command = listen_voice_once()
+            if command:
+                handle_command(command)
         time.sleep(1)
 
 
@@ -1775,7 +1818,15 @@ I can analyze stocks, monitor news, and suggest trades based on your profile!"""
             response = "Recommendations system not available."
 
     else:
-        response = chat(command)
+        # Use Smart Orchestrator V2 for adaptive reasoning if available
+        if _smart_orchestrator:
+            try:
+                response = _smart_orchestrator.run(command)
+            except Exception as e:
+                logger.error(f"SmartOrchestrator failed: {e}")
+                response = chat(command)
+        else:
+            response = chat(command)
 
     speak(response)
     return response

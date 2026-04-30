@@ -19,6 +19,7 @@ from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.animation import Animation
 from kivy.uix.screenmanager import Screen, ScreenManager, FadeTransition
+from kivy.uix.floatlayout import FloatLayout
 from kivymd.app import MDApp
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton, MDRaisedButton
@@ -49,6 +50,8 @@ from memory.reminders import (
 )
 from ui.chat_history_store import load_sessions, append_turn
 from ui.jarvis_widgets import build_message_row
+from ui.websocket_client import get_websocket_client
+from ui.jarvis_orb import AssistantOrb
 from config_paths import ensure_user_env, get_dotenv_path
 from config_prefs import load_prefs, save_prefs
 from system_theme import system_prefers_dark
@@ -598,11 +601,20 @@ class JarvisApp(MDApp):
         self.mic_anim = None
         self._system_theme_ev = None
         self.sidebar_width = dp(72)
+        
+        # Create root layout with floating orb
+        root = FloatLayout()
         sm = ScreenManager(transition=FadeTransition(duration=0.12))
         sm.add_widget(LoginScreen())
         sm.add_widget(MainShellScreen())
         sm.add_widget(SettingsScreen())
-        return sm
+        root.add_widget(sm)
+        
+        # Add floating assistant orb
+        self.jarvis_orb = AssistantOrb()
+        root.add_widget(self.jarvis_orb)
+        
+        return root
 
     def on_start(self):
         self.status_text = "Initializing…"
@@ -611,6 +623,32 @@ class JarvisApp(MDApp):
             start_automation_agent()
         except Exception as e:
             print(f"Automation agent: {e}")
+        
+        # Connect to WebSocket server for real-time updates
+        try:
+            ws_client = get_websocket_client()
+            ws_client.connect()
+            print("WebSocket client initialized")
+        except Exception as e:
+            print(f"WebSocket connection failed: {e}")
+        
+        # Connect Jarvis Mode to orb for state updates
+        try:
+            from jarvis_mode import get_jarvis_mode
+            jarvis = get_jarvis_mode()
+            
+            def orb_state_update(state):
+                Clock.schedule_once(lambda dt: self.jarvis_orb.set_state(state), 0)
+            
+            def orb_message_update(message):
+                Clock.schedule_once(lambda dt: self.jarvis_orb.set_message(message), 0)
+            
+            jarvis.set_state_callback(orb_state_update)
+            jarvis.set_message_callback(orb_message_update)
+            print("Jarvis Mode connected to orb")
+        except Exception as e:
+            print(f"Jarvis Mode connection failed: {e}")
+        
         self.status_pill_text = "● Online"
         self.update_reminder_count()
         self.mic_anim = Animation(
@@ -984,13 +1022,66 @@ class JarvisApp(MDApp):
             return
         inp.text = ""
         self.append_message("You", cmd)
-        self._run_command_async(cmd)
+        
+        # Try WebSocket for real-time updates
+        ws_client = get_websocket_client()
+        if ws_client.connected:
+            self._run_command_with_websocket(cmd, ws_client)
+        else:
+            self._run_command_async(cmd)
 
     def sendCommand(self, text: str):
         if not text or not str(text).strip() or self.ui_busy:
             return
         self.append_message("You", str(text).strip())
-        self._run_command_async(str(text).strip())
+        
+        # Try WebSocket for real-time updates
+        ws_client = get_websocket_client()
+        if ws_client.connected:
+            self._run_command_with_websocket(str(text).strip(), ws_client)
+        else:
+            self._run_command_async(str(text).strip())
+
+    def _run_command_with_websocket(self, cmd: str, ws_client):
+        """Run command with WebSocket real-time updates."""
+        self.ui_busy = True
+        self.typing_visible = True
+        self.set_status_mode("thinking")
+        
+        # Set up callback for WebSocket messages
+        def ws_callback(data):
+            Clock.schedule_once(lambda dt: self._handle_ws_update(data), 0)
+        
+        ws_client.set_message_callback(ws_callback)
+        
+        # Send command via WebSocket
+        ws_client.send(cmd)
+        
+    @mainthread
+    def _handle_ws_update(self, data):
+        """Handle real-time WebSocket updates."""
+        msg_type = data.get("type")
+        msg_data = data.get("data")
+        
+        if msg_type == "plan":
+            self.append_message("🧠 Plan", msg_data[:200] + "...")
+            self.set_status_mode("thinking")
+        elif msg_type == "step":
+            self.append_message("⚙️ Step", msg_data)
+            self.set_status_mode("executing")
+        elif msg_type == "result":
+            self.append_message("✓ Result", msg_data[:150] + "...")
+        elif msg_type == "final":
+            self.append_message("Assistant", msg_data)
+            self.typing_visible = False
+            self.ui_busy = False
+            self.set_status_mode("online")
+            self.update_reminder_count()
+        elif msg_type == "error":
+            self.append_message("❌ Error", msg_data)
+            self.typing_visible = False
+            self.ui_busy = False
+            self.set_status_mode("online")
 
     def _run_command_async(self, cmd: str):
         self.ui_busy = True

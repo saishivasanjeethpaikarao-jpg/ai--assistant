@@ -1,23 +1,89 @@
-# Personal AI Assistant
+# 🤖 Personal AI Assistant - 12-Layer Autonomous System
 
-A Windows-based Python assistant with voice triggers, popup chat, file handling, PowerShell execution, browser search, and multi-provider AI fallback.
+> **A complete, production-ready autonomous AI assistant with intelligent decision-making, self-reflection, and adaptive learning.**
 
-**📚 Documentation**: See [FEATURES.md](FEATURES.md) for complete feature list and [ARCHITECTURE.md](ARCHITECTURE.md) for system design.
+### ⚡ Key Features
+- ✅ **12 Complete Layers** - Fully implemented and integrated
+- ✅ **Autonomous Execution** - Self-planning and self-correcting
+- ✅ **Adaptive Learning** - Stores strategies, preferences, and patterns
+- ✅ **Safety Validated** - All commands checked before execution
+- ✅ **Production Ready** - Tested and verified end-to-end
 
-## Quick Start
+**📚 Full Documentation**: 
+- [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md) - Complete technical docs
+- [MULTIMODE_FRAMEWORK_GUIDE.md](MULTIMODE_FRAMEWORK_GUIDE.md) - 6-mode framework
+- [FEATURES.md](FEATURES.md) - Feature list
+- [ARCHITECTURE.md](ARCHITECTURE.md) - System design
 
-1. Install dependencies:
-   ```powershell
-   python -m pip install -r requirements.txt
-   ```
-2. Copy `.env.template` to `.env` and fill in your provider keys.
-   - `FIREBASE_API_KEY` is required for sign in / sign up.
-   - If you want guest mode, you can skip Firebase login and continue as Guest.
-   - Guest mode uses ephemeral memory and reminders that do not persist after logout or app restart.
-3. Start the assistant CLI (optional):
-   ```powershell
-   python assistant.py
-   ```
+## 🚀 Quick Start
+
+### Installation
+```bash
+# Clone repository
+git clone https://github.com/yourusername/personal-ai-assistant.git
+cd personal-ai-assistant
+
+# Create virtual environment
+python -m venv .venv
+.\.venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Quick Example
+```python
+from system_coordinator import process_user_request
+
+# Send any request through all 12 layers
+result = process_user_request("analyze sales data and create report")
+
+# Result includes: classification, plan, execution, reflection, learnings
+print(result)
+```
+
+### Run Tests
+```bash
+python test_12_layer_system.py  # Comprehensive system tests
+python test_12_layer_system.py  # All 12 layers verified
+```
+
+## 🧠 The 12 Layers
+
+1. **Intent Detector** - Classifies input type & complexity
+2. **Strategic Planner** - Creates optimal execution plans
+3. **Plan Critic** - Validates and improves plans
+4. **Execution Engine** - Converts steps to commands
+5. **Decision Engine** - Chooses best options
+6. **Safety Filter** - Validates command safety
+7. **Self-Reflection** - Evaluates execution outcomes
+8. **Adaptive Memory** - Learns and stores knowledge
+9. **Re-Planning Engine** - Recovers from failures
+10. **Chat Mode** - Natural conversation
+11. **Meta-Improvement** - System optimization
+12. **Orchestrator** - Coordinates all layers
+
+## 📊 Complete Workflow
+
+```
+User Input
+    ↓
+[Layer 1] Intent Detection
+    ↓
+IF COMMAND: Execute → Safety Check → Run
+IF GOAL: Plan → Critique → Execute → Safety → Run
+IF CHAT: Respond → Learn
+    ↓
+[Layer 7] Reflect on Results
+[Layer 8] Store Learnings
+[Layer 9] Replan if Failed
+    ↓
+Output + Memories Stored
+```
+
+## 🧪 Testing
+
+### Run Full Test Suite
    or double-click `run_assistant.bat`.
 
 4. Start the independent desktop UI app:
