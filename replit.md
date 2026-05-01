@@ -1,12 +1,34 @@
 # JARVIS AI Assistant
 
-A professional-grade AI personal assistant with a 12-layer autonomous intelligence system, modern dashboard UI, and real-time interaction.
+Iron Man–style AI assistant: 12-layer brain, voice in/out, bilingual (English + Telugu), PC control, Indian stock trading, self-improvement, wake-word activation, voice cloning.
 
 ## Architecture
 
-- **Frontend**: React + Vite app (`frontend/`) running on port 5000
-- **Backend**: Python HTTP server (`backend/dashboard_api.py`) running on port 8000
-- Both communicate via Vite's proxy (`/api` → `localhost:8000`)
+- **Frontend**: React + Vite (`frontend/`) on port 5000 — Cursor IDE 3-column layout, all inline styles
+- **Backend**: Python HTTP server (`backend/dashboard_api.py`) on port 8000
+- Vite proxy: `/api` → `localhost:8000`
+
+## Settings — 9 tabs
+
+AI Engine · Voice & Speech · Language · Wake Word · Voice Clone · System Prompt · Notifications · Appearance · All API Keys
+
+## Sidebar Panels (7)
+
+Chat History · Memory · Trading · Reminders · Skills/Capabilities (29) · Analytics · 12-Layer Brain
+
+## Backend API Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/request` | POST | Send message to AI |
+| `/api/settings` | GET/POST | All settings + API keys |
+| `/api/provider/status` | GET | Groq/Ollama/ElevenLabs status |
+| `/api/capabilities` | GET | 29 capabilities list |
+| `/api/system/layers` | GET | 12-layer AI brain info |
+| `/api/system/prompt` | GET/POST | System prompt |
+| `/api/reminders` | GET/POST | Reminders |
+| `/api/memory/stats` | GET | Memory stats |
+| `/api/analytics` | GET | Usage analytics |
 
 ## Running the App
 

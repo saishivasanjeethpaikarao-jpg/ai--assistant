@@ -1,22 +1,14 @@
-import { FiMic, FiMicOff, FiCpu, FiGitBranch, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { FiMic, FiMicOff, FiCpu, FiGitBranch, FiCheckCircle, FiAlertCircle, FiAlertTriangle } from 'react-icons/fi';
 
-const StatusItem = ({ icon: Icon, label, onClick, highlight }) => (
-  <button
-    onClick={onClick}
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '5px',
-      padding: '0 8px',
-      height: '100%',
-      backgroundColor: 'transparent',
-      color: highlight ? '#ffffff' : 'rgba(255,255,255,0.75)',
-      fontSize: '12px',
-      fontFamily: "'Geist', sans-serif",
-      cursor: onClick ? 'pointer' : 'default',
-      transition: 'background 0.1s',
-      whiteSpace: 'nowrap',
-    }}
+const Item = ({ icon: Icon, label, onClick, color }) => (
+  <button onClick={onClick} style={{
+    display: 'flex', alignItems: 'center', gap: '5px',
+    padding: '0 8px', height: '100%',
+    backgroundColor: 'transparent', border: 'none',
+    color: color || 'rgba(255,255,255,0.75)', fontSize: '12px',
+    fontFamily: "'Geist', sans-serif", cursor: onClick ? 'pointer' : 'default',
+    transition: 'background 0.1s', whiteSpace: 'nowrap',
+  }}
     onMouseEnter={e => { if (onClick) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
     onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
   >
@@ -25,53 +17,50 @@ const StatusItem = ({ icon: Icon, label, onClick, highlight }) => (
   </button>
 );
 
-const Divider = () => (
-  <div style={{ width: '1px', height: '14px', backgroundColor: 'rgba(255,255,255,0.15)' }} />
-);
+const Sep = () => <div style={{ width: '1px', height: '14px', backgroundColor: 'rgba(255,255,255,0.15)' }} />;
 
-const StatusBar = ({ voiceState, aiStatus }) => {
+const StatusBar = ({ voiceState, aiStatus, hasProvider }) => {
   const isProcessing = aiStatus === 'Processing';
   const isListening = voiceState === 'listening';
+  const isSpeaking = voiceState === 'speaking';
+
+  const providerColor = hasProvider === null ? 'rgba(255,255,255,0.5)'
+    : hasProvider ? '#86efac' : '#fca5a5';
+  const providerLabel = hasProvider === null ? 'Checking...'
+    : hasProvider ? 'AI Ready' : '⚠ No API key';
 
   return (
     <div style={{
-      height: '24px',
-      backgroundColor: '#1b6ac9',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      flexShrink: 0,
-      userSelect: 'none',
-      overflow: 'hidden',
+      height: '24px', backgroundColor: '#1b6ac9',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      flexShrink: 0, userSelect: 'none', overflow: 'hidden',
     }}>
-      {/* Left side */}
       <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-        <StatusItem
-          icon={FiGitBranch}
-          label="main"
+        <Item icon={FiGitBranch} label="main" />
+        <Sep />
+        <Item
+          icon={hasProvider ? FiCheckCircle : FiAlertTriangle}
+          label={providerLabel}
+          color={providerColor}
         />
-        <Divider />
-        <StatusItem
-          icon={isProcessing ? FiAlertCircle : FiCheckCircle}
+        <Sep />
+        <Item
+          icon={isProcessing ? FiAlertCircle : FiCpu}
           label={isProcessing ? 'Processing...' : 'Ready'}
-          highlight={isProcessing}
+          color={isProcessing ? '#fde68a' : undefined}
         />
       </div>
-
-      {/* Right side */}
       <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-        <StatusItem
+        {isSpeaking && <><Item label="Speaking" color="#86efac" /><Sep /></>}
+        <Item
           icon={isListening ? FiMic : FiMicOff}
           label={isListening ? 'Listening' : 'Idle'}
-          highlight={isListening}
+          color={isListening ? '#86efac' : undefined}
         />
-        <Divider />
-        <StatusItem
-          icon={FiCpu}
-          label="Jarvis AI"
-        />
-        <Divider />
-        <StatusItem label="Python Backend" />
+        <Sep />
+        <Item icon={FiCpu} label="Jarvis AI" />
+        <Sep />
+        <Item label="12-Layer Brain" />
       </div>
     </div>
   );
