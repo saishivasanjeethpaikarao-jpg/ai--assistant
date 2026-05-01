@@ -1,35 +1,77 @@
-import React from 'react';
-import { FiMic, FiCpu, FiWifi } from 'react-icons/fi';
+import { FiMic, FiMicOff, FiCpu, FiGitBranch, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+
+const StatusItem = ({ icon: Icon, label, onClick, highlight }) => (
+  <button
+    onClick={onClick}
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '5px',
+      padding: '0 8px',
+      height: '100%',
+      backgroundColor: 'transparent',
+      color: highlight ? '#ffffff' : 'rgba(255,255,255,0.75)',
+      fontSize: '12px',
+      fontFamily: "'Geist', sans-serif",
+      cursor: onClick ? 'pointer' : 'default',
+      transition: 'background 0.1s',
+      whiteSpace: 'nowrap',
+    }}
+    onMouseEnter={e => { if (onClick) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
+    onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+  >
+    {Icon && <Icon size={12} />}
+    <span>{label}</span>
+  </button>
+);
+
+const Divider = () => (
+  <div style={{ width: '1px', height: '14px', backgroundColor: 'rgba(255,255,255,0.15)' }} />
+);
 
 const StatusBar = ({ voiceState, aiStatus }) => {
+  const isProcessing = aiStatus === 'Processing';
+  const isListening = voiceState === 'listening';
+
   return (
     <div style={{
       height: '24px',
-      backgroundColor: '#3b82f6',
+      backgroundColor: '#1b6ac9',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: '0 12px',
-      fontSize: '12px',
-      color: '#ffffff',
+      flexShrink: 0,
+      userSelect: 'none',
+      overflow: 'hidden',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <FiMic size={12} />
-          <span>{voiceState || 'Idle'}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <FiCpu size={12} />
-          <span>{aiStatus || 'Ready'}</span>
-        </div>
+      {/* Left side */}
+      <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+        <StatusItem
+          icon={FiGitBranch}
+          label="main"
+        />
+        <Divider />
+        <StatusItem
+          icon={isProcessing ? FiAlertCircle : FiCheckCircle}
+          label={isProcessing ? 'Processing...' : 'Ready'}
+          highlight={isProcessing}
+        />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <FiWifi size={12} />
-          <span>Connected</span>
-        </div>
-        <span>Python Backend</span>
+      {/* Right side */}
+      <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+        <StatusItem
+          icon={isListening ? FiMic : FiMicOff}
+          label={isListening ? 'Listening' : 'Idle'}
+          highlight={isListening}
+        />
+        <Divider />
+        <StatusItem
+          icon={FiCpu}
+          label="Jarvis AI"
+        />
+        <Divider />
+        <StatusItem label="Python Backend" />
       </div>
     </div>
   );

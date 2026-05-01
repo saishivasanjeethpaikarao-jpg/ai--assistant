@@ -10,8 +10,9 @@ import { api } from './services/api';
 
 function App() {
   const [activePanel, setActivePanel] = useState('chat');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  
+
   const {
     voiceState,
     messages,
@@ -32,11 +33,24 @@ function App() {
       if (e.key === 'Escape') {
         setIsCommandPaletteOpen(false);
       }
+      // Toggle sidebar with Ctrl+B like VS Code
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        setSidebarOpen(o => !o);
+      }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const handlePanelChange = (panel) => {
+    if (activePanel === panel) {
+      setSidebarOpen(o => !o);
+    } else {
+      setActivePanel(panel);
+      setSidebarOpen(true);
+    }
+  };
 
   const handleSendMessage = async (text) => {
     addMessage({ role: 'user', content: text });
@@ -47,18 +61,21 @@ function App() {
       const content =
         typeof response === 'string'
           ? response
-          : response?.reply || response?.message || response?.response || 'Done.';
+          : response?.reply || response?.message || response?.output || 'Done.';
       addMessage({ role: 'assistant', content });
     } catch (error) {
       console.error('Failed to send message:', error);
-      addMessage({ role: 'assistant', content: 'Sorry, something went wrong. Please try again.' });
+      addMessage({
+        role: 'assistant',
+        content: 'Unable to reach the backend. Make sure the API server is running.',
+      });
     } finally {
       setTyping(false);
     }
   };
 
   const handleCommand = async (commandId) => {
-    const commands = {
+    const commandMap = {
       'open-chrome': 'Open Chrome',
       'open-vscode': 'Open VS Code',
       'search-nifty': 'Search NIFTY trend',
@@ -67,18 +84,22 @@ function App() {
       'system-status': 'System status',
     };
 
-    const command = commands[commandId];
-    if (command) {
-      addTask({ step: command, status: 'pending', result: null });
-      const taskIndex = tasks.length;
+    const commandText = commandMap[commandId];
+    if (!commandText) return;
 
-      try {
-        updateTask(taskIndex, { status: 'running' });
-        const response = await api.run(command);
-        updateTask(taskIndex, { status: 'done', result: response });
-      } catch (error) {
-        updateTask(taskIndex, { status: 'failed', result: error.message });
-      }
+    addTask({ step: commandText, status: 'pending', result: null });
+    const taskIndex = tasks.length;
+
+    try {
+      updateTask(taskIndex, { status: 'running' });
+      const response = await api.run(commandText);
+      const result =
+        typeof response === 'string'
+          ? response
+          : response?.reply || response?.message || 'Completed';
+      updateTask(taskIndex, { status: 'done', result });
+    } catch (error) {
+      updateTask(taskIndex, { status: 'failed', result: error.message });
     }
   };
 
@@ -88,24 +109,25 @@ function App() {
       flexDirection: 'column',
       height: '100vh',
       backgroundColor: '#0a0a0a',
-      fontFamily: 'Geist, sans-serif',
-      fontSize: '13px',
       color: '#e8e8e8',
+      overflow: 'hidden',
     }}>
-      {/* Main Content Area */}
+      {/* Body: activity bar + sidebar + main */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Activity Bar */}
-        <ActivityBar activePanel={activePanel} onPanelChange={setActivePanel} />
+        <ActivityBar
+          activePanel={activePanel}
+          onPanelChange={handlePanelChange}
+          onCommandOpen={() => setIsCommandPaletteOpen(true)}
+        />
 
-        {/* Sidebar */}
-        <Sidebar activePanel={activePanel} />
+        <Sidebar
+          activePanel={activePanel}
+          isOpen={sidebarOpen}
+        />
 
-        {/* Chat Area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {/* Agent Task View */}
+        {/* Main area */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
           <AgentTaskView tasks={tasks} />
-
-          {/* Chat Interface */}
           <ChatInterface
             messages={messages}
             onSendMessage={handleSendMessage}
@@ -114,10 +136,8 @@ function App() {
         </div>
       </div>
 
-      {/* Status Bar */}
       <StatusBar voiceState={voiceState} aiStatus={isTyping ? 'Processing' : 'Ready'} />
 
-      {/* Command Palette */}
       <CommandPalette
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
