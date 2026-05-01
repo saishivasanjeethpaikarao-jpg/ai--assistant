@@ -5,6 +5,7 @@ import ChatInterface from './components/ChatInterface';
 import CommandPalette from './components/CommandPalette';
 import AgentTaskView from './components/AgentTaskView';
 import StatusBar from './components/StatusBar';
+import Settings from './components/Settings';
 import useStore from './store/useStore';
 import { api } from './services/api';
 
@@ -12,9 +13,9 @@ function App() {
   const [activePanel, setActivePanel] = useState('chat');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [voiceState, setVoiceState] = useState('idle');
 
   const {
-    voiceState,
     messages,
     isTyping,
     tasks,
@@ -33,7 +34,6 @@ function App() {
       if (e.key === 'Escape') {
         setIsCommandPaletteOpen(false);
       }
-      // Toggle sidebar with Ctrl+B like VS Code
       if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
         e.preventDefault();
         setSidebarOpen(o => !o);
@@ -65,9 +65,14 @@ function App() {
       addMessage({ role: 'assistant', content });
     } catch (error) {
       console.error('Failed to send message:', error);
+      const errMsg = error?.response?.data?.error || error?.message || '';
+      const isNoKey = errMsg.toLowerCase().includes('no ai providers') ||
+        errMsg.toLowerCase().includes('groq') || errMsg.toLowerCase().includes('api key');
       addMessage({
         role: 'assistant',
-        content: 'Unable to reach the backend. Make sure the API server is running.',
+        content: isNoKey
+          ? 'No AI provider is configured. Please go to Settings (gear icon) and add your Groq API key to get started.'
+          : `Error: ${errMsg || 'Could not reach backend.'}`,
       });
     } finally {
       setTyping(false);
@@ -93,26 +98,23 @@ function App() {
     try {
       updateTask(taskIndex, { status: 'running' });
       const response = await api.run(commandText);
-      const result =
-        typeof response === 'string'
-          ? response
-          : response?.reply || response?.message || 'Completed';
+      const result = typeof response === 'string'
+        ? response
+        : response?.reply || response?.message || 'Completed';
       updateTask(taskIndex, { status: 'done', result });
     } catch (error) {
       updateTask(taskIndex, { status: 'failed', result: error.message });
     }
   };
 
+  const isSettings = activePanel === 'settings';
+
   return (
     <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      backgroundColor: '#0a0a0a',
-      color: '#e8e8e8',
-      overflow: 'hidden',
+      display: 'flex', flexDirection: 'column',
+      height: '100vh', backgroundColor: '#0a0a0a',
+      color: '#e8e8e8', overflow: 'hidden',
     }}>
-      {/* Body: activity bar + sidebar + main */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <ActivityBar
           activePanel={activePanel}
@@ -120,19 +122,23 @@ function App() {
           onCommandOpen={() => setIsCommandPaletteOpen(true)}
         />
 
-        <Sidebar
-          activePanel={activePanel}
-          isOpen={sidebarOpen}
-        />
+        <Sidebar activePanel={activePanel} isOpen={sidebarOpen && !isSettings} />
 
-        {/* Main area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-          <AgentTaskView tasks={tasks} />
-          <ChatInterface
-            messages={messages}
-            onSendMessage={handleSendMessage}
-            isTyping={isTyping}
-          />
+          {isSettings ? (
+            <Settings />
+          ) : (
+            <>
+              <AgentTaskView tasks={tasks} />
+              <ChatInterface
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                isTyping={isTyping}
+                voiceState={voiceState}
+                onVoiceStateChange={setVoiceState}
+              />
+            </>
+          )}
         </div>
       </div>
 
