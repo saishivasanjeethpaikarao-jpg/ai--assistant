@@ -1,40 +1,4 @@
 [build]
-  command = "echo 'Ready for deployment'"
-  publish = "frontend"
-  functions = "netlify/functions"
-
-[dev]
-  command = "python dashboard_api.py"
-  port = 5000
-
-# Environment variables (set in Netlify UI)
-[build.environment]
-  NODE_VERSION = "18"
-  PYTHON_VERSION = "3.11"
-
-# Redirect all API calls to functions
-[[redirects]]
-  from = "/.netlify/functions/:path"
-  to = "/.netlify/functions/:path"
-  status = 200
-
-# SPA routing
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-# Security headers
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-for = "/*"
-[headers.values]
-  X-Frame-Options = "SAMEORIGIN"
-  X-Content-Type-Options = "nosniff"
-  X-XSS-Protection = "1; mode=block"
-  Referrer-Policy = "strict-origin-when-cross-origin"
-  Permissions-Policy = "geolocation=(), microphone=()"
+  base    = "web-deploy"
+  command = ""
+  publish = "web-deploy/frontend"
