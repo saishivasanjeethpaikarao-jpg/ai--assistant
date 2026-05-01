@@ -1,48 +1,82 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiCheck, FiClock, FiLoader, FiX } from 'react-icons/fi';
+import React from 'react';
+import { FiCheck, FiClock, FiLoader, FiX, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 
 const AgentTaskView = ({ tasks }) => {
+  const [isExpanded, setIsExpanded] = React.useState(true);
+
   const getStatusIcon = (status) => {
     switch (status) {
       case 'pending':
-        return <FiClock className="text-gray-500" size={16} />;
+        return <FiClock size={14} style={{ color: '#6b6b6b' }} />;
       case 'running':
-        return <FiLoader className="text-yellow-500 animate-spin" size={16} />;
+        return <FiLoader size={14} style={{ color: '#3b82f6', animation: 'spin 1s linear infinite' }} />;
       case 'done':
-        return <FiCheck className="text-green-500" size={16} />;
+        return <FiCheck size={14} style={{ color: '#10b981' }} />;
       case 'failed':
-        return <FiX className="text-red-500" size={16} />;
+        return <FiX size={14} style={{ color: '#ef4444' }} />;
       default:
         return null;
     }
   };
 
+  if (tasks.length === 0) return null;
+
   return (
-    <div className="p-4 border-t border-gray-800">
-      <h3 className="text-sm font-medium text-gray-300 mb-3">Agent Execution</h3>
-      <div className="space-y-2">
-        <AnimatePresence>
+    <div style={{
+      borderBottom: '1px solid #2a2a2a',
+      backgroundColor: '#111111',
+    }}>
+      <div
+        onClick={() => setIsExpanded(!isExpanded)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 16px',
+          cursor: 'pointer',
+        }}
+      >
+        <span style={{
+          fontSize: '12px',
+          color: '#8b8b8b',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px',
+        }}>
+          Agent Execution
+        </span>
+        {isExpanded ? <FiChevronUp size={14} style={{ color: '#6b6b6b' }} /> : <FiChevronDown size={14} style={{ color: '#6b6b6b' }} />}
+      </div>
+
+      {isExpanded && (
+        <div style={{ padding: '8px 16px 12px 16px' }}>
           {tasks.map((task, idx) => (
-            <motion.div
+            <div
               key={idx}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.2 }}
-              className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                marginBottom: '4px',
+                backgroundColor: '#181818',
+                borderRadius: '4px',
+                fontSize: '12px',
+              }}
             >
-              <div className="flex-shrink-0">{getStatusIcon(task.status)}</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-200 truncate">{task.step}</p>
+              {getStatusIcon(task.status)}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: '#e8e8e8', marginBottom: '2px' }}>{task.step}</div>
                 {task.result && (
-                  <p className="text-xs text-gray-400 mt-1 truncate">{task.result}</p>
+                  <div style={{ color: '#6b6b6b', fontSize: '11px' }}>{task.result}</div>
                 )}
               </div>
-              <span className="text-xs text-gray-500 capitalize">{task.status}</span>
-            </motion.div>
+              <span style={{ color: '#6b6b6b', fontSize: '11px', textTransform: 'capitalize' }}>
+                {task.status}
+              </span>
+            </div>
           ))}
-        </AnimatePresence>
-      </div>
+        </div>
+      )}
     </div>
   );
 };

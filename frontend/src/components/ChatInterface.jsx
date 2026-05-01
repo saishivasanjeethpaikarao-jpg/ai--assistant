@@ -1,12 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiSend, FiUser, FiCpu } from 'react-icons/fi';
-import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { FiSend, FiMic } from 'react-icons/fi';
 
 const ChatInterface = ({ messages, onSendMessage, isTyping }) => {
   const [input, setInput] = useState('');
+  const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -17,119 +14,175 @@ const ChatInterface = ({ messages, onSendMessage, isTyping }) => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (input.trim()) {
-      onSendMessage(input);
-      setInput('');
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (input.trim()) {
+        onSendMessage(input);
+        setInput('');
+      }
+    }
+  };
+
+  const autoResize = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px';
     }
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div style={{
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      backgroundColor: '#0a0a0a',
+      overflow: 'hidden',
+    }}>
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <AnimatePresence>
-          {messages.map((msg, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2 }}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`flex items-start gap-3 max-w-[80%] ${
-                  msg.role === 'user' ? 'flex-row-reverse' : ''
-                }`}
-              >
-                <div
-                  className={`p-2 rounded-lg ${
-                    msg.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-800 text-gray-100'
-                  }`}
-                >
-                  {msg.role === 'user' ? <FiUser size={16} /> : <FiCpu size={16} />}
-                </div>
-                <div
-                  className={`px-4 py-3 rounded-2xl ${
-                    msg.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-800 text-gray-100'
-                  }`}
-                >
-                  <ReactMarkdown
-                    components={{
-                      code({ node, inline, className, children, ...props }) {
-                        const match = /language-(\w+)/.exec(className || '');
-                        return !inline && match ? (
-                          <SyntaxHighlighter
-                            style={vscDarkPlus}
-                            language={match[1]}
-                            PreTag="div"
-                            {...props}
-                          >
-                            {String(children).replace(/\n$/, '')}
-                          </SyntaxHighlighter>
-                        ) : (
-                          <code
-                            className="bg-gray-700 px-1.5 py-0.5 rounded text-sm"
-                            {...props}
-                          >
-                            {children}
-                          </code>
-                        );
-                      },
-                    }}
-                  >
-                    {msg.content}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '16px',
+      }}>
+        {messages.length === 0 && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            color: '#6b6b6b',
+          }}>
+            <div style={{ fontSize: '14px', marginBottom: '8px' }}>Start a conversation</div>
+            <div style={{ fontSize: '13px' }}>Type a message or use Ctrl+K for commands</div>
+          </div>
+        )}
 
-        {/* Typing indicator */}
-        {isTyping && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-2 text-gray-400"
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            style={{
+              display: 'flex',
+              justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+              marginBottom: '16px',
+            }}
           >
-            <div className="flex gap-1">
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+            <div
+              style={{
+                maxWidth: '70%',
+                padding: '12px 16px',
+                backgroundColor: msg.role === 'user' ? '#181818' : '#111111',
+                border: '1px solid #2a2a2a',
+                borderRadius: '6px',
+                fontSize: '13px',
+                lineHeight: '1.5',
+                color: '#e8e8e8',
+              }}
+            >
+              {msg.content}
             </div>
-            <span className="text-sm">Thinking...</span>
-          </motion.div>
+          </div>
+        ))}
+
+        {isTyping && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: '#6b6b6b',
+            fontSize: '13px',
+          }}>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#6b6b6b', animation: 'pulse 1s infinite' }} />
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#6b6b6b', animation: 'pulse 1s infinite 0.2s' }} />
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#6b6b6b', animation: 'pulse 1s infinite 0.4s' }} />
+            </div>
+            <span>Thinking...</span>
+          </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-gray-800">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 bg-gray-800 text-gray-100 px-4 py-3 rounded-xl border border-gray-700 focus:border-blue-500 focus:outline-none transition-colors"
-          />
+      <div style={{
+        padding: '12px 16px',
+        borderTop: '1px solid #2a2a2a',
+        backgroundColor: '#111111',
+      }}>
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'flex-end',
+        }}>
           <button
-            type="submit"
-            disabled={!input.trim()}
-            className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            style={{
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#181818',
+              border: '1px solid #2a2a2a',
+              color: '#8b8b8b',
+              cursor: 'pointer',
+              borderRadius: '4px',
+            }}
           >
-            <FiSend size={20} />
+            <FiMic size={18} />
+          </button>
+
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              autoResize();
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a message..."
+            style={{
+              flex: 1,
+              minHeight: '40px',
+              maxHeight: '200px',
+              padding: '10px 12px',
+              backgroundColor: '#0a0a0a',
+              border: '1px solid #2a2a2a',
+              borderRadius: '4px',
+              color: '#e8e8e8',
+              fontSize: '13px',
+              fontFamily: 'Geist, sans-serif',
+              resize: 'none',
+              outline: 'none',
+            }}
+          />
+
+          <button
+            onClick={() => {
+              if (input.trim()) {
+                onSendMessage(input);
+                setInput('');
+              }
+            }}
+            disabled={!input.trim()}
+            style={{
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: input.trim() ? '#3b82f6' : '#181818',
+              border: '1px solid #2a2a2a',
+              color: input.trim() ? '#ffffff' : '#6b6b6b',
+              cursor: input.trim() ? 'pointer' : 'not-allowed',
+              borderRadius: '4px',
+            }}
+          >
+            <FiSend size={18} />
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 };

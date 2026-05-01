@@ -1,23 +1,36 @@
 [build]
-command = "echo 'Static site - no build required'"
-publish = "."
+  command = "echo 'Ready for deployment'"
+  publish = "frontend"
+  functions = "netlify/functions"
 
 [dev]
-command = "python -m http.server 8000"
-port = 8000
+  command = "python dashboard_api.py"
+  port = 5000
 
-# Redirect all requests to index.html for SPA support
-[[redirects]]
-from = "/*"
-to = "/"
-status = 200
-
-# Enable compression
+# Environment variables (set in Netlify UI)
 [build.environment]
-PYTHON_VERSION = "3.11"
+  NODE_VERSION = "18"
+  PYTHON_VERSION = "3.11"
 
-# Headers for security
+# Redirect all API calls to functions
+[[redirects]]
+  from = "/.netlify/functions/:path"
+  to = "/.netlify/functions/:path"
+  status = 200
+
+# SPA routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security headers
 [[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
 for = "/*"
 [headers.values]
   X-Frame-Options = "SAMEORIGIN"

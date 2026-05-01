@@ -1,36 +1,42 @@
-import { useEffect } from 'react';
-import FloatingPanel from './components/FloatingPanel';
-import ChatInterface from './components/ChatInterface';
-import VoiceWaveform from './components/VoiceWaveform';
-import AgentTaskView from './components/AgentTaskView';
-import CommandInput from './components/CommandInput';
+import { useState, useEffect } from 'react';
+import ActivityBar from './components/ActivityBar';
 import Sidebar from './components/Sidebar';
-import ToastContainer from './components/Toast';
+import ChatInterface from './components/ChatInterface';
+import CommandPalette from './components/CommandPalette';
+import AgentTaskView from './components/AgentTaskView';
+import StatusBar from './components/StatusBar';
 import useStore from './store/useStore';
 import { api } from './services/api';
 
 function App() {
+  const [activePanel, setActivePanel] = useState('chat');
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  
   const {
-    isPanelExpanded,
-    isSidebarOpen,
     voiceState,
-    isVoiceActive,
     messages,
     isTyping,
     tasks,
-    toasts,
-    togglePanel,
-    toggleSidebar,
-    setVoiceState,
-    toggleVoice,
     addMessage,
     setTyping,
     addTask,
     updateTask,
-    clearTasks,
-    addToast,
-    removeToast,
   } = useStore();
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(true);
+      }
+      if (e.key === 'Escape') {
+        setIsCommandPaletteOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleSendMessage = async (text) => {
     addMessage({ role: 'user', content: text });
@@ -40,71 +46,59 @@ function App() {
       const response = await api.chat(text);
       addMessage({ role: 'assistant', content: response });
     } catch (error) {
-      addToast({ type: 'error', message: 'Failed to send message' });
+      console.error('Failed to send message:', error);
     } finally {
       setTyping(false);
     }
   };
 
-  const handleCommand = async (command) => {
-    addTask({ step: command, status: 'pending', result: null });
-    const taskIndex = tasks.length;
+  const handleCommand = async (commandId) => {
+    const commands = {
+      'open-chrome': 'Open Chrome',
+      'open-vscode': 'Open VS Code',
+      'search-nifty': 'Search NIFTY trend',
+      'check-emails': 'Check emails',
+      'analyze-trading': 'Analyze trading setup',
+      'system-status': 'System status',
+    };
 
-    try {
-      updateTask(taskIndex, { status: 'running' });
-      const response = await api.run(command);
-      updateTask(taskIndex, { status: 'done', result: response });
-      addToast({ type: 'success', message: 'Command completed' });
-    } catch (error) {
-      updateTask(taskIndex, { status: 'failed', result: error.message });
-      addToast({ type: 'error', message: 'Command failed' });
-    }
-  };
+    const command = commands[commandId];
+    if (command) {
+      addTask({ step: command, status: 'pending', result: null });
+      const taskIndex = tasks.length;
 
-  const handleVoiceToggle = () => {
-    toggleVoice();
-    if (!isVoiceActive) {
-      setVoiceState('listening');
-    } else {
-      setVoiceState('idle');
+      try {
+        updateTask(taskIndex, { status: 'running' });
+        const response = await api.run(command);
+        updateTask(taskIndex, { status: 'done', result: response });
+      } catch (error) {
+        updateTask(taskIndex, { status: 'failed', result: error.message });
+      }
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 font-sans">
-      {/* Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
-
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100vh',
+      backgroundColor: '#0a0a0a',
+      fontFamily: 'Geist, sans-serif',
+      fontSize: '13px',
+      color: '#e8e8e8',
+    }}>
       {/* Main Content Area */}
-      <div className={`transition-all duration-300 ${isSidebarOpen ? 'ml-72' : 'ml-0'}`}>
-        {/* Command Bar */}
-        <div className="p-4 border-b border-gray-800">
-          <CommandInput
-            onCommand={handleCommand}
-            suggestions={[
-              'Open Chrome',
-              'Search NIFTY trend',
-              'Check emails',
-              'Open VS Code',
-              'Analyze trading setup',
-            ]}
-          />
-        </div>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        {/* Activity Bar */}
+        <ActivityBar activePanel={activePanel} onPanelChange={setActivePanel} />
 
-        {/* Floating Panel */}
-        <FloatingPanel
-          isExpanded={isPanelExpanded}
-          onToggle={togglePanel}
-          onClose={() => {}}
-        >
-          {/* Voice Control */}
-          <div className="p-4 border-b border-gray-800">
-            <VoiceWaveform
-              isActive={isVoiceActive}
-              state={voiceState}
-              onToggle={handleVoiceToggle}
-            />
-          </div>
+        {/* Sidebar */}
+        <Sidebar activePanel={activePanel} />
+
+        {/* Chat Area */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Agent Task View */}
+          <AgentTaskView tasks={tasks} />
 
           {/* Chat Interface */}
           <ChatInterface
@@ -112,14 +106,18 @@ function App() {
             onSendMessage={handleSendMessage}
             isTyping={isTyping}
           />
-
-          {/* Agent Task View */}
-          {tasks.length > 0 && <AgentTaskView tasks={tasks} />}
-        </FloatingPanel>
+        </div>
       </div>
 
-      {/* Toast Notifications */}
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      {/* Status Bar */}
+      <StatusBar voiceState={voiceState} aiStatus={isTyping ? 'Processing' : 'Ready'} />
+
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onCommand={handleCommand}
+      />
     </div>
   );
 }
