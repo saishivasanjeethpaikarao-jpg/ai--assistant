@@ -80,7 +80,7 @@ const ChatInterface = ({ messages, onSendMessage, isTyping }) => {
                 color: '#e8e8e8',
               }}
             >
-              {msg.content}
+              {typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}
             </div>
           </div>
         ))}

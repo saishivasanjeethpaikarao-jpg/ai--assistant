@@ -44,9 +44,14 @@ function App() {
 
     try {
       const response = await api.chat(text);
-      addMessage({ role: 'assistant', content: response });
+      const content =
+        typeof response === 'string'
+          ? response
+          : response?.reply || response?.message || response?.response || 'Done.';
+      addMessage({ role: 'assistant', content });
     } catch (error) {
       console.error('Failed to send message:', error);
+      addMessage({ role: 'assistant', content: 'Sorry, something went wrong. Please try again.' });
     } finally {
       setTyping(false);
     }
