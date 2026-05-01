@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -30,6 +30,10 @@ export const mobileAPI = {
   chat: (text) => api.post('/mobile/chat', { text }),
 };
 
+// Convenience methods used by App.jsx
+api.chat = (text) => api.post('/request', { input: text });
+api.run = (text) => api.post('/request', { input: text });
+
 // Error handler
 api.interceptors.response.use(
   (response) => response.data,
@@ -39,4 +43,5 @@ api.interceptors.response.use(
   }
 );
 
+export { api };
 export default api;

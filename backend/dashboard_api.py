@@ -221,7 +221,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
         """Suppress default logging"""
         pass
 
-def start_server(port=5000):
+def start_server(port=8000):
     """Start the dashboard API server"""
     server = HTTPServer(('0.0.0.0', port), DashboardAPIHandler)
     print("=" * 70)
@@ -235,8 +235,6 @@ def start_server(port=5000):
     print("  GET  /api/history             - Get request history")
     print("  POST /api/history/clear       - Clear history")
     print("  POST /api/test                - Run test requests")
-    print("\nWEB DASHBOARD:")
-    print("  Open: http://localhost:5000")
     print("\n" + "=" * 70)
     print(f"Server running on http://localhost:{port}")
     print("Press Ctrl+C to stop")
@@ -246,7 +244,7 @@ def start_server(port=5000):
 
 if __name__ == '__main__':
     try:
-        start_server(5000)
+        start_server(8000)
     except KeyboardInterrupt:
         print("\n\nServer stopped")
     except Exception as e:
