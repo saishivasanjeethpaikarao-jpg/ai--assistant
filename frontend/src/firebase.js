@@ -5,8 +5,11 @@ import {
   GithubAuthProvider,
 } from 'firebase/auth';
 
-// __GOOGLE_API_KEY__ is injected at build time via vite.config.js define
-const apiKey = typeof __GOOGLE_API_KEY__ !== 'undefined' ? __GOOGLE_API_KEY__ : '';
+const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+
+if (!apiKey) {
+  console.error('[Airis] Firebase apiKey is missing. Set the VITE_FIREBASE_API_KEY secret in Replit.');
+}
 
 const firebaseConfig = {
   apiKey,
@@ -16,10 +19,6 @@ const firebaseConfig = {
   messagingSenderId: '698656713592',
   appId: '1:698656713592:web:38f8a4c13c2ccbf5def68d',
 };
-
-if (!apiKey) {
-  console.error('[Airis] Firebase apiKey is missing. Set the GOOGLE_API_KEY secret in Replit.');
-}
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
