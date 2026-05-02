@@ -58,7 +58,7 @@ export default function LoginPage() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', fontFamily: "'DM Sans', -apple-system, sans-serif", background: '#F5F4F2', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, position: 'relative', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100vh', fontFamily: "'DM Sans', -apple-system, sans-serif", background: '#F5F4F2', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, position: 'relative' }}>
 
       {/* Blobs */}
       <div style={{ position: 'fixed', top: -200, left: -150, width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(67,125,253,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
