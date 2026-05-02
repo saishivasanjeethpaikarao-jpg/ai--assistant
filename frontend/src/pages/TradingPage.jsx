@@ -80,10 +80,6 @@ function parseCommand(raw) {
   }
 
   // Add to portfolio: "add 100 RELIANCE at 1500" / "bought 50 TCS at 3400"
-  const pfPatterns = [
-    new RegExp(`^(?:add|buy|bought|purchased|i\\s+bought|i\\s+have)\\s+(\\d+)\\s+(?:shares?\\s+(?:of\\s+)?)?${STOCK_RE}\\s+(?:at|@|for)\\s+(?:₹?)([\\d.]+)`, 'i'),
-    new RegExp(`^(?:add|buy|bought|purchased)\\s+${STOCK_RE}\\s+(\\d+)\\s+(?:shares?\\s+)?(?:at|@|for)\\s+(?:₹?)([\\d.]+)`, 'i'),
-  ];
   const pfPatterns2 = [
     /^(?:add|buy|bought|purchased|i\s+bought)\s+(\d+)\s+([A-Z][A-Z0-9&-]{1,14})\s+(?:at|@|for)\s+(?:₹?)([\d.]+)/i,
     /^(?:add|buy|bought|purchased|i\s+bought)\s+([A-Z][A-Z0-9&-]{1,14})\s+(\d+)\s+(?:shares?\s+)?(?:at|@|for)\s+(?:₹?)([\d.]+)/i,
@@ -562,8 +558,6 @@ const PortfolioTab = ({ portfolio, setPortfolio, onQuote, isMobile, prefill, cle
   const totalPnl      = totalCurrent - totalInvested;
   const totalPct      = totalInvested > 0 ? (totalPnl/totalInvested*100) : 0;
 
-  const cardStyle = (clr) => ({ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: isMobile ? '12px 14px' : '14px 18px', borderLeft: `3px solid ${clr}` });
-
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: BG }}>
       {/* Summary bar */}
@@ -729,23 +723,12 @@ const PortfolioTab = ({ portfolio, setPortfolio, onQuote, isMobile, prefill, cle
 };
 
 // ── Watchlist Tab ──────────────────────────────────────────────────────────────
-const WatchlistTab = ({ watchlist, setWatchlist, onQuote, isMobile, autoAddSymbol, clearAutoAdd }) => {
+const WatchlistTab = ({ watchlist, setWatchlist, onQuote, isMobile }) => {
   const [search,  setSearch]  = useState('');
   const [results, setResults] = useState([]);
   const [prices,  setPrices]  = useState({});
   const [loading, setLoading] = useState(false);
   const debRef                = useRef(null);
-
-  // Auto-add from AI command
-  useEffect(() => {
-    if (autoAddSymbol) {
-      const sym = normSym(autoAddSymbol);
-      if (!watchlist.find(w => normSym(w.symbol) === sym)) {
-        setWatchlist(p => [...p, { id: uid(), symbol: sym, name: '', addedAt: new Date().toISOString() }]);
-      }
-      clearAutoAdd();
-    }
-  }, [autoAddSymbol]);
 
   // Refresh prices when watchlist changes (covers initial load + new adds)
   useEffect(() => {
@@ -1104,7 +1087,6 @@ export default function TradingPage() {
   const [portfolio,     setPortfolio]     = useState(() => loadLS(LS_PORTFOLIO, []));
   const [watchlist,     setWatchlist]     = useState(() => loadLS(LS_WATCHLIST, []));
   const [pfPrefill,     setPfPrefill]     = useState(null);   // pre-fill portfolio from quote
-  const [wlAutoAdd,     setWlAutoAdd]     = useState(null);   // auto-add to watchlist from AI
 
   // Listen for cross-component events
   useEffect(() => {
@@ -1258,7 +1240,6 @@ export default function TradingPage() {
             {activeTab === 'watchlist' && (
               <WatchlistTab
                 watchlist={watchlist} setWatchlist={setWatchlist} onQuote={openQuote} isMobile={isMobile}
-                autoAddSymbol={wlAutoAdd} clearAutoAdd={() => setWlAutoAdd(null)}
               />
             )}
             {activeTab === 'market' && (
