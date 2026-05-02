@@ -8,6 +8,9 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     envPrefix: ['VITE_', 'GOOGLE_'],
+    define: {
+      __GOOGLE_API_KEY__: JSON.stringify(process.env.GOOGLE_API_KEY || env.GOOGLE_API_KEY || ''),
+    },
     server: {
       port: 5000,
       host: '0.0.0.0',
