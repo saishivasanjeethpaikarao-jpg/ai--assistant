@@ -1,0 +1,112 @@
+{
+  "colorScheme": "light",
+  "fonts": [
+    {
+      "family": "SplineSans",
+      "role": "unknown"
+    }
+  ],
+  "colors": {
+    "primary": "#437DFD",
+    "secondary": "#FD5B5D",
+    "accent": "#2C76FF",
+    "background": "#F2F2F2",
+    "textPrimary": "#0C0C0C",
+    "link": "#2C76FF"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "SplineSans",
+      "heading": "SplineSans"
+    },
+    "fontStacks": {
+      "heading": [
+        "SplineSans"
+      ],
+      "body": [
+        "SplineSans"
+      ],
+      "paragraph": [
+        "SplineSans"
+      ]
+    },
+    "fontSizes": {
+      "h1": "11px",
+      "h2": "11px",
+      "body": "11px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "8px"
+  },
+  "components": {
+    "buttonSecondary": {
+      "background": "#DADADA",
+      "textColor": "#0C0C0C",
+      "borderRadius": "8px",
+      "borderRadiusCorners": {
+        "topLeft": "8px",
+        "topRight": "8px",
+        "bottomRight": "8px",
+        "bottomLeft": "8px"
+      },
+      "shadow": "rgba(0, 0, 0, 0.04) 0px 0px 0px 1px inset"
+    }
+  },
+  "images": {
+    "logo": "File saved at: attached_assets/logo.png",
+    "favicon": "File saved at: attached_assets/favicon.png",
+    "ogImage": "File saved at: attached_assets/ogImage.jpg",
+    "logoAlt": "Spline Logo"
+  },
+  "__llm_logo_reasoning": {
+    "selectedIndex": 0,
+    "reasoning": "Selected #0 because it matches the brand name 'Spline' from the page title and URL. The logo is visible and matches the favicon, indicating it is the primary brand logo.",
+    "confidence": 0.9,
+    "source": "llm"
+  },
+  "__llm_button_reasoning": {
+    "primary": {
+      "index": -1,
+      "text": "N/A",
+      "reasoning": "The available button does not have a vibrant or brand-specific color that typically indicates a primary CTA. It uses a neutral background color (#DADADA), which is not distinctive enough for a primary action."
+    },
+    "secondary": {
+      "index": 0,
+      "text": "Login",
+      "reasoning": "The button with a neutral background color (#DADADA) is more suitable as a secondary button due to its subtle appearance and the text 'Login', which is often a secondary action."
+    },
+    "confidence": 0.8
+  },
+  "personality": {
+    "tone": "modern",
+    "energy": "medium",
+    "targetAudience": "designers and creatives"
+  },
+  "designSystem": {
+    "framework": "custom",
+    "componentLibrary": ""
+  },
+  "confidence": {
+    "buttons": 0.8,
+    "colors": 0.9,
+    "overall": 0.8500000000000001
+  },
+  "__llm_metadata": {
+    "logoSelection": {
+      "llmCalled": true,
+      "llmSucceeded": true,
+      "finalSource": "llm",
+      "rawLogoSelection": {
+        "selectedLogoIndex": 0,
+        "selectedLogoReasoning": "Selected #0 because it matches the brand name 'Spline' from the page title and URL. The logo is visible and matches the favicon, indicating it is the primary brand logo.",
+        "confidence": 0.9
+      }
+    },
+    "buttonClassification": {
+      "llmCalled": true,
+      "llmSucceeded": true
+    }
+  }
+}
