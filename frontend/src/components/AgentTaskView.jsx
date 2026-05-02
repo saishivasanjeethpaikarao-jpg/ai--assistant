@@ -67,8 +67,10 @@ const AgentTaskView = ({ tasks }) => {
 
   return (
     <div style={{
-      backgroundColor: '#0d0d0d',
-      borderBottom: '1px solid #1e1e1e',
+      background: 'rgba(8,4,20,0.72)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      borderBottom: '1px solid rgba(138,92,246,0.12)',
       flexShrink: 0,
     }}>
       <button
@@ -82,9 +84,9 @@ const AgentTaskView = ({ tasks }) => {
           height: '28px',
           cursor: 'pointer',
           backgroundColor: 'transparent',
-          color: '#8b8b8b',
+          color: 'rgba(196,181,253,0.5)',
         }}
-        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#1a1a1a'}
+        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)'}
         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
       >
         <FiZap size={12} style={{ color: '#3b82f6' }} />

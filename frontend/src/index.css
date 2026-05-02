@@ -12,8 +12,10 @@ html, body, #root {
 }
 
 body {
-  background-color: #0a0a0a;
-  color: #e8e8e8;
+  /* CSS fallback sky — shown if WebGL fails to load */
+  background: radial-gradient(ellipse at 50% 110%, #5a2080 0%, #2d0c5e 35%, #130828 65%, #06030e 100%);
+  background-color: #06030e;
+  color: #f0eeff;
   font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 13px;
   line-height: 1.5;
@@ -37,18 +39,18 @@ textarea, input {
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a2a2a;
+  background: rgba(138,92,246,0.25);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #404040;
+  background: rgba(138,92,246,0.45);
 }
 
 @keyframes pulse {
@@ -58,10 +60,20 @@ textarea, input {
 
 @keyframes spin {
   from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  to   { transform: rotate(360deg); }
 }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 24px rgba(139,92,246,0.18); }
+  50%      { box-shadow: 0 0 40px rgba(139,92,246,0.38), 0 0 60px rgba(192,130,252,0.12); }
 }

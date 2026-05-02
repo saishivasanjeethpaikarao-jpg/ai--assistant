@@ -427,15 +427,18 @@ const VibeCoder = ({ initialPrompt = '', isMobile = false, isTablet = false }) =
     { emoji:'🔍', text:'Review and fix this Python code: [paste code here]' },
   ];
 
+  const GLASS = {background:'rgba(8,4,20,0.72)',backdropFilter:'blur(24px) saturate(180%)',WebkitBackdropFilter:'blur(24px) saturate(180%)'};
+  const BORDER = '1px solid rgba(138,92,246,0.12)';
+
   return (
-    <div style={{flex:1,display:'flex',flexDirection:'column',backgroundColor:'#0a0a0a',overflow:'hidden',minWidth:0}}>
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minWidth:0}}>
 
       {/* Top tab bar */}
-      <div style={{height:'36px',backgroundColor:'#111111',borderBottom:'1px solid #1e1e1e',display:'flex',alignItems:'stretch',flexShrink:0}}>
-        <div style={{display:'flex',alignItems:'center',padding:'0 16px',borderRight:'1px solid #1e1e1e',borderBottom:'1px solid #a78bfa',backgroundColor:'#0a0a0a',fontSize:'13px',color:'#e8e8e8',gap:'6px'}}>
+      <div style={{height:'36px',...GLASS,borderBottom:BORDER,display:'flex',alignItems:'stretch',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',padding:'0 16px',borderRight:BORDER,borderBottom:'2px solid #a78bfa',background:'rgba(138,92,246,0.08)',fontSize:'13px',color:'rgba(240,234,255,0.9)',gap:'6px'}}>
           <FiCode size={13} style={{color:'#a78bfa'}}/><span>vibe-coder</span>
         </div>
-        <div style={{display:'flex',alignItems:'center',padding:'0 16px',fontSize:'11px',color:'#3a3a3a',gap:'6px'}}>
+        <div style={{display:'flex',alignItems:'center',padding:'0 16px',fontSize:'11px',color:'rgba(138,92,246,0.45)',gap:'6px'}}>
           <FiZap size={11} style={{color:'#a78bfa'}}/>
           <span>6 specialist agents · Auto-routes · Live preview · Follow-up chat</span>
         </div>
@@ -449,14 +452,14 @@ const VibeCoder = ({ initialPrompt = '', isMobile = false, isTablet = false }) =
           width:(isMobile||isTablet)?'100%':'340px',
           maxHeight:(isMobile||isTablet&&result)?'260px':undefined,
           flexShrink:0,display:'flex',flexDirection:'column',
-          borderRight:(isMobile||isTablet)?'none':'1px solid #1e1e1e',
-          borderBottom:(isMobile||isTablet)?'1px solid #1e1e1e':'none',
-          backgroundColor:'#0d0d0d',overflow:'hidden',
+          borderRight:(isMobile||isTablet)?'none':BORDER,
+          borderBottom:(isMobile||isTablet)?BORDER:'none',
+          ...GLASS, overflow:'hidden',
         }}>
 
           {/* Agent selector */}
-          <div style={{padding:'10px 14px 8px',borderBottom:'1px solid #1a1a1a',display:'flex',flexDirection:'column',gap:'7px',flexShrink:0}}>
-            <div style={{fontSize:'10px',color:'#3a3a3a',letterSpacing:'0.08em',textTransform:'uppercase'}}>Specialist Agent</div>
+          <div style={{padding:'10px 14px 8px',borderBottom:BORDER,display:'flex',flexDirection:'column',gap:'7px',flexShrink:0}}>
+            <div style={{fontSize:'10px',color:'rgba(138,92,246,0.4)',letterSpacing:'0.08em',textTransform:'uppercase'}}>Specialist Agent</div>
             <div style={{display:'flex',flexWrap:'wrap',gap:'5px'}}>
               <button onClick={()=>setSelectedAgent('auto')} style={{display:'flex',alignItems:'center',gap:'5px',padding:'4px 10px',borderRadius:'20px',fontSize:'12px',cursor:'pointer',transition:'all 0.15s',backgroundColor:selectedAgent==='auto'?'#3b82f622':'transparent',border:`1px solid ${selectedAgent==='auto'?'#3b82f6':'#1e1e1e'}`,color:selectedAgent==='auto'?'#3b82f6':'#606060'}}>
                 <FiZap size={10}/><span>Auto</span>
@@ -472,26 +475,26 @@ const VibeCoder = ({ initialPrompt = '', isMobile = false, isTablet = false }) =
 
           {/* Prompt area */}
           <div style={{flex:1,display:'flex',flexDirection:'column',padding:'12px 14px',gap:'10px',overflow:'auto'}}>
-            <div style={{fontSize:'10px',color:'#3a3a3a',letterSpacing:'0.08em',textTransform:'uppercase'}}>Describe what to build</div>
+            <div style={{fontSize:'10px',color:'rgba(138,92,246,0.4)',letterSpacing:'0.08em',textTransform:'uppercase'}}>Describe what to build</div>
 
-            <div style={{backgroundColor:'#111111',border:'1px solid #2a2a2a',borderRadius:'6px',display:'flex',flexDirection:'column',transition:'border-color 0.15s'}}
-              onFocusCapture={e=>e.currentTarget.style.borderColor='#a78bfa55'}
-              onBlurCapture={e=>e.currentTarget.style.borderColor='#2a2a2a'}>
+            <div style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(138,92,246,0.18)',borderRadius:'8px',display:'flex',flexDirection:'column',transition:'border-color 0.15s,box-shadow 0.15s'}}
+              onFocusCapture={e=>{e.currentTarget.style.borderColor='#8b5cf6';e.currentTarget.style.boxShadow='0 0 0 3px rgba(139,92,246,0.12)';}}
+              onBlurCapture={e=>{e.currentTarget.style.borderColor='rgba(138,92,246,0.18)';e.currentTarget.style.boxShadow='none';}}>
               <textarea ref={textareaRef} value={prompt}
                 onChange={e=>{setPrompt(e.target.value);autoResize();}}
                 onKeyDown={e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey))handleBuild();}}
                 placeholder={`Describe what to build...\n\ne.g. "a React login form with email\nand password"\n\nor "NIFTY options strategy script"\n\nCtrl+Enter to build`}
-                style={{minHeight:'120px',backgroundColor:'transparent',border:'none',outline:'none',color:'#e8e8e8',fontSize:'13px',lineHeight:'1.7',resize:'none',fontFamily:"'Geist',sans-serif",padding:'12px'}}
+                style={{minHeight:'120px',backgroundColor:'transparent',border:'none',outline:'none',color:'rgba(240,234,255,0.9)',fontSize:'13px',lineHeight:'1.7',resize:'none',fontFamily:"'Geist',sans-serif",padding:'12px'}}
               />
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 12px 8px',borderTop:'1px solid #1e1e1e'}}>
-                <span style={{fontSize:'10px',color:'#3a3a3a'}}>{prompt.length} chars</span>
-                <span style={{fontSize:'10px',color:'#3a3a3a'}}>Ctrl+↵ to build</span>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 12px 8px',borderTop:BORDER}}>
+                <span style={{fontSize:'10px',color:'rgba(138,92,246,0.4)'}}>{prompt.length} chars</span>
+                <span style={{fontSize:'10px',color:'rgba(138,92,246,0.4)'}}>Ctrl+↵ to build</span>
               </div>
             </div>
 
             {/* Auto-detect preview */}
             {selectedAgent==='auto' && autoDetect && !isBuilding && (
-              <div style={{display:'flex',alignItems:'center',gap:'6px',padding:'7px 10px',borderRadius:'6px',backgroundColor:'#111111',border:'1px solid #1e1e1e',fontSize:'11px'}}>
+              <div style={{display:'flex',alignItems:'center',gap:'6px',padding:'7px 10px',borderRadius:'6px',background:'rgba(255,255,255,0.04)',border:BORDER,fontSize:'11px'}}>
                 <span>{autoDetect.agent_emoji}</span>
                 <span style={{color:AGENT_COLORS[autoDetect.agent_id]||'#a78bfa',fontWeight:'500'}}>{autoDetect.agent_name}</span>
                 <span style={{color:'#4a4a4a'}}>will handle this</span>
@@ -503,12 +506,12 @@ const VibeCoder = ({ initialPrompt = '', isMobile = false, isTablet = false }) =
             <div style={{display:'flex',gap:'8px',flexShrink:0}}>
               {SpeechRecognitionAPI&&(
                 <button onClick={listening?stopListening:startListening} title={listening?'Stop':'Voice input'}
-                  style={{width:'38px',height:'38px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'6px',flexShrink:0,cursor:'pointer',transition:'all 0.15s',backgroundColor:listening?'#0a2a1a':'#111111',border:`1px solid ${listening?'#10b98166':'#2a2a2a'}`,color:listening?'#10b981':'#5a5a5a',animation:listening?'pulse 1.5s ease-in-out infinite':'none'}}>
+                  style={{width:'38px',height:'38px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'6px',flexShrink:0,cursor:'pointer',transition:'all 0.15s',background:listening?'rgba(16,185,129,0.12)':'rgba(255,255,255,0.04)',border:`1px solid ${listening?'rgba(16,185,129,0.4)':'rgba(138,92,246,0.2)'}`,color:listening?'#34d399':'rgba(196,181,253,0.5)',animation:listening?'pulse 1.5s ease-in-out infinite':'none'}}>
                   {listening?<FiMic size={15}/>:<FiMicOff size={15}/>}
                 </button>
               )}
               <button onClick={handleBuild} disabled={!prompt.trim()||isBuilding}
-                style={{flex:1,height:'38px',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',borderRadius:'6px',border:'none',fontSize:'13px',fontWeight:'600',transition:'all 0.15s',backgroundColor:(prompt.trim()&&!isBuilding)?'#a78bfa':'#1a1a1a',color:(prompt.trim()&&!isBuilding)?'#ffffff':'#3a3a3a',cursor:(prompt.trim()&&!isBuilding)?'pointer':'not-allowed'}}>
+                style={{flex:1,height:'38px',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',borderRadius:'8px',border:'none',fontSize:'13px',fontWeight:'600',transition:'all 0.15s',background:(prompt.trim()&&!isBuilding)?'linear-gradient(135deg,#8b5cf6,#7c3aed)':'rgba(255,255,255,0.04)',color:(prompt.trim()&&!isBuilding)?'#ffffff':'rgba(138,92,246,0.3)',cursor:(prompt.trim()&&!isBuilding)?'pointer':'not-allowed',boxShadow:(prompt.trim()&&!isBuilding)?'0 0 20px rgba(139,92,246,0.35)':'none'}}>
                 {isBuilding?<><FiLoader size={14} style={{animation:'spin 1s linear infinite'}}/><span>Building...</span></>:<><FiZap size={14}/><span>Build (Ctrl+↵)</span></>}
               </button>
             </div>
@@ -556,7 +559,7 @@ const VibeCoder = ({ initialPrompt = '', isMobile = false, isTablet = false }) =
             <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
 
               {/* Tab header */}
-              <div style={{height:'36px',backgroundColor:'#111111',borderBottom:'1px solid #1e1e1e',display:'flex',alignItems:'stretch',justifyContent:'space-between',flexShrink:0}}>
+              <div style={{height:'36px',...GLASS,borderBottom:BORDER,display:'flex',alignItems:'stretch',justifyContent:'space-between',flexShrink:0}}>
                 <div style={{display:'flex',alignItems:'stretch'}}>
                   <TabBtn active={viewMode==='code'} onClick={()=>setViewMode('code')}><FiCode size={12}/> Code</TabBtn>
                   <TabBtn active={viewMode==='preview'} onClick={()=>setViewMode('preview')}>
@@ -602,7 +605,7 @@ const VibeCoder = ({ initialPrompt = '', isMobile = false, isTablet = false }) =
 
               {/* Dependencies banner */}
               {deps.length>0&&(
-                <div style={{backgroundColor:'#0f0f0f',borderBottom:'1px solid #1a1a1a',padding:'6px 14px',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
+                <div style={{background:'rgba(251,191,36,0.05)',borderBottom:BORDER,padding:'6px 14px',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
                   <FiPackage size={12} style={{color:'#fbbf24',flexShrink:0}}/>
                   <span style={{fontSize:'11px',color:'#5a5a5a'}}>Install first:</span>
                   <code style={{fontSize:'11px',color:'#fbbf24',backgroundColor:'#1a1500',padding:'2px 8px',borderRadius:'4px',border:'1px solid #fbbf2422',letterSpacing:'0.02em'}}>
@@ -617,7 +620,7 @@ const VibeCoder = ({ initialPrompt = '', isMobile = false, isTablet = false }) =
 
               {/* Code / Preview */}
               {viewMode==='code'&&(
-                <div style={{flex:1,overflowY:'auto',overflowX:'auto',padding:'16px 20px',backgroundColor:'#0d0d0d',fontFamily:"'Geist Mono','Fira Code','Cascadia Code',monospace",fontSize:'13px',lineHeight:'1.7'}}>
+                <div style={{flex:1,overflowY:'auto',overflowX:'auto',padding:'16px 20px',background:'rgba(6,3,14,0.55)',fontFamily:"'Geist Mono','Fira Code','Cascadia Code',monospace",fontSize:'13px',lineHeight:'1.7'}}>
                   <pre style={{margin:0,whiteSpace:'pre',color:'#abb2bf'}}>
                     <code dangerouslySetInnerHTML={{__html:highlightCode(rawCode||result.code)}}/>
                   </pre>
@@ -628,7 +631,7 @@ const VibeCoder = ({ initialPrompt = '', isMobile = false, isTablet = false }) =
 
               {/* Code-view terminal panel */}
               {viewMode==='code'&&terminalOutput&&(
-                <div style={{height:'200px',flexShrink:0,display:'flex',flexDirection:'column',borderTop:'1px solid #1e1e1e',backgroundColor:'#080808'}}>
+                <div style={{height:'200px',flexShrink:0,display:'flex',flexDirection:'column',borderTop:BORDER,...GLASS}}>
                   <div style={{height:'30px',backgroundColor:'#0f0f0f',borderBottom:'1px solid #1a1a1a',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 14px',flexShrink:0}}>
                     <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
                       <FiTerminal size={12} style={{color:'#4a4a4a'}}/>
@@ -656,7 +659,7 @@ const VibeCoder = ({ initialPrompt = '', isMobile = false, isTablet = false }) =
               )}
 
               {/* Follow-up chat */}
-              <div style={{borderTop:'1px solid #1a1a1a',backgroundColor:'#0f0f0f',flexShrink:0}}>
+              <div style={{borderTop:BORDER,...GLASS,flexShrink:0}}>
                 {chatMessages.length>0&&(
                   <div style={{maxHeight:'200px',overflowY:'auto',padding:'10px 14px',display:'flex',flexDirection:'column',gap:'8px'}}>
                     {chatMessages.map((m,i)=>(

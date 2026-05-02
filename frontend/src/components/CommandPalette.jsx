@@ -105,11 +105,13 @@ const CommandPalette = ({ isOpen, onClose, onCommand }) => {
         style={{
           width: '560px',
           maxWidth: 'calc(100vw - 40px)',
-          backgroundColor: '#141414',
-          border: '1px solid #2a2a2a',
-          borderRadius: '8px',
+          background: 'rgba(8,4,22,0.88)',
+          backdropFilter: 'blur(32px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(32px) saturate(200%)',
+          border: '1px solid rgba(138,92,246,0.25)',
+          borderRadius: '12px',
           overflow: 'hidden',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(138,92,246,0.1), inset 0 1px 0 rgba(255,255,255,0.05)',
         }}
       >
         {/* Search input */}
@@ -117,10 +119,10 @@ const CommandPalette = ({ isOpen, onClose, onCommand }) => {
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          padding: '12px 16px',
-          borderBottom: '1px solid #1e1e1e',
+          padding: '14px 16px',
+          borderBottom: '1px solid rgba(138,92,246,0.12)',
         }}>
-          <FiSearch size={16} style={{ color: '#5a5a5a', flexShrink: 0 }} />
+          <FiSearch size={16} style={{ color: 'rgba(138,92,246,0.6)', flexShrink: 0 }} />
           <input
             ref={inputRef}
             type="text"
@@ -133,18 +135,18 @@ const CommandPalette = ({ isOpen, onClose, onCommand }) => {
               backgroundColor: 'transparent',
               border: 'none',
               outline: 'none',
-              color: '#e8e8e8',
+              color: 'rgba(240,234,255,0.95)',
               fontSize: '14px',
               fontFamily: "'Geist', sans-serif",
             }}
           />
           <kbd style={{
-            padding: '2px 6px',
-            backgroundColor: '#1e1e1e',
-            border: '1px solid #2a2a2a',
-            borderRadius: '3px',
+            padding: '2px 8px',
+            background: 'rgba(138,92,246,0.1)',
+            border: '1px solid rgba(138,92,246,0.2)',
+            borderRadius: '5px',
             fontSize: '11px',
-            color: '#5a5a5a',
+            color: 'rgba(196,181,253,0.5)',
             fontFamily: 'Geist Mono, monospace',
           }}>
             esc
