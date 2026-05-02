@@ -1406,7 +1406,7 @@ User request: ${msg}`;
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
           {/* AI Chat Side Panel */}
-          <div style={{ width: 340, flexShrink: 0, background: '#0f0f17', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ width: isMobile ? '100%' : 340, flexShrink: 0, background: '#0f0f17', borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
             {/* Panel header */}
             <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
@@ -1510,8 +1510,8 @@ User request: ${msg}`;
             </div>
           </div>
 
-          {/* Live Preview Panel */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, background: '#1a1a2e' }}>
+          {/* Live Preview Panel — hidden on mobile (use Preview tab instead) */}
+          {!isMobile && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, background: '#1a1a2e' }}>
             <div style={{ height: 36, background: '#16161e', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: displayHtml ? '#00C48C' : '#333', boxShadow: displayHtml ? '0 0 6px #00C48C80' : 'none', transition: 'all 0.3s' }}/>
@@ -1535,7 +1535,7 @@ User request: ${msg}`;
               </div>
             </div>
             <LivePreview html={displayHtml} viewport={viewport}/>
-          </div>
+          </div>}
         </div>
       )}
 

@@ -33,7 +33,7 @@ AI Engine · Voice & Speech · Language · Wake Word · Voice Clone · System Pr
 - `GET /api/market/indices` — NIFTY 50, SENSEX, BANK NIFTY, NIFTY IT, MIDCAP 50, FMCG, AUTO, PHARMA
 - `GET /api/market/quote?symbol=RELIANCE` — Full quote (price, change, open/high/low, 52W, market cap)
 - `GET /api/market/search?q=tata` — Fuzzy search across 80+ NSE stocks by name/symbol
-- `GET /api/market/movers` — Top 6 gainers + top 6 losers from Nifty 50 universe
+- `GET /api/market/movers` — Top 6 gainers + top 6 losers from Nifty 50 universe (TATAMOTORS removed — delisted; replaced with EICHERMOT)
 - 60-second server-side cache to avoid Yahoo Finance rate limits
 
 **Ticker symbols**: NSE stocks use `.NS` suffix (e.g. `RELIANCE.NS`), indices use `^NSEI`, `^BSESN`, `^NSEBANK`, `^CNXIT`
@@ -69,7 +69,7 @@ command · settings
 - Download files
 - Key: `airis_vf_{projectId}` for files
 - **View modes**: Chat (default), Code, Split, Preview
-- **Chat mode**: 340px AI side panel + full live preview — default view
+- **Chat mode**: 340px AI side panel + full live preview — default view (mobile: full-width chat only)
 - **Chat-to-create**: No-project screen has direct chat input + quick-build chips (Restaurant, E-commerce, Portfolio, SaaS, Music Player, Todo)
 - **AI side panel**: example prompts when empty, quick-action chips after messages (Make it responsive, Add dark mode, Add animations, etc.)
 - **System prompt**: Elite full-stack developer instructions — complete files, CDN libs, responsive, modern UI
