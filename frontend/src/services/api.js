@@ -1,8 +1,11 @@
 import axios from 'axios';
 
+const BASE_URL = import.meta.env.VITE_API_URL || '';
+
 const axiosInstance = axios.create({
-  baseURL: '/api',
+  baseURL: BASE_URL + '/api',
   headers: { 'Content-Type': 'application/json' },
+  timeout: 60000,
 });
 
 axiosInstance.interceptors.response.use(
@@ -40,6 +43,9 @@ export const api = {
   getVibeAgents: () => axiosInstance.get('/vibe/agents'),
   vibeCode: (prompt, agent_id = 'auto') => axiosInstance.post('/vibe/code', { prompt, agent_id }),
   vibeRun: (code, language = 'python') => axiosInstance.post('/vibe/run', { code, language }),
+  vibeFix: (code, error) => axiosInstance.post('/vibe/fix', { code, error }),
+  vibeChat: (message, code_context) => axiosInstance.post('/vibe/chat', { message, code_context }),
+  vibeDetect: (prompt) => axiosInstance.post('/vibe/detect', { prompt }),
 };
 
 export default api;

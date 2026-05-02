@@ -87,6 +87,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/capabilities': self.api_capabilities,
             '/api/analytics': self.api_analytics,
             '/api/vibe/agents': self.api_vibe_agents,
+            '/api/vibe/detect': self.api_vibe_detect_get,
         }
         handler = routes.get(path)
         if handler:
@@ -111,6 +112,9 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/reminders': lambda: self.api_add_reminder(data),
             '/api/vibe/code': lambda: self.api_vibe_code(data),
             '/api/vibe/run': lambda: self.api_vibe_run(data),
+            '/api/vibe/fix': lambda: self.api_vibe_fix(data),
+            '/api/vibe/chat': lambda: self.api_vibe_chat(data),
+            '/api/vibe/detect': lambda: self.api_vibe_detect(data),
         }
         handler = routes.get(path)
         if handler:
@@ -541,6 +545,55 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             self.send_json({'success': True, **result})
         except Exception as e:
             self.send_json({'error': str(e)}, 500)
+
+    def api_vibe_fix(self, data):
+        try:
+            from vibe_coder import fix_code
+            code = (data.get('code') or '').strip()
+            error = (data.get('error') or '').strip()
+            if not code:
+                self.send_json({'error': 'No code provided'}, 400)
+                return
+            result = fix_code(code, error)
+            self.send_json({'success': True, **result})
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            self.send_json({'error': str(e)}, 500)
+
+    def api_vibe_chat(self, data):
+        try:
+            from vibe_coder import chat_about_code
+            message = (data.get('message') or '').strip()
+            code_context = (data.get('code_context') or '').strip()
+            if not message:
+                self.send_json({'error': 'No message provided'}, 400)
+                return
+            result = chat_about_code(message, code_context)
+            self.send_json({'success': True, **result})
+        except Exception as e:
+            self.send_json({'error': str(e)}, 500)
+
+    def api_vibe_detect(self, data):
+        try:
+            from vibe_coder import detect_agent_with_confidence, AGENTS
+            prompt = (data.get('prompt') or '').strip()
+            if not prompt:
+                self.send_json({'agent_id': 'auto', 'confidence': 0})
+                return
+            detection = detect_agent_with_confidence(prompt)
+            agent = AGENTS.get(detection['agent_id'], {})
+            self.send_json({
+                'success': True,
+                'agent_id': detection['agent_id'],
+                'agent_name': agent.get('name', ''),
+                'agent_emoji': agent.get('emoji', ''),
+                'confidence': detection['confidence'],
+            })
+        except Exception as e:
+            self.send_json({'error': str(e)}, 500)
+
+    def api_vibe_detect_get(self):
+        self.send_json({'success': True, 'message': 'POST to /api/vibe/detect with {prompt}'})
 
     # ── Memory ───────────────────────────────────────────────────────────────
 
