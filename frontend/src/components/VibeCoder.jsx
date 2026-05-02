@@ -273,7 +273,7 @@ const PythonPreview = ({ code, runTrigger, onError }) => {
 
 // ── Main component ──────────────────────────────────────────────────────────
 
-const VibeCoder = ({ initialPrompt = '' }) => {
+const VibeCoder = ({ initialPrompt = '', isMobile = false, isTablet = false }) => {
   const [agents, setAgents] = useState(DEFAULT_AGENTS);
   const [selectedAgent, setSelectedAgent] = useState('auto');
   const [prompt, setPrompt] = useState(initialPrompt);
@@ -442,10 +442,17 @@ const VibeCoder = ({ initialPrompt = '' }) => {
       </div>
 
       {/* Main layout */}
-      <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+      <div style={{flex:1,display:'flex',overflow:'hidden',flexDirection:(isMobile||isTablet)?'column':'row'}}>
 
-        {/* ── Left: Prompt pane ──────────────────────────────────────── */}
-        <div style={{width:'340px',flexShrink:0,display:'flex',flexDirection:'column',borderRight:'1px solid #1e1e1e',backgroundColor:'#0d0d0d',overflow:'hidden'}}>
+        {/* ── Left/Top: Prompt pane ──────────────────────────────────────── */}
+        <div style={{
+          width:(isMobile||isTablet)?'100%':'340px',
+          maxHeight:(isMobile||isTablet&&result)?'260px':undefined,
+          flexShrink:0,display:'flex',flexDirection:'column',
+          borderRight:(isMobile||isTablet)?'none':'1px solid #1e1e1e',
+          borderBottom:(isMobile||isTablet)?'1px solid #1e1e1e':'none',
+          backgroundColor:'#0d0d0d',overflow:'hidden',
+        }}>
 
           {/* Agent selector */}
           <div style={{padding:'10px 14px 8px',borderBottom:'1px solid #1a1a1a',display:'flex',flexDirection:'column',gap:'7px',flexShrink:0}}>
