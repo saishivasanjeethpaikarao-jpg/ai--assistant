@@ -59,7 +59,7 @@ command · settings
 - Top section scrollable with hidden scrollbar (`scrollbar-width: none`, `.ab-scroll::-webkit-scrollbar{display:none}`)
 - User avatar at bottom (shows Firebase user photo/initials, click to sign out)
 
-## VibeCoder (Full IDE)
+## VibeCoder (Full IDE — Chat-to-Build)
 
 - Project list stored in `localStorage` (`airis_vp` key)
 - File tree with create/rename/delete/upload
@@ -67,8 +67,14 @@ command · settings
 - Live preview iframe (position:absolute)
 - Multi-file preview (inlines CSS/JS references)
 - Download files
-- AI chat creates/updates files
 - Key: `airis_vf_{projectId}` for files
+- **View modes**: Chat (default), Code, Split, Preview
+- **Chat mode**: 340px AI side panel + full live preview — default view
+- **Chat-to-create**: No-project screen has direct chat input + quick-build chips (Restaurant, E-commerce, Portfolio, SaaS, Music Player, Todo)
+- **AI side panel**: example prompts when empty, quick-action chips after messages (Make it responsive, Add dark mode, Add animations, etc.)
+- **System prompt**: Elite full-stack developer instructions — complete files, CDN libs, responsive, modern UI
+- `handleSend(overrideMsg?)` — accepts optional message param for chip/example clicks
+- `pendingMsgRef` + useEffect tracks chat message to send after project creation
 
 ## CanvasBoard
 

@@ -980,7 +980,7 @@ const VibeCoder = ({ isMobile = false }) => {
   const [messages,     setMessages]     = useState([]);
   const [input,        setInput]        = useState('');
   const [isWorking,    setIsWorking]    = useState(false);
-  const [viewMode,     setViewMode]     = useState('split'); // split|editor|preview
+  const [viewMode,     setViewMode]     = useState('chatpreview');
   const [viewport,     setViewport]     = useState('desktop');
   const [newFileName,  setNewFileName]  = useState('');
   const [showNewFile,  setShowNewFile]  = useState(false);
@@ -990,15 +990,24 @@ const VibeCoder = ({ isMobile = false }) => {
   const [listening,    setListening]    = useState(false);
   const [copied,       setCopied]       = useState(false);
   const [chatOpen,     setChatOpen]     = useState(true);
+  const [buildInput,   setBuildInput]   = useState('');
 
-  const inputRef     = useRef(null);
-  const msgsEndRef   = useRef(null);
-  const fileInputRef = useRef(null);
-  const recRef       = useRef(null);
-  const prevHtmlRef  = useRef(null);
+  const inputRef      = useRef(null);
+  const msgsEndRef    = useRef(null);
+  const fileInputRef  = useRef(null);
+  const recRef        = useRef(null);
+  const prevHtmlRef   = useRef(null);
+  const pendingMsgRef = useRef(null);
 
   useEffect(() => { if (activeProj) SF(activeProj.id, files); }, [files, activeProj]);
   useEffect(() => { msgsEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isWorking]);
+  useEffect(() => {
+    if (activeProj?.id && pendingMsgRef.current) {
+      const msg = pendingMsgRef.current;
+      pendingMsgRef.current = null;
+      setTimeout(() => handleSend(msg), 350);
+    }
+  }, [activeProj?.id]);
 
   const activeFile  = files.find(f => f.id === activeFileId) || null;
   const previewHtml = activeProj ? buildPreview(files) : null;
@@ -1018,9 +1027,9 @@ const VibeCoder = ({ isMobile = false }) => {
     setActiveProj(proj); setFiles(projFiles);
     setActiveFileId(projFiles[0]?.id || null);
     setOpenTabs(projFiles.map(f => f.id));
-    setMessages([{ role: 'assistant', text: `✅ Created **${name}** with the ${tpl.name} template.\n\nThe preview is live on the right. Try asking me to make changes!`, id: uid() }]);
+    setMessages([{ role: 'assistant', text: `✅ Created **${name}** with the ${tpl.name} template.\n\nThe preview is live on the right. Describe what you want to change or build!`, id: uid() }]);
     setShowNewProj(false);
-    setViewMode('split');
+    setViewMode('chatpreview');
   };
 
   const openProject = (proj) => {
@@ -1101,33 +1110,42 @@ const VibeCoder = ({ isMobile = false }) => {
   // ── AI Chat ─────────────────────────────────────────────────────────────────
   const addMsg = (role, text) => setMessages(prev => [...prev, { role, text, id: uid() }]);
 
-  const handleSend = async () => {
-    const msg = input.trim(); if (!msg || isWorking) return;
-    setInput('');
-    if (inputRef.current) inputRef.current.style.height = 'auto';
+  const handleSend = async (overrideMsg) => {
+    const msg = (overrideMsg !== undefined ? overrideMsg : input).trim();
+    if (!msg || isWorking) return;
+    if (overrideMsg === undefined) {
+      setInput('');
+      if (inputRef.current) inputRef.current.style.height = 'auto';
+    }
     addMsg('user', msg);
     setIsWorking(true);
 
     try {
       const filesContext = files.map(f => `[FILE:${f.name}]\n${f.content}\n[/FILE]`).join('\n\n');
-      const systemInstr = `You are VibeCoder, an AI web app generator integrated in the Airis IDE.
-You create and modify HTML, CSS, and JavaScript apps.
-RULES:
-- For EVERY file you create or update, use this EXACT format: [FILE:filename.ext]\\ncontent\\n[/FILE]
-- Always return COMPLETE, WORKING file contents (never truncate or use "...")
-- Use CDN links for libraries (Three.js, Chart.js, etc) — no build tools
-- Write clean, beautiful, production-quality code
-- When asked to build something, generate ALL needed files
-- When updating, return ALL files (including unchanged ones if they're needed)
-- Prefer vanilla HTML/CSS/JS unless the user asks for a framework
+      const systemInstr = `You are VibeCoder, an elite AI full-stack web developer and designer inside Airis IDE. You build complete, stunning, production-quality websites and web apps.
+
+CAPABILITIES:
+- Modern websites: landing pages, portfolios, restaurants, e-commerce, blogs, SaaS, news, agencies
+- Web apps: dashboards, todo apps, calculators, games, music players, booking forms, tools
+- Libraries via CDN: Three.js, Chart.js, D3.js, GSAP, Anime.js, Particles.js, Swiper.js, AOS.js
+
+STRICT RULES:
+1. Output EVERY file using EXACT format: [FILE:filename.ext]\\ncontent\\n[/FILE]
+2. Return COMPLETE, WORKING file contents — NEVER truncate, NEVER use "...", NEVER skip code
+3. Use CDN links for libraries — no npm, no build tools needed
+4. Write beautiful, pixel-perfect code with modern CSS (variables, flex, grid, smooth transitions)
+5. ALL layouts MUST be mobile-responsive with proper viewport meta tag
+6. When building new — always generate index.html + style.css + app.js at minimum
+7. When updating — return ONLY changed files (include their COMPLETE content)
+8. Make ALL interactive elements fully functional (buttons work, forms submit, navigation works)
+9. Use modern design: gradients, shadows, rounded corners, hover effects, micro-animations
+10. Add a brief 1-2 sentence summary AFTER all file blocks
 
 Current project: ${activeProj?.name || 'New Project'}
 Current files:
-${filesContext || '(no files yet)'}
+${filesContext || '(no files yet — build from scratch)'}
 
-User request: ${msg}
-
-Respond ONLY with file blocks. Add a brief 1-line description after all the file blocks.`;
+User request: ${msg}`;
 
       const res = await fetch('/api/vibe/chat', {
         method: 'POST',
@@ -1248,6 +1266,38 @@ Respond ONLY with file blocks. Add a brief 1-line description after all the file
                 );
               })}
             </div>
+            {/* Chat to create */}
+            <div style={{ width: '100%', maxWidth: 500, marginTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.07)' }}/>
+                <span style={{ fontSize: 11, color: '#bbb', fontWeight: 500 }}>or describe what you want to build</span>
+                <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.07)' }}/>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input value={buildInput} onChange={e => setBuildInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && buildInput.trim()) { pendingMsgRef.current = buildInput.trim(); createProject(buildInput.trim().slice(0,50) || 'My App', 'blank'); setBuildInput(''); }}}
+                  placeholder='e.g. "Build a restaurant website with menu and booking form"'
+                  style={{ flex: 1, padding: '11px 14px', borderRadius: 10, border: '1.5px solid rgba(0,0,0,0.12)', fontSize: 13, outline: 'none', fontFamily: 'inherit', color: '#0C0C0C', background: '#fff', transition: 'border-color 0.15s' }}
+                  onFocus={e => e.target.style.borderColor = '#437DFD'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(0,0,0,0.12)'}
+                />
+                <button onClick={() => { if (!buildInput.trim()) return; pendingMsgRef.current = buildInput.trim(); createProject(buildInput.trim().slice(0,50) || 'My App', 'blank'); setBuildInput(''); }}
+                  disabled={!buildInput.trim()}
+                  style={{ padding: '11px 18px', borderRadius: 10, border: 'none', background: buildInput.trim() ? 'linear-gradient(135deg,#437DFD,#2C76FF)' : 'rgba(0,0,0,0.06)', color: buildInput.trim() ? '#fff' : '#bbb', fontSize: 13, fontWeight: 700, cursor: buildInput.trim() ? 'pointer' : 'not-allowed', flexShrink: 0, transition: 'all 0.15s', boxShadow: buildInput.trim() ? '0 4px 14px rgba(67,125,253,0.3)' : 'none' }}>
+                  Build →
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                {['Restaurant website','E-commerce store','Personal portfolio','SaaS landing page','Music player','Todo app'].map(ex => (
+                  <button key={ex} onClick={() => { pendingMsgRef.current = `Build a ${ex.toLowerCase()}`; createProject(ex, 'blank'); }}
+                    style={{ padding: '5px 12px', borderRadius: 20, border: '1px solid rgba(0,0,0,0.1)', background: '#fff', fontSize: 11, fontWeight: 600, color: '#666', cursor: 'pointer', transition: 'all 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(67,125,253,0.07)'; e.currentTarget.style.borderColor = 'rgba(67,125,253,0.3)'; e.currentTarget.style.color = '#437DFD'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.1)'; e.currentTarget.style.color = '#666'; }}>
+                    {ex}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -1308,9 +1358,10 @@ Respond ONLY with file blocks. Add a brief 1-line description after all the file
         {/* View controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: 3, marginRight: 10 }}>
           {[
-            { id: 'editor',  label: 'Editor',  icon: FiCode },
-            { id: 'split',   label: 'Split',   icon: FiColumns },
-            { id: 'preview', label: 'Preview', icon: FiEye },
+            { id: 'chatpreview', label: 'Chat',    icon: FiZap },
+            { id: 'editor',      label: 'Code',    icon: FiCode },
+            { id: 'split',       label: 'Split',   icon: FiColumns },
+            { id: 'preview',     label: 'Preview', icon: FiEye },
           ].map(v => {
             const Icon = v.icon;
             const active = viewMode === v.id;
@@ -1350,6 +1401,147 @@ Respond ONLY with file blocks. Add a brief 1-line description after all the file
         </div>
       </div>
 
+      {/* ── Chat + Preview mode ───────────────────────────────────────────── */}
+      {viewMode === 'chatpreview' && (
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+
+          {/* AI Chat Side Panel */}
+          <div style={{ width: 340, flexShrink: 0, background: '#0f0f17', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+            {/* Panel header */}
+            <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                <div style={{ width: 22, height: 22, borderRadius: 7, background: `${B}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FiZap size={12} style={{ color: B }}/>
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#888', letterSpacing: '0.04em', textTransform: 'uppercase' }}>AI Assistant</span>
+                {isWorking && <span style={{ fontSize: 10, color: B, animation: 'atPulse 1s infinite', marginLeft: 4 }}>building…</span>}
+              </div>
+              <p style={{ fontSize: 11, color: '#3a3a52', lineHeight: 1.55, margin: 0 }}>Describe what you want to build or change — I'll write the code and update the preview instantly.</p>
+            </div>
+
+            {/* Messages */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.05) transparent' }}>
+              {messages.length === 0 && !isWorking && (
+                <div style={{ paddingTop: 4 }}>
+                  <div style={{ fontSize: 10, color: '#333', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Try these examples</div>
+                  {[
+                    'Build a modern restaurant website with menu and reservation form',
+                    'Create a personal portfolio with projects grid and contact section',
+                    'Build an e-commerce product page with cart and reviews',
+                    'Create a SaaS landing page with pricing table and hero',
+                    'Make an interactive todo app with drag-and-drop',
+                    'Build a music player with playlist and progress bar',
+                  ].map(ex => (
+                    <button key={ex} onClick={() => handleSend(ex)} disabled={isWorking}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 11px', marginBottom: 5, borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)', color: '#444', fontSize: 11, cursor: 'pointer', lineHeight: 1.45, transition: 'all 0.15s', fontFamily: 'inherit' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = `${B}12`; e.currentTarget.style.borderColor = `${B}30`; e.currentTarget.style.color = '#aaa'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#444'; }}>
+                      "{ex}"
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {messages.map(m => (
+                <div key={m.id} style={{ marginBottom: 14, display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 6, background: m.role === 'user' ? 'rgba(255,255,255,0.07)' : m.role === 'error' ? 'rgba(253,91,93,0.15)' : `${B}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                    {m.role === 'user' ? <FiUser size={10} style={{ color: '#666' }}/> : m.role === 'error' ? <span style={{ fontSize: 10 }}>⚠</span> : <FiZap size={10} style={{ color: B }}/>}
+                  </div>
+                  <div style={{ fontSize: 12, color: m.role === 'user' ? '#999' : m.role === 'error' ? '#FD5B5D' : '#c8c8e0', lineHeight: 1.68, flex: 1, wordBreak: 'break-word' }}>
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+
+              {isWorking && (
+                <div style={{ display: 'flex', gap: 9, alignItems: 'center', paddingBottom: 6 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 6, background: `${B}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <FiLoader size={10} style={{ color: B, animation: 'atSpin 1s linear infinite' }}/>
+                  </div>
+                  <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                    {[0, 0.18, 0.36].map((d, i) => <div key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: B, animation: `vcDot 1s ${d}s ease-in-out infinite` }}/>)}
+                  </div>
+                </div>
+              )}
+              <div ref={msgsEndRef}/>
+            </div>
+
+            {/* Quick action chips */}
+            {messages.length > 0 && (
+              <div style={{ padding: '8px 12px 6px', display: 'flex', flexWrap: 'wrap', gap: 5, borderTop: '1px solid rgba(255,255,255,0.04)', flexShrink: 0 }}>
+                {['Make it responsive','Add dark mode','Add animations','Improve design','Add contact form','Make more modern','Add navigation','Fix any bugs'].map(q => (
+                  <button key={q} onClick={() => handleSend(q)} disabled={isWorking}
+                    style={{ padding: '3px 9px', borderRadius: 20, fontSize: 10, fontWeight: 600, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: '#444', cursor: isWorking ? 'not-allowed' : 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}
+                    onMouseEnter={e => { if (!isWorking) { e.currentTarget.style.background = `${B}18`; e.currentTarget.style.borderColor = `${B}40`; e.currentTarget.style.color = B; }}}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = '#444'; }}>
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Input area */}
+            <div style={{ padding: '8px 12px 14px', borderTop: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(255,255,255,0.08)', borderRadius: 11, padding: '10px 10px 10px 14px', transition: 'border-color 0.2s' }}
+                  onFocusCapture={e => e.currentTarget.style.borderColor = `${B}60`}
+                  onBlurCapture={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'}>
+                  <textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={e => { setInput(e.target.value); autoResize(); }}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                    placeholder="Describe what you want to build or change…"
+                    rows={2}
+                    disabled={isWorking}
+                    style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#c8c8e0', fontSize: 13, resize: 'none', fontFamily: 'inherit', lineHeight: 1.55, maxHeight: 160, minHeight: 38 }}
+                  />
+                  <button onClick={listening ? stopListening : startListening} style={{ background: 'none', border: 'none', cursor: 'pointer', color: listening ? '#00C48C' : '#3a3a52', flexShrink: 0, display: 'flex', alignItems: 'center', padding: '2px 4px', transition: 'color 0.15s', marginLeft: 4 }}>
+                    {listening ? <FiMic size={13}/> : <FiMicOff size={13}/>}
+                  </button>
+                </div>
+                <button onClick={() => handleSend()} disabled={!input.trim() || isWorking}
+                  style={{ width: 40, height: 40, borderRadius: 10, border: 'none', cursor: input.trim() && !isWorking ? 'pointer' : 'not-allowed', background: input.trim() && !isWorking ? `linear-gradient(135deg,${B},#2C76FF)` : 'rgba(255,255,255,0.05)', color: input.trim() && !isWorking ? '#fff' : '#2a2a3a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s', boxShadow: input.trim() && !isWorking ? '0 4px 16px rgba(67,125,253,0.4)' : 'none' }}>
+                  <FiSend size={14}/>
+                </button>
+              </div>
+              <div style={{ fontSize: 10, color: '#2a2a3a', marginTop: 6, textAlign: 'center' }}>Enter to send · Shift+Enter for new line</div>
+            </div>
+          </div>
+
+          {/* Live Preview Panel */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, background: '#1a1a2e' }}>
+            <div style={{ height: 36, background: '#16161e', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: displayHtml ? '#00C48C' : '#333', boxShadow: displayHtml ? '0 0 6px #00C48C80' : 'none', transition: 'all 0.3s' }}/>
+                <span style={{ fontSize: 11, color: '#555', fontWeight: 600 }}>Live Preview</span>
+                {isWorking && <span style={{ fontSize: 10, color: '#437DFD55', animation: 'atPulse 1s infinite' }}>updating…</span>}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                {Object.entries(VIEWPORTS).map(([k, v]) => {
+                  const Icon = v.icon;
+                  return (
+                    <button key={k} onClick={() => setViewport(k)} title={v.label} style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 5, border: 'none', cursor: 'pointer', background: viewport === k ? 'rgba(255,255,255,0.1)' : 'transparent', color: viewport === k ? B : '#444', transition: 'all 0.15s' }}>
+                      <Icon size={12}/>
+                    </button>
+                  );
+                })}
+                <button onClick={() => setFiles(f => [...f])} title="Refresh preview" style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 5, border: 'none', cursor: 'pointer', background: 'transparent', color: '#444', marginLeft: 4, transition: 'color 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#888'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#444'}>
+                  <FiRefreshCw size={12}/>
+                </button>
+              </div>
+            </div>
+            <LivePreview html={displayHtml} viewport={viewport}/>
+          </div>
+        </div>
+      )}
+
+      {/* ── Editor / Split / Preview modes ───────────────────────────────────── */}
+      {viewMode !== 'chatpreview' && (
+        <>
       {/* Main area */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
@@ -1548,6 +1740,8 @@ Respond ONLY with file blocks. Add a brief 1-line description after all the file
           </>
         )}
       </div>
+        </>
+      )}
 
       <style>{`
         @keyframes vcDot { 0%,100%{transform:scale(0.5);opacity:0.3} 50%{transform:scale(1.1);opacity:1} }
