@@ -6,6 +6,9 @@ import {
 } from 'react-icons/fi';
 import { api } from '../services/api';
 
+const B = '#437DFD';
+const BORDER = 'rgba(0,0,0,0.07)';
+
 const TITLES = {
   chat:      { label: 'Chats',        icon: FiMessageSquare },
   memory:    { label: 'Memory',       icon: FiDatabase },
@@ -18,17 +21,17 @@ const TITLES = {
 
 const SectionHdr = ({ title, onAdd, onRefresh }) => (
   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 16px 4px 16px', height:'30px', flexShrink:0 }}>
-    <span style={{ fontSize:'10px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.10em', color:'#9ca3af' }}>{title}</span>
+    <span style={{ fontSize:'10px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.10em', color:'#aaa' }}>{title}</span>
     <div style={{ display:'flex', gap:'2px' }}>
       {onRefresh && (
-        <button onClick={onRefresh} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:'20px', height:'20px', background:'none', border:'none', color:'#9ca3af', cursor:'pointer', borderRadius:'4px' }}
-          onMouseEnter={e=>e.currentTarget.style.color='#7c3aed'} onMouseLeave={e=>e.currentTarget.style.color='#9ca3af'}>
+        <button onClick={onRefresh} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:'20px', height:'20px', background:'none', border:'none', color:'#bbb', cursor:'pointer', borderRadius:'4px' }}
+          onMouseEnter={e=>e.currentTarget.style.color=B} onMouseLeave={e=>e.currentTarget.style.color='#bbb'}>
           <FiRefreshCw size={11}/>
         </button>
       )}
       {onAdd && (
-        <button onClick={onAdd} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:'20px', height:'20px', background:'none', border:'none', color:'#9ca3af', cursor:'pointer', borderRadius:'4px' }}
-          onMouseEnter={e=>e.currentTarget.style.color='#7c3aed'} onMouseLeave={e=>e.currentTarget.style.color='#9ca3af'}>
+        <button onClick={onAdd} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:'20px', height:'20px', background:'none', border:'none', color:'#bbb', cursor:'pointer', borderRadius:'4px' }}
+          onMouseEnter={e=>e.currentTarget.style.color=B} onMouseLeave={e=>e.currentTarget.style.color='#bbb'}>
           <FiPlus size={11}/>
         </button>
       )}
@@ -42,26 +45,26 @@ const Row = ({ primary, secondary, active, dot, dotColor, avatar }) => {
     <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
       style={{
         padding:'9px 16px', cursor:'pointer', transition:'background 0.12s',
-        backgroundColor: active ? 'rgba(124,58,237,0.08)' : hov ? 'rgba(124,58,237,0.04)' : 'transparent',
+        backgroundColor: active ? `rgba(67,125,253,0.08)` : hov ? 'rgba(67,125,253,0.04)' : 'transparent',
         borderRadius:'8px', margin:'1px 8px',
         display:'flex', alignItems:'center', gap:'10px',
       }}>
       {avatar && (
         <div style={{
           width:'32px', height:'32px', borderRadius:'10px', flexShrink:0,
-          background: active ? 'linear-gradient(135deg,#7c3aed,#a855f7)' : 'linear-gradient(135deg,#e8e3ff,#ddd6fe)',
+          background: active ? `linear-gradient(135deg,${B},#2C76FF)` : 'rgba(67,125,253,0.1)',
           display:'flex', alignItems:'center', justifyContent:'center',
           fontSize:'12px', fontWeight:'700',
-          color: active ? '#fff' : '#7c3aed',
-          boxShadow: active ? '0 2px 8px rgba(124,58,237,0.3)' : 'none',
+          color: active ? '#fff' : B,
+          boxShadow: active ? '0 2px 8px rgba(67,125,253,0.25)' : 'none',
         }}>
           {typeof avatar === 'string' ? avatar : '💬'}
         </div>
       )}
       <div style={{ flex:1, minWidth:0 }}>
-        {dot && <div style={{ width:'6px', height:'6px', borderRadius:'50%', backgroundColor:dotColor||'#7c3aed', flexShrink:0, display:'inline-block', marginRight:'6px' }}/>}
-        <div style={{ fontSize:'13px', color: active ? '#7c3aed' : '#1a1733', fontWeight: active ? '600' : '400', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{primary}</div>
-        {secondary && <div style={{ fontSize:'11px', color:'#9ca3af', marginTop:'1px' }}>{secondary}</div>}
+        {dot && <div style={{ width:'6px', height:'6px', borderRadius:'50%', backgroundColor:dotColor||B, flexShrink:0, display:'inline-block', marginRight:'6px' }}/>}
+        <div style={{ fontSize:'13px', color: active ? B : '#0C0C0C', fontWeight: active ? '600' : '400', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{primary}</div>
+        {secondary && <div style={{ fontSize:'11px', color:'#aaa', marginTop:'1px' }}>{secondary}</div>}
       </div>
     </div>
   );
@@ -70,43 +73,39 @@ const Row = ({ primary, secondary, active, dot, dotColor, avatar }) => {
 const ChatPanel = ({ history }) => {
   const [filter, setFilter] = useState('today');
   const [search, setSearch] = useState('');
-  const items = history.length > 0 ? history.slice(-8).reverse() : [
-    { input:'Analyze NIFTY trend', timestamp:'' },
-    { input:'Open VS Code',        timestamp:'' },
-    { input:'Check emails',        timestamp:'' },
-  ];
+  const items = history.length > 0 ? history.slice(-8).reverse() : [];
   const filtered = items.filter(i => !search || i.input?.toLowerCase().includes(search.toLowerCase()));
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-      {/* Search */}
       <div style={{ padding:'10px 12px 6px', flexShrink:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'#fff', border:'1px solid #ede9fe', borderRadius:'10px', padding:'8px 12px' }}>
-          <FiSearch size={13} style={{ color:'#9ca3af', flexShrink:0 }}/>
+        <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'#fff', border:`1px solid ${BORDER}`, borderRadius:'10px', padding:'8px 12px' }}>
+          <FiSearch size={13} style={{ color:'#bbb', flexShrink:0 }}/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search chats..."
-            style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:'13px', color:'#1a1733' }}/>
+            style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:'13px', color:'#0C0C0C' }}/>
         </div>
       </div>
-      {/* Filter tabs */}
       <div style={{ display:'flex', gap:'4px', padding:'0 12px 8px', flexShrink:0 }}>
         {['today','yesterday','all'].map(f=>(
           <button key={f} onClick={()=>setFilter(f)} style={{
             padding:'4px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'500', cursor:'pointer', border:'none',
-            background: filter===f ? '#7c3aed' : 'transparent',
-            color: filter===f ? '#fff' : '#6b7280',
+            background: filter===f ? B : 'transparent',
+            color: filter===f ? '#fff' : '#888',
             transition:'all 0.15s',
           }}>{f.charAt(0).toUpperCase()+f.slice(1)}</button>
         ))}
       </div>
-      {/* List */}
       <div style={{ flex:1, overflowY:'auto' }}>
         <SectionHdr title={`Recent (${filtered.length})`} />
-        {filtered.map((item,i) => (
-          <Row key={i} primary={item.input}
-            secondary={item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Just now'}
-            active={i===0}
-            avatar={(item.input?.[0] || 'C').toUpperCase()}
-          />
-        ))}
+        {filtered.length === 0
+          ? <p style={{ padding:'16px', fontSize:'12px', color:'#bbb', textAlign:'center' }}>Start chatting to see history here</p>
+          : filtered.map((item,i) => (
+            <Row key={i} primary={item.input}
+              secondary={item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Just now'}
+              active={i===0}
+              avatar={(item.input?.[0] || 'C').toUpperCase()}
+            />
+          ))
+        }
       </div>
     </div>
   );
@@ -124,15 +123,15 @@ const MemoryPanel = ({ stats }) => {
       <SectionHdr title="Adaptive Memory" />
       <div style={{ padding:'8px 16px 4px' }}>
         {items.map(it=>(
-          <div key={it.label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid #f3f0ff' }}>
-            <span style={{ fontSize:'12px', color:'#6b7280' }}>{it.label}</span>
-            <span style={{ fontSize:'12px', color:'#7c3aed', fontFamily:'monospace', fontWeight:'600' }}>{it.value}</span>
+          <div key={it.label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:`1px solid ${BORDER}` }}>
+            <span style={{ fontSize:'12px', color:'#777' }}>{it.label}</span>
+            <span style={{ fontSize:'12px', color:B, fontFamily:'monospace', fontWeight:'600' }}>{it.value}</span>
           </div>
         ))}
       </div>
       <SectionHdr title="Learning" />
       <div style={{ padding:'0 16px 8px' }}>
-        <p style={{ fontSize:'12px', color:'#9ca3af', lineHeight:'1.7' }}>Airis learns from every interaction — strategies, preferences and patterns stored automatically.</p>
+        <p style={{ fontSize:'12px', color:'#aaa', lineHeight:'1.7' }}>Airis learns from every interaction — strategies, preferences and patterns stored automatically.</p>
       </div>
     </div>
   );
@@ -153,20 +152,20 @@ const RemindersPanel = ({ reminders, onRefresh }) => {
       <SectionHdr title={`Upcoming (${reminders.length})`} onRefresh={onRefresh} />
       <div style={{ flex:1, overflowY:'auto' }}>
         {reminders.length===0
-          ? <p style={{ padding:'16px', fontSize:'12px', color:'#9ca3af', textAlign:'center' }}>No reminders yet</p>
-          : reminders.map((r,i)=><Row key={i} primary={r.text||r.title||JSON.stringify(r)} secondary={r.when||r.time||''} dot dotColor={r.completed?'#10b981':'#7c3aed'} avatar="⏰"/>)
+          ? <p style={{ padding:'16px', fontSize:'12px', color:'#bbb', textAlign:'center' }}>No reminders yet</p>
+          : reminders.map((r,i)=><Row key={i} primary={r.text||r.title||JSON.stringify(r)} secondary={r.when||r.time||''} dot dotColor={r.completed?'#00C48C':B} avatar="⏰"/>)
         }
       </div>
-      <div style={{ borderTop:'1px solid #f3f0ff', padding:'10px 12px', flexShrink:0 }}>
+      <div style={{ borderTop:`1px solid ${BORDER}`, padding:'10px 12px', flexShrink:0 }}>
         <input value={text} onChange={e=>setText(e.target.value)} placeholder="New reminder..."
           onKeyDown={e=>e.key==='Enter'&&add()}
-          style={{ width:'100%', marginBottom:'6px', padding:'8px 12px', background:'#fff', border:'1px solid #ede9fe', borderRadius:'8px', color:'#1a1733', fontSize:'13px', outline:'none', boxSizing:'border-box' }}
-          onFocus={e=>e.target.style.borderColor='#7c3aed'} onBlur={e=>e.target.style.borderColor='#ede9fe'}/>
+          style={{ width:'100%', marginBottom:'6px', padding:'8px 12px', background:'#fff', border:`1px solid ${BORDER}`, borderRadius:'8px', color:'#0C0C0C', fontSize:'13px', outline:'none', boxSizing:'border-box' }}
+          onFocus={e=>e.target.style.borderColor=B} onBlur={e=>e.target.style.borderColor=BORDER}/>
         <div style={{ display:'flex', gap:'6px' }}>
           <input value={when} onChange={e=>setWhen(e.target.value)} placeholder="when (e.g. tomorrow 9am)"
-            style={{ flex:1, padding:'8px 10px', background:'#fff', border:'1px solid #ede9fe', borderRadius:'8px', color:'#1a1733', fontSize:'12px', outline:'none' }}/>
+            style={{ flex:1, padding:'8px 10px', background:'#fff', border:`1px solid ${BORDER}`, borderRadius:'8px', color:'#0C0C0C', fontSize:'12px', outline:'none' }}/>
           <button onClick={add} disabled={adding||!text.trim()}
-            style={{ padding:'8px 14px', background:'linear-gradient(135deg,#7c3aed,#6d28d9)', border:'none', borderRadius:'8px', color:'#fff', fontSize:'12px', cursor:'pointer', fontWeight:'500' }}>
+            style={{ padding:'8px 14px', background:`linear-gradient(135deg,${B},#2C76FF)`, border:'none', borderRadius:'8px', color:'#fff', fontSize:'12px', cursor:'pointer', fontWeight:'500' }}>
             Add
           </button>
         </div>
@@ -176,28 +175,33 @@ const RemindersPanel = ({ reminders, onRefresh }) => {
 };
 
 const WATCHLIST = [
-  { symbol:'RELIANCE', price:'2,847', change:'+1.2%', up:true },
-  { symbol:'TCS',      price:'3,712', change:'-0.4%', up:false },
-  { symbol:'HDFC',     price:'1,654', change:'+0.8%', up:true },
-  { symbol:'INFY',     price:'1,890', change:'+2.1%', up:true },
-  { symbol:'WIPRO',    price:'542',   change:'-1.1%', up:false },
-  { symbol:'NIFTY50',  price:'24,310',change:'+0.6%', up:true },
+  { symbol:'RELIANCE' },
+  { symbol:'TCS' },
+  { symbol:'HDFC' },
+  { symbol:'INFY' },
+  { symbol:'WIPRO' },
+  { symbol:'NIFTY50' },
 ];
+
 const TradingPanel = () => (
   <div style={{ flex:1, overflowY:'auto' }}>
     <SectionHdr title="Watchlist" onRefresh={()=>{}}/>
+    <div style={{ padding:'10px 16px 6px' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:'8px', padding:'9px 12px', background:'rgba(67,125,253,0.06)', border:'1px solid rgba(67,125,253,0.15)', borderRadius:'8px', marginBottom:'8px' }}>
+        <FiTrendingUp size={13} style={{ color:B }}/>
+        <span style={{ fontSize:'11px', color:'#555' }}>Live prices load via backend. Ask Airis for NIFTY analysis.</span>
+      </div>
+    </div>
     {WATCHLIST.map(s=>(
       <div key={s.symbol}
         style={{ padding:'9px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', borderRadius:'8px', margin:'1px 8px', transition:'background 0.1s' }}
-        onMouseEnter={e=>e.currentTarget.style.background='rgba(124,58,237,0.04)'}
+        onMouseEnter={e=>e.currentTarget.style.background='rgba(67,125,253,0.04)'}
         onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
         <div>
-          <div style={{ fontSize:'12px', color:'#1a1733', fontWeight:'600', fontFamily:'monospace' }}>{s.symbol}</div>
-          <div style={{ fontSize:'11px', color:'#9ca3af', fontFamily:'monospace' }}>₹{s.price}</div>
+          <div style={{ fontSize:'12px', color:'#0C0C0C', fontWeight:'600', fontFamily:'monospace' }}>{s.symbol}</div>
+          <div style={{ fontSize:'11px', color:'#bbb', fontFamily:'monospace' }}>Ask Airis for price</div>
         </div>
-        <span style={{ fontSize:'12px', color:s.up?'#059669':'#dc2626', fontFamily:'monospace', fontWeight:'700',
-          background: s.up?'rgba(5,150,105,0.08)':'rgba(220,38,38,0.08)',
-          padding:'2px 7px', borderRadius:'20px' }}>{s.change}</span>
+        <span style={{ fontSize:'11px', color:'#ccc', fontFamily:'monospace' }}>—</span>
       </div>
     ))}
     <SectionHdr title="Quick Commands"/>
@@ -215,11 +219,11 @@ const SkillsPanel = ({ caps }) => {
         <div key={cat}>
           <SectionHdr title={cat}/>
           {caps.filter(c=>c.category===cat).map(c=>(
-            <div key={c.id} style={{ padding:'8px 16px', borderBottom:'1px solid #f9f7ff' }}>
-              <div style={{ fontSize:'13px', color:'#1a1733', display:'flex', alignItems:'center', gap:'8px' }}>
+            <div key={c.id} style={{ padding:'8px 16px', borderBottom:`1px solid ${BORDER}` }}>
+              <div style={{ fontSize:'13px', color:'#0C0C0C', display:'flex', alignItems:'center', gap:'8px' }}>
                 <span style={{ fontSize:'16px' }}>{c.icon}</span><span style={{ fontWeight:'500' }}>{c.name}</span>
               </div>
-              <div style={{ fontSize:'11px', color:'#9ca3af', marginTop:'2px' }}>{c.desc}</div>
+              <div style={{ fontSize:'11px', color:'#aaa', marginTop:'2px' }}>{c.desc}</div>
             </div>
           ))}
         </div>
@@ -242,9 +246,9 @@ const AnalyticsPanel = ({ data }) => {
       <SectionHdr title="This Session" onRefresh={()=>{}}/>
       <div style={{ padding:'8px 16px 4px' }}>
         {metrics.map(m=>(
-          <div key={m.label} style={{ display:'flex', justifyContent:'space-between', padding:'7px 0', borderBottom:'1px solid #f9f7ff' }}>
-            <span style={{ fontSize:'12px', color:'#6b7280' }}>{m.label}</span>
-            <span style={{ fontSize:'12px', color:'#7c3aed', fontFamily:'monospace', fontWeight:'600' }}>{m.value}</span>
+          <div key={m.label} style={{ display:'flex', justifyContent:'space-between', padding:'7px 0', borderBottom:`1px solid ${BORDER}` }}>
+            <span style={{ fontSize:'12px', color:'#777' }}>{m.label}</span>
+            <span style={{ fontSize:'12px', color:B, fontFamily:'monospace', fontWeight:'600' }}>{m.value}</span>
           </div>
         ))}
       </div>
@@ -258,9 +262,9 @@ const AnalyticsPanel = ({ data }) => {
           { ok:true,  label:'Browser voice input ready' },
         ].map((s,i)=>(
           <div key={i} style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px' }}>
-            {s.ok ? <FiCheckCircle size={13} style={{ color:'#059669', flexShrink:0 }}/>
-                  : <FiAlertTriangle size={13} style={{ color:'#d97706', flexShrink:0 }}/>}
-            <span style={{ fontSize:'12px', color: s.ok?'#374151':'#9ca3af' }}>{s.label}</span>
+            {s.ok ? <FiCheckCircle size={13} style={{ color:'#00C48C', flexShrink:0 }}/>
+                  : <FiAlertTriangle size={13} style={{ color:'#FF8C42', flexShrink:0 }}/>}
+            <span style={{ fontSize:'12px', color: s.ok?'#0C0C0C':'#aaa' }}>{s.label}</span>
           </div>
         ))}
       </div>
@@ -272,20 +276,20 @@ const BrainPanel = ({ layers }) => (
   <div style={{ flex:1, overflowY:'auto' }}>
     <SectionHdr title="12-Layer AI Pipeline"/>
     {(layers.length ? layers : Array.from({length:12},(_,i)=>({n:i+1,name:`Layer ${i+1}`,desc:''}))).map(l=>(
-      <div key={l.n} style={{ padding:'8px 16px', borderBottom:'1px solid #f9f7ff', display:'flex', gap:'10px', alignItems:'flex-start' }}>
-        <div style={{ minWidth:'24px', height:'24px', borderRadius:'6px', background:'linear-gradient(135deg,#ede9fe,#ddd6fe)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', color:'#7c3aed', fontFamily:'monospace', fontWeight:'700', flexShrink:0, marginTop:'1px' }}>
+      <div key={l.n} style={{ padding:'8px 16px', borderBottom:`1px solid ${BORDER}`, display:'flex', gap:'10px', alignItems:'flex-start' }}>
+        <div style={{ minWidth:'24px', height:'24px', borderRadius:'6px', background:'rgba(67,125,253,0.1)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', color:B, fontFamily:'monospace', fontWeight:'700', flexShrink:0, marginTop:'1px' }}>
           {String(l.n).padStart(2,'0')}
         </div>
         <div>
-          <div style={{ fontSize:'12px', color:'#1a1733', fontWeight:'500' }}>{l.name}</div>
-          <div style={{ fontSize:'11px', color:'#9ca3af', marginTop:'1px' }}>{l.desc}</div>
+          <div style={{ fontSize:'12px', color:'#0C0C0C', fontWeight:'500' }}>{l.name}</div>
+          <div style={{ fontSize:'11px', color:'#aaa', marginTop:'1px' }}>{l.desc}</div>
         </div>
       </div>
     ))}
     <div style={{ padding:'12px 16px' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 12px', background:'rgba(5,150,105,0.06)', border:'1px solid rgba(5,150,105,0.2)', borderRadius:'8px' }}>
-        <FiActivity size={13} style={{ color:'#059669' }}/>
-        <span style={{ fontSize:'11px', color:'#059669', fontWeight:'500' }}>All layers active — Multi-Agent mode enabled</span>
+      <div style={{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 12px', background:'rgba(0,196,140,0.06)', border:'1px solid rgba(0,196,140,0.2)', borderRadius:'8px' }}>
+        <FiActivity size={13} style={{ color:'#00C48C' }}/>
+        <span style={{ fontSize:'11px', color:'#00C48C', fontWeight:'500' }}>All layers active — Multi-Agent mode enabled</span>
       </div>
     </div>
   </div>
@@ -322,17 +326,17 @@ const Sidebar = ({ activePanel, isOpen, isMobile, onClose }) => {
 
   const panelContent = (
     <>
-      <div style={{ height:'52px', display:'flex', alignItems:'center', gap:'8px', padding:'0 16px', borderBottom:'1px solid #ede9fe', flexShrink:0, justifyContent:'space-between', background:'#fff' }}>
+      <div style={{ height:'52px', display:'flex', alignItems:'center', gap:'8px', padding:'0 16px', borderBottom:`1px solid ${BORDER}`, flexShrink:0, justifyContent:'space-between', background:'#fff' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-          <div style={{ width:'28px', height:'28px', borderRadius:'8px', background:'linear-gradient(135deg,#ede9fe,#ddd6fe)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <TitleIcon size={14} style={{ color:'#7c3aed' }}/>
+          <div style={{ width:'28px', height:'28px', borderRadius:'8px', background:'rgba(67,125,253,0.1)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <TitleIcon size={14} style={{ color:B }}/>
           </div>
-          <span style={{ fontSize:'13px', fontWeight:'600', color:'#1a1733' }}>
+          <span style={{ fontSize:'13px', fontWeight:'600', color:'#0C0C0C' }}>
             {config.label}
           </span>
         </div>
         {isMobile && (
-          <button onClick={onClose} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:'28px', height:'28px', borderRadius:'8px', background:'#f9f7ff', border:'1px solid #ede9fe', color:'#9ca3af', cursor:'pointer' }}>
+          <button onClick={onClose} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:'28px', height:'28px', borderRadius:'8px', background:'rgba(0,0,0,0.04)', border:`1px solid ${BORDER}`, color:'#aaa', cursor:'pointer' }}>
             <FiX size={14}/>
           </button>
         )}
@@ -350,13 +354,13 @@ const Sidebar = ({ activePanel, isOpen, isMobile, onClose }) => {
   if (isMobile) {
     return (
       <>
-        <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:40, backgroundColor:'rgba(0,0,0,0.4)', backdropFilter:'blur(4px)' }}/>
+        <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:40, backgroundColor:'rgba(0,0,0,0.25)', backdropFilter:'blur(4px)' }}/>
         <div style={{
           position:'fixed', top:0, left:0, bottom:0, zIndex:50,
-          width:'min(85vw,300px)', background:'#f7f5ff',
-          borderRight:'1px solid #ede9fe', display:'flex', flexDirection:'column',
+          width:'min(85vw,300px)', background:'#F8F7F5',
+          borderRight:`1px solid ${BORDER}`, display:'flex', flexDirection:'column',
           overflow:'hidden', animation:'slideInLeft 0.22s ease-out',
-          boxShadow:'8px 0 32px rgba(0,0,0,0.15)',
+          boxShadow:'8px 0 32px rgba(0,0,0,0.1)',
         }}>
           {panelContent}
         </div>
@@ -365,7 +369,7 @@ const Sidebar = ({ activePanel, isOpen, isMobile, onClose }) => {
   }
 
   return (
-    <div style={{ width:'240px', flexShrink:0, background:'#f7f5ff', borderRight:'1px solid #ede9fe', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+    <div style={{ width:'240px', flexShrink:0, background:'#F8F7F5', borderRight:`1px solid ${BORDER}`, display:'flex', flexDirection:'column', overflow:'hidden' }}>
       {panelContent}
     </div>
   );

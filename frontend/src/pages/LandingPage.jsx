@@ -30,22 +30,6 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Fix: override the global overflow:hidden so landing page can scroll
-  useEffect(() => {
-    const prevHtml = document.documentElement.style.overflow;
-    const prevBody = document.body.style.overflow;
-    const prevRoot = document.getElementById('root')?.style.overflow;
-    document.documentElement.style.overflow = 'auto';
-    document.body.style.overflow = 'auto';
-    const root = document.getElementById('root');
-    if (root) root.style.overflow = 'auto';
-    return () => {
-      document.documentElement.style.overflow = prevHtml || '';
-      document.body.style.overflow = prevBody || '';
-      if (root) root.style.overflow = prevRoot || '';
-    };
-  }, []);
-
   useEffect(() => { if (user) navigate('/app'); }, [user]);
 
   const capabilities = [
@@ -107,15 +91,6 @@ export default function LandingPage() {
       plan: 'Enterprise', price: 'Custom', period: '', cta: 'Contact us',
       color: '#0C0C0C', features: ['Everything in Pro', 'Unlimited voice clones', 'Custom AI models', 'On-premise option', 'API access', 'SLA guarantee', 'Dedicated support', 'Team management'],
     },
-  ];
-
-  const testimonials = [
-    { name: 'Sarah K.',  role: 'Product Designer',  av: '#437DFD', text: 'It\'s like having a genius assistant on call 24/7. The memory feature alone saves me hours a week.' },
-    { name: 'Marcus T.', role: 'Software Engineer',  av: '#7B61FF', text: 'The voice cloning is uncanny. I cloned my own voice and now Airis sounds exactly like me. Wild.' },
-    { name: 'Priya M.',  role: 'Startup Founder',    av: '#FD5B5D', text: 'Airis handles my emails, meetings, and market research. I\'ve replaced 3 tools with just this.' },
-    { name: 'Ravi S.',   role: 'Day Trader',         av: '#00C48C', text: 'The NIFTY trading module is incredible. Real-time analysis and signals that actually work.' },
-    { name: 'Anika L.',  role: 'Content Creator',    av: '#FF8C42', text: 'Vibe Coder built my entire portfolio site in one conversation. I\'m not a developer but felt like one.' },
-    { name: 'Chen W.',   role: 'Operations Manager', av: '#2C76FF', text: 'The multilingual support is seamless. I manage teams across 4 countries and Airis handles it all.' },
   ];
 
   const faq = [
@@ -378,30 +353,6 @@ export default function LandingPage() {
                 <div style={{ fontSize: 24, marginBottom: 10 }}>{p.icon}</div>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: S.dark, marginBottom: 5 }}>{p.name}</div>
                 <div style={{ fontSize: 12.5, color: '#777', lineHeight: 1.55 }}>{p.desc}</div>
-              </div>
-            ))}
-          </div>
-        </Sect>
-      </div>
-
-      {/* ── TESTIMONIALS ── */}
-      <div style={{ marginTop: 100 }}>
-        <Sect>
-          <SectTitle pre="Reviews" main="Loved by" bold="early adopters." />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-            {testimonials.map(t => (
-              <div key={t.name} style={{ ...S.card, padding: '26px 22px' }}>
-                <div style={{ display: 'flex', gap: 2, marginBottom: 14 }}>
-                  {[1,2,3,4,5].map(s => <span key={s} style={{ color: '#FBBF24', fontSize: 14 }}>★</span>)}
-                </div>
-                <p style={{ fontSize: 14, color: '#333', lineHeight: 1.65, marginBottom: 20, fontStyle: 'italic' }}>"{t.text}"</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: t.av, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 700 }}>{t.name[0]}</div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: S.dark }}>{t.name}</div>
-                    <div style={{ fontSize: 12, color: '#aaa' }}>{t.role}</div>
-                  </div>
-                </div>
               </div>
             ))}
           </div>

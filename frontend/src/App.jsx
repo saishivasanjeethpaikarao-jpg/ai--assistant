@@ -165,7 +165,7 @@ function ProtectedApp() {
     <div style={{
       display: 'flex', flexDirection: 'column',
       height: '100dvh', overflow: 'hidden',
-      background: '#f0ecff',
+      background: '#F5F4F2',
     }}>
       {isGuest && <GuestBanner />}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

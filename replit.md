@@ -4,11 +4,21 @@ Iron Man–style AI assistant: 12-layer brain, voice in/out, bilingual (English 
 
 ## Architecture
 
-- **Frontend**: React + Vite (`frontend/`) on port 5000 — inline styles, Spline-inspired light theme
+- **Frontend**: React + Vite (`frontend/`) on port 5000 — inline styles, light theme matching landing page
 - **Backend**: Python HTTP server (`backend/dashboard_api.py`) on port 8000
 - Vite proxy: `/api` → `localhost:8000`
-- **Auth**: Firebase Authentication (Google, GitHub, Email/Password) via `frontend/src/firebase.js`
+- **Auth**: Firebase Authentication (Google, GitHub, Email/Password, Anonymous/Guest) via `frontend/src/firebase.js`
 - **Routing**: React Router v6 — `/` landing, `/login` auth, `/app` protected main app
+
+## Design System
+
+- Background: `#F5F4F2`
+- Primary blue: `#437DFD`
+- Accent coral: `#FD5B5D`
+- Dark: `#0C0C0C`
+- Muted: `#777` / `#aaa`
+- Card: `rgba(255,255,255,0.82)` with `rgba(0,0,0,0.08)` border
+- Font: DM Sans (imported in index.css)
 
 ## Settings — 9 tabs
 
@@ -51,12 +61,21 @@ Two workflows are configured:
 
 ## Pages & Auth Flow
 
-- `/` → `LandingPage.jsx` — Spline-inspired landing with holographic sphere, hero, features, testimonials, CTA
-- `/login` → `LoginPage.jsx` — Google, GitHub, email/password sign-in + sign-up + password reset
-- `/app` → `ProtectedApp` (in App.jsx) — main chat interface, requires auth
-- `frontend/src/firebase.js` — Firebase app init; uses `GOOGLE_API_KEY` secret via Vite `envPrefix`
-- `frontend/src/contexts/AuthContext.jsx` — auth state, sign-in methods, error handling
+- `/` → `LandingPage.jsx` — Light theme landing with holographic sphere, hero, features, capabilities, pricing, FAQ, CTA
+- `/login` → `LoginPage.jsx` — Google, GitHub, email/password sign-in + sign-up + password reset + "Continue as Guest"
+- `/app` → `ProtectedApp` (in App.jsx) — main chat interface, requires auth (or guest/anonymous)
+- `frontend/src/firebase.js` — Firebase app init; uses `VITE_FIREBASE_API_KEY` env secret
+- `frontend/src/contexts/AuthContext.jsx` — auth state, sign-in methods, signInAnonymously for guest mode
 - `frontend/public/airis-sphere.png` — holographic iridescent sphere logo asset
+
+## Components (all light theme, blue/coral accents)
+
+- `ActivityBar.jsx` — Left icon rail (52px wide), shows real Firebase user avatar/initials, click to sign out
+- `Sidebar.jsx` — 240px panel for Chat/Memory/Trading/Reminders/Skills/Analytics/Brain
+- `ChatInterface.jsx` — Main chat area with EmptyState, MessageBubble, voice, TTS
+- `StatusBar.jsx` — 26px bottom bar showing AI/mic/voice state
+- `ConversationHistory.jsx` — Right sidebar (272px) for conversation history
+- `CommandPalette.jsx` — Fuzzy-search command modal (⌘K)
 
 ## Frontend Dependencies
 
@@ -72,11 +91,10 @@ Python packages: fastapi, uvicorn, python-dotenv, requests
 
 ## Environment Variables
 
-Copy `.env.template` to `backend/.env` and fill in API keys:
-- `GROQ_API_KEY` — for Groq LLM API
-- `FIREBASE_API_KEY` — for Firebase authentication
-- `FISH_AUDIO_API_KEY` — for voice TTS
-- `ELEVENLABS_API_KEY` — optional voice API
+- `VITE_FIREBASE_API_KEY` — Firebase auth (Replit secret, used in frontend)
+- `GROQ_API_KEY` — for Groq LLM API (backend .env)
+- `FISH_AUDIO_API_KEY` — for voice TTS (backend .env)
+- `ELEVENLABS_API_KEY` — optional voice API (backend .env)
 
 ## AI Modes
 
