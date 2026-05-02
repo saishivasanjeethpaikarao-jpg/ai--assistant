@@ -39,7 +39,7 @@ function detectLanguage(raw) {
 }
 
 function canPreview(lang) {
-  return ['html', 'react', 'javascript', 'css'].includes(lang);
+  return ['html', 'react', 'javascript', 'css', 'python'].includes(lang);
 }
 
 function buildPreviewHtml(code, lang) {
@@ -289,6 +289,173 @@ const LivePreview = ({ html, lang, onRefresh }) => {
   );
 };
 
+// ── Python Terminal Preview ─────────────────────────────────────────────────
+
+const PythonPreview = ({ code, runTrigger }) => {
+  const [output, setOutput]     = useState('');
+  const [errOut, setErrOut]     = useState('');
+  const [running, setRunning]   = useState(false);
+  const [success, setSuccess]   = useState(null);
+  const [ms, setMs]             = useState(null);
+  const [ran, setRan]           = useState(false);
+  const outRef = useRef(null);
+
+  const run = useCallback(async () => {
+    if (running || !code) return;
+    setRunning(true); setOutput(''); setErrOut(''); setSuccess(null); setMs(null);
+    try {
+      const r = await fetch('/api/vibe/run', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, language: 'python' }),
+      });
+      const d = await r.json();
+      setOutput(d.output || '');
+      setErrOut(d.error || '');
+      setSuccess(d.success);
+      setMs(d.runtime_ms);
+    } catch (e) {
+      setErrOut('Failed to run: ' + e.message);
+      setSuccess(false);
+    } finally {
+      setRunning(false);
+      setRan(true);
+    }
+  }, [code, running]);
+
+  useEffect(() => { run(); }, [runTrigger]);
+
+  useEffect(() => {
+    if (outRef.current) outRef.current.scrollTop = outRef.current.scrollHeight;
+  }, [output, errOut]);
+
+  const lines = (output + (errOut ? (output ? '\n' : '') + errOut : '')).split('\n');
+
+  return (
+    <div style={{
+      flex: 1, display: 'flex', flexDirection: 'column',
+      backgroundColor: '#0d0d0d', overflow: 'hidden',
+    }}>
+      {/* Terminal window chrome */}
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        margin: '16px', borderRadius: '10px', overflow: 'hidden',
+        border: '1px solid #2a2a2a',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      }}>
+        {/* Title bar */}
+        <div style={{
+          height: '34px', backgroundColor: '#1a1a1a',
+          borderBottom: '1px solid #2a2a2a',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 12px', flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+            <div style={{ width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#f87171' }}/>
+            <div style={{ width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#fbbf24' }}/>
+            <div style={{ width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#34d399' }}/>
+          </div>
+          <span style={{ fontSize: '12px', color: '#5a5a5a', fontFamily: 'monospace' }}>
+            python — script.py
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {ms !== null && (
+              <span style={{ fontSize: '10px', color: '#3a3a3a' }}>{ms}ms</span>
+            )}
+            {success !== null && (
+              <span style={{
+                fontSize: '10px', padding: '1px 7px', borderRadius: '10px',
+                backgroundColor: success ? '#0a2a1a' : '#2a0a0a',
+                border: `1px solid ${success ? '#10b98133' : '#f8717133'}`,
+                color: success ? '#10b981' : '#f87171',
+              }}>
+                {success ? '✓ exit 0' : '✗ exit 1'}
+              </span>
+            )}
+            <button onClick={run} disabled={running} title="Re-run"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px',
+                padding: '2px 8px', borderRadius: '4px', fontSize: '11px',
+                cursor: running ? 'not-allowed' : 'pointer', transition: 'all 0.15s',
+                backgroundColor: 'transparent',
+                border: `1px solid ${running ? '#2a2a2a' : '#34d39966'}`,
+                color: running ? '#3a3a3a' : '#34d399',
+              }}>
+              {running
+                ? <FiLoader size={10} style={{ animation: 'spin 1s linear infinite' }}/>
+                : <FiPlay size={10}/>
+              }
+              {running ? 'Running...' : 'Re-run'}
+            </button>
+          </div>
+        </div>
+
+        {/* Terminal body */}
+        <div ref={outRef} style={{
+          flex: 1, overflowY: 'auto', overflowX: 'auto',
+          backgroundColor: '#0a0a0a',
+          padding: '14px 16px',
+          fontFamily: "'Geist Mono','Cascadia Code','Fira Code',monospace",
+          fontSize: '13px', lineHeight: '1.7',
+        }}>
+          {/* Prompt line */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexShrink: 0 }}>
+            <span style={{ color: '#34d399', fontWeight: '600' }}>➜</span>
+            <span style={{ color: '#a78bfa' }}>~/workspace</span>
+            <span style={{ color: '#e8e8e8' }}>python script.py</span>
+          </div>
+
+          {running && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#5a5a5a' }}>
+              <FiLoader size={12} style={{ animation: 'spin 1s linear infinite', color: '#a78bfa' }}/>
+              <span style={{ fontSize: '12px' }}>Executing...</span>
+            </div>
+          )}
+
+          {!running && !ran && (
+            <div style={{ color: '#3a3a3a', fontSize: '12px' }}>
+              Starting Python runtime...
+            </div>
+          )}
+
+          {ran && !output && !errOut && (
+            <div style={{ color: '#5a5a5a', fontSize: '12px' }}>(no output)</div>
+          )}
+
+          {output && (
+            <pre style={{
+              margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+              color: '#a8cc8c', lineHeight: '1.7',
+            }}>{output}</pre>
+          )}
+
+          {errOut && (
+            <>
+              {output && <div style={{ height: '8px' }}/>}
+              <pre style={{
+                margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                color: '#f87171', lineHeight: '1.7',
+              }}>{errOut}</pre>
+            </>
+          )}
+
+          {/* Blinking cursor */}
+          {!running && ran && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+              <span style={{ color: '#34d399', fontWeight: '600' }}>➜</span>
+              <span style={{ color: '#a78bfa' }}>~/workspace</span>
+              <span style={{
+                display: 'inline-block', width: '8px', height: '15px',
+                backgroundColor: '#e8e8e8', marginLeft: '2px',
+                animation: 'blink 1.1s step-end infinite',
+              }}/>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── Main component ──────────────────────────────────────────────────────────
 
 const VibeCoder = ({ initialPrompt = '' }) => {
@@ -307,8 +474,9 @@ const VibeCoder = ({ initialPrompt = '' }) => {
   const [terminalOutput, setTerminalOutput] = useState(null);
   const [listening,  setListening]  = useState(false);
   const [error,      setError]      = useState('');
-  const [viewMode,   setViewMode]   = useState('code'); // 'code' | 'preview'
-  const [previewKey, setPreviewKey] = useState(0);
+  const [viewMode,    setViewMode]   = useState('code'); // 'code' | 'preview'
+  const [previewKey,  setPreviewKey] = useState(0);
+  const [runTrigger,  setRunTrigger] = useState(0);
   const textareaRef = useRef(null);
   const recRef      = useRef(null);
 
@@ -342,11 +510,12 @@ const VibeCoder = ({ initialPrompt = '' }) => {
       const d = await r.json();
       if (!r.ok || d.error) throw new Error(d.error || 'Backend error');
       setResult(d);
-      // Auto-switch to preview for visual languages
+      // Auto-switch to preview for all previewable languages (including Python)
       const lang = detectLanguage(d.code || '');
       if (canPreview(lang)) {
         setViewMode('preview');
         setPreviewKey(k=>k+1);
+        if (lang === 'python') setRunTrigger(k=>k+1);
       } else {
         setViewMode('code');
       }
@@ -609,7 +778,7 @@ const VibeCoder = ({ initialPrompt = '' }) => {
                 </div>
                 <div style={{display:'flex', alignItems:'center', gap:'8px', paddingRight:'14px'}}>
                   <CopyBtn text={rawCode}/>
-                  {codeLang==='python' && (
+                  {codeLang==='python' && viewMode==='code' && (
                     <button onClick={handleRun} disabled={isRunning}
                       style={{
                         display:'flex', alignItems:'center', gap:'5px',
@@ -623,7 +792,7 @@ const VibeCoder = ({ initialPrompt = '' }) => {
                       <span>{isRunning?'Running...':'Run Python'}</span>
                     </button>
                   )}
-                  {canPreview(codeLang) && viewMode==='preview' && (
+                  {canPreview(codeLang) && viewMode==='preview' && codeLang!=='python' && (
                     <button onClick={()=>setPreviewKey(k=>k+1)} title="Refresh preview"
                       style={{
                         display:'flex', alignItems:'center', gap:'4px', padding:'3px 8px',
@@ -634,6 +803,16 @@ const VibeCoder = ({ initialPrompt = '' }) => {
                       onMouseLeave={e=>e.currentTarget.style.color='#5a5a5a'}
                     >
                       <FiRefreshCw size={11}/> Refresh
+                    </button>
+                  )}
+                  {codeLang==='python' && viewMode==='preview' && (
+                    <button onClick={()=>setRunTrigger(k=>k+1)} title="Re-run Python"
+                      style={{
+                        display:'flex', alignItems:'center', gap:'4px', padding:'3px 8px',
+                        borderRadius:'4px', fontSize:'11px', cursor:'pointer', transition:'all 0.15s',
+                        backgroundColor:'#0a1a0a', border:'1px solid #34d39944', color:'#34d399',
+                      }}>
+                      <FiRefreshCw size={11}/> Re-run
                     </button>
                   )}
                 </div>
@@ -654,12 +833,19 @@ const VibeCoder = ({ initialPrompt = '' }) => {
               )}
 
               {/* Preview view */}
-              {viewMode==='preview' && (
+              {viewMode==='preview' && codeLang !== 'python' && (
                 <LivePreview
                   key={previewKey}
                   html={previewHtml}
                   lang={codeLang}
                   onRefresh={()=>setPreviewKey(k=>k+1)}
+                />
+              )}
+              {viewMode==='preview' && codeLang === 'python' && (
+                <PythonPreview
+                  key={previewKey}
+                  code={rawCode}
+                  runTrigger={runTrigger}
                 />
               )}
 
@@ -753,8 +939,9 @@ const VibeCoder = ({ initialPrompt = '' }) => {
       </div>
 
       <style>{`
-        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes spin  { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
       `}</style>
     </div>
   );

@@ -1,0 +1,348 @@
+You are building a production-ready VIBE CODER feature for an AI assistant 
+called ARIA/Jarvis. This is a full-stack feature with a beautiful UI and 
+working backend. Build everything from scratch, make it perfect.
+
+═══════════════════════════════════════════════════════════
+PROJECT CONTEXT
+═══════════════════════════════════════════════════════════
+
+This is an existing Python FastAPI + React project.
+- Backend entry point: backend/api_server.py
+- AI switcher (already built): backend/ai_switcher.py  
+- Frontend main app: frontend/src/App.jsx
+- Frontend components folder: frontend/src/components/
+- Frontend state: frontend/src/store/useStore.js
+
+The backend uses FastAPI with CORS enabled.
+The frontend uses React, Tailwind, Zustand, react-icons/fi, framer-motion.
+Backend runs on http://127.0.0.1:8000
+
+═══════════════════════════════════════════════════════════
+WHAT TO BUILD
+═══════════════════════════════════════════════════════════
+
+A "Vibe Coder" — user describes what they want in plain English 
+(or by voice), ARIA automatically picks the right specialist AI agent, 
+generates production-quality code, shows it with syntax highlighting, 
+and can execute it safely.
+
+Think: Cursor AI + Replit + Loveable — but inside ARIA.
+
+═══════════════════════════════════════════════════════════
+PART 1: BACKEND — backend/vibe_coder.py
+═══════════════════════════════════════════════════════════
+
+Create a complete multi-agent vibe coding system.
+
+AGENTS (build all 6):
+
+1. FrontendAgent 🎨
+   - Speciality: React components, HTML/CSS, Tailwind, animations, 
+     landing pages, dashboards, forms, UI components
+   - System prompt: Expert React/CSS developer. Write clean, modern, 
+     production-ready frontend code. Use Tailwind for styling. 
+     Add smooth animations. Return complete, runnable components.
+   - Trigger keywords: react, component, button, navbar, page, landing, 
+     dashboard, form, css, html, ui, frontend, design, card, modal, 
+     layout, style, animation
+
+2. BackendAgent ⚙️  
+   - Speciality: Python APIs, FastAPI, Flask, databases, file handling, 
+     data processing, web scraping, automation scripts
+   - System prompt: Expert Python backend developer. Write clean, 
+     well-commented, production-ready Python code. Include error handling, 
+     type hints, and docstrings. Return complete working scripts.
+   - Trigger keywords: python, api, fastapi, flask, database, script, 
+     function, class, backend, server, endpoint, scrape, fetch, parse, 
+     file, csv, json, requests
+
+3. TradingAgent 📈
+   - Speciality: NSE/BSE trading scripts, yfinance, pandas, technical 
+     indicators, options strategies, backtesting, market analysis
+   - System prompt: Expert Indian stock market developer and quant trader. 
+     Write trading scripts for NSE/BSE using yfinance. Include technical 
+     indicators (RSI, MACD, Bollinger Bands). Add clear comments explaining 
+     the trading logic. Always include risk warnings in comments.
+   - Trigger keywords: nifty, banknifty, nse, bse, stock, trading, 
+     market, options, calls, puts, intraday, swing, backtest, indicator, 
+     rsi, macd, chart, candlestick, yfinance, reliance, tcs, infosys
+
+4. AutomationAgent 🤖
+   - Speciality: Windows automation, pyautogui, keyboard/mouse control, 
+     file operations, scheduled tasks, system automation
+   - System prompt: Expert Windows automation developer. Write safe, 
+     reliable automation scripts using pyautogui, os, shutil, schedule. 
+     Always add confirmation prompts before destructive operations. 
+     Include error handling and logging.
+   - Trigger keywords: automate, automation, click, type, keyboard, mouse, 
+     open, close, window, file, folder, move, copy, rename, schedule, 
+     task, windows, desktop, screenshot, pyautogui
+
+5. DataAgent 📊
+   - Speciality: Data analysis, pandas, numpy, matplotlib, plotly, 
+     seaborn, CSV processing, data cleaning, visualization
+   - System prompt: Expert data scientist. Write clean pandas/numpy code 
+     for data analysis. Create beautiful visualizations with plotly or 
+     matplotlib. Include data cleaning steps. Add markdown comments 
+     explaining the analysis.
+   - Trigger keywords: data, analysis, pandas, csv, excel, chart, graph, 
+     plot, visualize, statistics, correlation, average, mean, median, 
+     numpy, dataset, dataframe, clean, process
+
+6. DebugAgent 🔍
+   - Speciality: Finding and fixing bugs, code review, optimization, 
+     error analysis, refactoring
+   - System prompt: Expert code reviewer and debugger. Analyze the code 
+     carefully, identify ALL bugs and issues, explain each bug clearly, 
+     then provide the complete fixed version. Also suggest optimizations.
+   - Trigger keywords: bug, error, fix, debug, broken, wrong, issue, 
+     problem, crash, exception, traceback, not working, help, review, 
+     optimize, refactor, improve
+
+CLASS STRUCTURE:
+
+class VibeCoder:
+    def __init__(self):
+        self.agents = [all 6 agents]
+    
+    def route(self, request: str) -> Agent:
+        # Score each agent based on keyword matches + semantic similarity
+        # Return highest scoring agent
+        # Default to BackendAgent if no clear match
+    
+    def generate(self, request: str, agent: Agent, 
+                 conversation_history: list) -> dict:
+        # Call ai_switcher.py with agent's system_prompt
+        # Return: {code, language, explanation, canRun, agent_name, 
+        #          agent_emoji, dependencies}
+    
+    def execute(self, code: str, language: str) -> dict:
+        # SAFE execution only:
+        # Python: subprocess with timeout=15s, capture stdout/stderr
+        # JavaScript: not executed (return message)
+        # BLOCKED: any code containing os.system, subprocess with 
+        #   shell=True, rm -rf, del /f, format, DROP TABLE
+        # Return: {output, error, success, execution_time}
+    
+    def get_dependencies(self, code: str, language: str) -> list:
+        # Parse import statements
+        # Return list of pip packages to install
+
+═══════════════════════════════════════════════════════════
+PART 2: API ENDPOINTS — add to backend/api_server.py
+═══════════════════════════════════════════════════════════
+
+POST /vibe/code
+  Request:  { request: str, voice: bool, history: list }
+  Response: { 
+    agent_name: str, agent_emoji: str,
+    code: str, language: str,
+    explanation: str, canRun: bool,
+    dependencies: list[str],
+    execution_id: str,
+    confidence: float
+  }
+
+POST /vibe/run
+  Request:  { code: str, language: str }
+  Response: { 
+    output: str, error: str, 
+    success: bool, execution_time: float 
+  }
+
+POST /vibe/fix
+  Request:  { code: str, error: str }
+  Response: { fixed_code: str, explanation: str }
+
+GET /vibe/agents
+  Response: [{ name, emoji, description, keywords, example }]
+
+POST /vibe/chat
+  Request:  { message: str, code_context: str }
+  Response: { reply: str }
+  # For asking questions about generated code
+
+═══════════════════════════════════════════════════════════
+PART 3: FRONTEND — frontend/src/components/VibeCoder.jsx
+═══════════════════════════════════════════════════════════
+
+Build a beautiful, production-ready React component.
+
+DESIGN SYSTEM:
+- Background: #0a0a0a
+- Panel: #111111  
+- Surface: #181818
+- Border: #2a2a2a
+- Accent blue: #3b82f6
+- Green: #22c55e
+- Yellow: #eab308
+- Red: #ef4444
+- Text primary: #e8e8e8
+- Text muted: #666
+- Font: system-ui for UI, 'JetBrains Mono' for code
+- All inline styles (no Tailwind classes)
+- react-icons/fi for all icons
+
+LAYOUT (3 sections top to bottom):
+
+━━━ SECTION 1: AGENT SELECTOR ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Horizontal scrollable row of agent pills.
+Each pill shows: emoji + name + specialty badge
+Active agent: blue border + blue background tint + blue emoji glow
+Auto-selected agent (from routing): shows "Auto-detected" badge
+Clicking a pill manually overrides the auto-detection
+
+━━━ SECTION 2: INPUT BAR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Large textarea (3 rows, auto-expands to 6 max)
+Placeholder: "Describe what you want to build... 
+  e.g. 'a React login form with email and password'
+  or say 'build me a NIFTY options strategy script'"
+
+Left of textarea: 
+  - Mic button (FiMic) — glows red when recording
+  - Shows animated waveform when voice active
+
+Right of textarea:
+  - Character count (muted, small)
+  - "BUILD IT" button (blue, FiZap icon, disabled when empty)
+  
+Below textarea:
+  - Auto-detected agent preview: "⚙️ BackendAgent will handle this"
+    Updates in real-time as user types (debounced 300ms)
+  - Keyboard hint: Enter to build · Shift+Enter for newline
+
+━━━ SECTION 3: OUTPUT PANEL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Only visible after generation. Has 3 sub-sections:
+
+A) AGENT HEADER BAR:
+   [emoji] [AgentName] built this · [confidence]% match
+   [explanation text in muted color]
+   If dependencies exist: 
+     "📦 Install first: pip install yfinance pandas plotly"
+
+B) CODE EDITOR AREA:
+   Top bar: language tag + line count + [Copy] [Save] [Open VS Code] [▶ Run]
+   Code block with syntax highlighting 
+     (use react-syntax-highlighter with oneDark theme)
+   Line numbers on left
+   "Run" button only shows if canRun is true
+
+C) EXECUTION TERMINAL (shows after clicking Run):
+   Dark terminal box (#050505)
+   Green header bar: "▶ Execution Output · Python 3.11"
+   Shows output line by line with typewriter effect
+   stdout in green, stderr in red
+   Shows execution time at bottom
+   If error: shows [Fix It] button that calls /vibe/fix automatically
+
+━━━ FOLLOW-UP CHAT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After code is generated, show a small chat input below:
+"Ask about this code..." 
+Calls /vibe/chat with the generated code as context
+Shows reply inline below
+
+━━━ LOADING STATES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+While generating:
+  - Agent pill pulses with blue glow
+  - Show: "[emoji] [AgentName] is thinking..."
+  - Show animated dots (3 dots pulsing)
+  - Disable the build button
+
+While running:
+  - Terminal shows "Running..." with spinner
+  - Run button shows spinner
+
+═══════════════════════════════════════════════════════════
+PART 4: WIRE INTO APP — frontend/src/App.jsx
+═══════════════════════════════════════════════════════════
+
+1. Add "Code" icon (FiCode) to ActivityBar between Chat and Memory
+
+2. When "Code" tab is active, render <VibeCoder /> in main content area
+
+3. Smart auto-switch: if user types in ChatInterface and message 
+   starts with any of these words:
+   "build", "create", "make", "write a", "code a", "vibe", 
+   "generate", "develop", "design a"
+   → automatically switch to VibeCoder panel
+   → pre-fill the VibeCoder input with their message
+   → show toast: "Switched to Vibe Coder ⚡"
+
+4. In CommandPalette (Ctrl+K), add section "VIBE CODER":
+   - "⚡ Vibe: React component" → VibeCoder + FrontendAgent
+   - "⚡ Vibe: Python script" → VibeCoder + BackendAgent  
+   - "⚡ Vibe: Trading analysis" → VibeCoder + TradingAgent
+   - "⚡ Vibe: Windows automation" → VibeCoder + AutomationAgent
+   - "⚡ Vibe: Fix my code" → VibeCoder + DebugAgent
+
+5. In useStore.js, add vibe coder state:
+   vibeCoder: {
+     isOpen: false,
+     selectedAgent: null,
+     autoAgent: null,
+     request: '',
+     isGenerating: false,
+     result: null,
+     isRunning: false,
+     executionOutput: null,
+   }
+
+═══════════════════════════════════════════════════════════
+PART 5: VOICE TRIGGER — backend/voice/speech_to_text.py
+═══════════════════════════════════════════════════════════
+
+Add vibe coding voice detection:
+
+TRIGGER PHRASES (detect any of these at start of speech):
+"build me", "create a", "make a", "code a", "write a", 
+"vibe code", "vibe", "generate a", "i need a", "build"
+
+When detected:
+1. Extract request = everything after the trigger phrase
+2. Set mode = "vibe_coding"
+3. Call POST /vibe/code with {request, voice: true}
+4. Speak back using TTS: "{emoji} {AgentName} is on it!"
+5. Emit websocket event to frontend to open VibeCoder panel
+
+═══════════════════════════════════════════════════════════
+PART 6: EXAMPLE PROMPTS TO SHOW IN UI
+═══════════════════════════════════════════════════════════
+
+Show these as clickable suggestion chips when input is empty:
+
+🎨 "A responsive navbar with logo and mobile hamburger menu"
+⚙️ "A Python function to send emails with attachments"  
+📈 "NIFTY 50 RSI indicator and buy/sell signals"
+🤖 "Auto-rename all files in a folder by date"
+📊 "Plot sales data from a CSV with bar and line charts"
+🔍 "Review this code and fix all the bugs: [paste code]"
+
+═══════════════════════════════════════════════════════════
+QUALITY REQUIREMENTS
+═══════════════════════════════════════════════════════════
+
+- Every component must have proper loading, error, and empty states
+- All API calls must have try/catch with user-friendly error messages
+- If backend is offline, show: "Start python api_server.py to use Vibe Coder"
+- Generated code must always be complete and runnable, not truncated
+- Never show "..." or placeholder code — always full working code
+- All buttons must have hover states
+- Scrollbars must be styled (4px, dark, subtle)
+- Mobile responsive (stack panels vertically on small screens)
+
+═══════════════════════════════════════════════════════════
+AFTER BUILDING — TELL ME:
+═══════════════════════════════════════════════════════════
+
+1. Every file you created or modified
+2. How to start it (what commands to run)
+3. Any packages I need to install
+4. Any environment variables needed
+
+Build it completely. Do not skip any part. 
+Make it production quality like Replit or Loveable.
