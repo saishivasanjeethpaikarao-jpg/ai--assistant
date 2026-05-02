@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
-import ActivityBar     from './components/ActivityBar';
-import Sidebar         from './components/Sidebar';
-import ChatInterface   from './components/ChatInterface';
-import CommandPalette  from './components/CommandPalette';
-import AgentTaskView   from './components/AgentTaskView';
-import StatusBar       from './components/StatusBar';
-import Settings        from './components/Settings';
-import VibeCoder       from './components/VibeCoder';
-import CloudBackground from './components/CloudBackground';
-import useStore        from './store/useStore';
-import { api }         from './services/api';
-import { useBreakpoint } from './hooks/useBreakpoint';
+import ActivityBar          from './components/ActivityBar';
+import Sidebar              from './components/Sidebar';
+import ChatInterface        from './components/ChatInterface';
+import CommandPalette       from './components/CommandPalette';
+import AgentTaskView        from './components/AgentTaskView';
+import StatusBar            from './components/StatusBar';
+import Settings             from './components/Settings';
+import VibeCoder            from './components/VibeCoder';
+import ConversationHistory  from './components/ConversationHistory';
+import useStore             from './store/useStore';
+import { api }              from './services/api';
+import { useBreakpoint }    from './hooks/useBreakpoint';
 
 const SIDEBAR_PANELS = ['chat', 'memory', 'trading', 'reminders', 'skills', 'analytics', 'brain'];
 const VIBE_TRIGGERS  = ['build me', 'build a', 'vibe code', 'vibe coder', 'create a component', 'write a script', 'make me a', 'code me a'];
@@ -109,84 +109,83 @@ function App() {
   const isSettings = activePanel === 'settings';
   const isVibe     = activePanel === 'vibe';
   const showSidebar = !isSettings && !isVibe && sidebarOpen && SIDEBAR_PANELS.includes(activePanel);
+  const showHistory = !isSettings && !isVibe && isDesktop;
 
   return (
-    <>
-      {/* ── Volumetric cloud background (WebGL, fixed fullscreen) ── */}
-      <CloudBackground />
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      height: '100dvh', overflow: 'hidden',
+      background: '#f0ecff',
+    }}>
+      {/* Main body */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
-      {/* ── App shell — sits above the canvas via z-index ─────────── */}
-      <div style={{
-        position: 'relative', zIndex: 1,
-        display: 'flex', flexDirection: 'column',
-        height: '100dvh', color: '#f0eeff', overflow: 'hidden',
-      }}>
-
-        {/* Main body */}
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', flexDirection: 'row' }}>
-
-          {/* Left Activity Bar — desktop only */}
-          {!isMobile && (
-            <ActivityBar
-              activePanel={activePanel}
-              onPanelChange={handlePanelChange}
-              onCommandOpen={() => setCommandOpen(true)}
-              isMobile={false}
-            />
-          )}
-
-          {/* Sidebar */}
-          <Sidebar
-            activePanel={activePanel}
-            isOpen={showSidebar}
-            isMobile={isMobile}
-            onClose={() => setSidebarOpen(false)}
-          />
-
-          {/* Main content */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-            {isSettings ? (
-              <Settings isMobile={isMobile} />
-            ) : isVibe ? (
-              <VibeCoder initialPrompt={vibeInitialPrompt} isMobile={isMobile} isTablet={isTablet} />
-            ) : (
-              <>
-                <AgentTaskView tasks={tasks} />
-                <ChatInterface
-                  messages={messages}
-                  onSendMessage={handleSendMessage}
-                  isTyping={isTyping}
-                  voiceState={voiceState}
-                  onVoiceStateChange={setVoiceState}
-                  hasProvider={hasProvider}
-                  isMobile={isMobile}
-                />
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Status bar */}
-        <StatusBar
-          voiceState={voiceState}
-          aiStatus={isTyping ? 'Processing' : 'Ready'}
-          hasProvider={hasProvider}
-          isMobile={isMobile}
-        />
-
-        {/* Mobile bottom Activity Bar */}
-        {isMobile && (
+        {/* Left Activity Bar — desktop only */}
+        {!isMobile && (
           <ActivityBar
             activePanel={activePanel}
             onPanelChange={handlePanelChange}
             onCommandOpen={() => setCommandOpen(true)}
-            isMobile={true}
+            isMobile={false}
           />
         )}
 
-        <CommandPalette isOpen={commandOpen} onClose={() => setCommandOpen(false)} onCommand={handleCommand} />
+        {/* Sidebar panel */}
+        <Sidebar
+          activePanel={activePanel}
+          isOpen={showSidebar}
+          isMobile={isMobile}
+          onClose={() => setSidebarOpen(false)}
+        />
+
+        {/* Main content */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+          {isSettings ? (
+            <Settings isMobile={isMobile} />
+          ) : isVibe ? (
+            <VibeCoder initialPrompt={vibeInitialPrompt} isMobile={isMobile} isTablet={isTablet} />
+          ) : (
+            <>
+              <AgentTaskView tasks={tasks} />
+              <ChatInterface
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                isTyping={isTyping}
+                voiceState={voiceState}
+                onVoiceStateChange={setVoiceState}
+                hasProvider={hasProvider}
+                isMobile={isMobile}
+              />
+            </>
+          )}
+        </div>
+
+        {/* Right panel — Conversation History */}
+        {showHistory && (
+          <ConversationHistory messages={messages} isMobile={isMobile} />
+        )}
       </div>
-    </>
+
+      {/* Status bar */}
+      <StatusBar
+        voiceState={voiceState}
+        aiStatus={isTyping ? 'Processing' : 'Ready'}
+        hasProvider={hasProvider}
+        isMobile={isMobile}
+      />
+
+      {/* Mobile bottom Activity Bar */}
+      {isMobile && (
+        <ActivityBar
+          activePanel={activePanel}
+          onPanelChange={handlePanelChange}
+          onCommandOpen={() => setCommandOpen(true)}
+          isMobile={true}
+        />
+      )}
+
+      <CommandPalette isOpen={commandOpen} onClose={() => setCommandOpen(false)} onCommand={handleCommand} />
+    </div>
   );
 }
 
