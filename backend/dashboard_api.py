@@ -117,6 +117,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/vibe/chat': lambda: self.api_vibe_chat(data),
             '/api/vibe/detect': lambda: self.api_vibe_detect(data),
             '/api/tts': lambda: self.api_tts(data),
+            '/api/voice/clone': lambda: self.api_voice_clone(data),
         }
         handler = routes.get(path)
         if handler:
@@ -623,6 +624,66 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             'model': model,
             'provider': provider,
         })
+
+    def api_voice_clone(self, data):
+        try:
+            import base64
+            import requests as req_lib
+            from dotenv import load_dotenv, set_key
+            from config_paths import get_dotenv_path
+
+            load_dotenv(get_dotenv_path(), override=True)
+            fish_key = os.getenv('FISH_AUDIO_API_KEY', '').strip()
+
+            if not fish_key:
+                self.send_json({'error': 'Fish Audio API key not set. Add it in Voice & Speech tab first.'}, 400)
+                return
+
+            name      = (data.get('name') or 'My Airis Voice').strip()
+            audio_b64 = (data.get('audio_b64') or '').strip()
+            ctype     = (data.get('content_type') or 'audio/mpeg').strip()
+
+            if not audio_b64:
+                self.send_json({'error': 'No audio data received'}, 400)
+                return
+
+            audio_bytes = base64.b64decode(audio_b64)
+            ext = ('wav' if 'wav' in ctype else
+                   'ogg' if 'ogg' in ctype else
+                   'webm' if 'webm' in ctype else
+                   'm4a' if 'm4a' in ctype or 'mp4' in ctype else 'mp3')
+
+            resp = req_lib.post(
+                'https://api.fish.audio/v1/model',
+                headers={'Authorization': f'Bearer {fish_key}'},
+                data={
+                    'title': name,
+                    'train_mode': 'fast',
+                    'enhance_audio_quality': 'true',
+                    'visibility': 'private',
+                },
+                files={'voices': (f'voice.{ext}', audio_bytes, ctype)},
+                timeout=120,
+            )
+            resp.raise_for_status()
+            result   = resp.json()
+            model_id = result.get('_id') or result.get('id', '')
+
+            if not model_id:
+                self.send_json({'error': 'Fish Audio did not return a model ID', 'raw': result}, 500)
+                return
+
+            env_path = get_dotenv_path()
+            set_key(env_path, 'FISH_AUDIO_REFERENCE_ID', model_id)
+            set_key(env_path, 'PREFERRED_VOICE_PROVIDER', 'fish')
+            os.environ['FISH_AUDIO_REFERENCE_ID'] = model_id
+            os.environ['PREFERRED_VOICE_PROVIDER'] = 'fish'
+
+            self.send_json({'success': True, 'model_id': model_id, 'title': name,
+                            'message': f'Voice clone "{name}" created — Airis will now speak in your voice.'})
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            self.send_json({'error': str(e)}, 500)
 
     def api_tts(self, data):
         try:

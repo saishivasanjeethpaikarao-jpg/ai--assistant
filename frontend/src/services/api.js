@@ -42,6 +42,7 @@ export const api = {
   // TTS / Voice Cloning
   ttsConfig: () => axiosInstance.get('/tts/config'),
   tts: (text, reference_id, model) => axiosInstance.post('/tts', { text, reference_id, model }, { responseType: 'arraybuffer' }),
+  cloneVoice: (name, audio_b64, content_type) => axiosInstance.post('/voice/clone', { name, audio_b64, content_type }),
   // Vibe Coder
   getVibeAgents: () => axiosInstance.get('/vibe/agents'),
   vibeCode: (prompt, agent_id = 'auto') => axiosInstance.post('/vibe/code', { prompt, agent_id }),

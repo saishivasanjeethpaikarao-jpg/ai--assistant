@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   FiCpu, FiMic, FiGlobe, FiRadio, FiUsers, FiFileText,
   FiBell, FiMonitor, FiKey, FiSave, FiRefreshCw,
@@ -315,58 +315,203 @@ const WakeWordTab = ({ s, set }) => (
   </div>
 );
 
-const CloneTab = ({ status }) => {
-  const [file, setFile] = useState(null);
-  const [name, setName] = useState('');
-  const [cloning, setCloning] = useState(false);
-  const [result, setResult] = useState('');
+const CloneTab = ({ status, currentRefId, onCloneSuccess }) => {
+  const [file, setFile]       = useState(null);
+  const [name, setName]       = useState('My Airis Voice');
+  const [drag, setDrag]       = useState(false);
+  const [phase, setPhase]     = useState('idle'); // idle | reading | uploading | done | error
+  const [modelId, setModelId] = useState('');
+  const [errMsg, setErrMsg]   = useState('');
+  const fileRef               = useRef(null);
+
+  const fmt = (bytes) => bytes < 1024*1024 ? `${(bytes/1024).toFixed(0)} KB` : `${(bytes/1024/1024).toFixed(1)} MB`;
+  const dur = (f) => {
+    if (!f) return '';
+    const url = URL.createObjectURL(f);
+    return new Promise(res => {
+      const a = new Audio(url);
+      a.onloadedmetadata = () => { URL.revokeObjectURL(url); res(`${Math.round(a.duration)}s`); };
+      a.onerror = () => { URL.revokeObjectURL(url); res(''); };
+    });
+  };
+  const [durStr, setDurStr] = useState('');
+  useEffect(() => {
+    if (file) dur(file).then(setDurStr);
+    else setDurStr('');
+  }, [file]);
+
+  const pickFile = (f) => {
+    if (!f || !f.type.startsWith('audio/')) return;
+    setFile(f); setPhase('idle'); setModelId(''); setErrMsg('');
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault(); setDrag(false);
+    pickFile(e.dataTransfer.files?.[0]);
+  };
 
   const handleClone = async () => {
-    if (!file || !name) return;
-    setCloning(true);
-    setResult('');
+    if (!file || !name.trim()) return;
+    setPhase('reading'); setErrMsg('');
     try {
-      setResult('Voice cloning requires Fish Audio API. Upload your audio sample to fish.audio/models to create a reference ID, then paste it in Voice & Speech → Reference ID.');
-    } finally {
-      setCloning(false);
+      const b64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = e => resolve(e.target.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      setPhase('uploading');
+      const res = await api.cloneVoice(name.trim(), b64, file.type);
+      setModelId(res.model_id);
+      setPhase('done');
+      onCloneSuccess?.(res.model_id);
+    } catch (e) {
+      setErrMsg(e?.response?.data?.error || e.message || 'Clone failed');
+      setPhase('error');
     }
   };
 
+  const phaseLabel = { idle: null, reading: 'Reading audio file…', uploading: 'Uploading to Fish Audio & training model…', done: null, error: null };
+  const canClone   = file && name.trim() && status.fish_audio_api_key_set && phase !== 'uploading' && phase !== 'reading';
+
   return (
     <div>
-      <SecHdr label="Voice Cloning" desc="Clone any voice using Fish Audio. Upload a 10–60 second audio sample." />
+      <SecHdr label="Voice Cloning" desc="Upload a 30–60 second voice recording — Airis will clone it and speak in your voice." />
 
       {!status.fish_audio_api_key_set && (
-        <div style={{ padding: '10px 14px', backgroundColor: '#1a0a0a', border: '1px solid #ef444422', borderRadius: '4px', marginBottom: '16px' }}>
-          <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: '600', marginBottom: '3px' }}>Fish Audio key required</div>
-          <div style={{ fontSize: '11px', color: '#4a4a4a' }}>
-            Go to the <strong>Voice & Speech</strong> tab and add your Fish Audio API key first.
+        <div style={{ padding: '10px 14px', backgroundColor: '#1a0808', border: '1px solid #ef444433', borderRadius: '5px', marginBottom: '16px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <FiAlertTriangle size={14} style={{ color: '#ef4444', marginTop: '1px', flexShrink: 0 }} />
+          <div>
+            <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: '600', marginBottom: '2px' }}>Fish Audio API key required</div>
+            <div style={{ fontSize: '11px', color: '#5a5a5a' }}>Go to <strong style={{ color: '#8b8b8b' }}>Voice & Speech</strong> tab → add your Fish Audio key, then come back here.</div>
           </div>
         </div>
       )}
 
-      <div style={{ padding: '12px', backgroundColor: '#0a0d1a', border: '1px solid #1e3a5a', borderRadius: '5px', marginBottom: '16px' }}>
-        <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '600', marginBottom: '8px' }}>How to clone your voice</div>
-        {['1. Go to fish.audio and sign up for free', '2. Upload a 30–60 second audio clip of yourself speaking', '3. Fish Audio creates a voice model and gives you a Reference ID', '4. Paste that Reference ID in Voice & Speech → Voice Reference ID', '5. Set Voice Personality to "Custom" to use your cloned voice'].map((s, i) => (
-          <div key={i} style={{ fontSize: '11px', color: '#5a5a5a', marginBottom: '4px' }}>{s}</div>
-        ))}
-        <a href="https://fish.audio" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '8px', fontSize: '12px', color: '#3b82f6', textDecoration: 'none' }}>
-          Open Fish Audio <FiExternalLink size={11} />
-        </a>
-      </div>
+      {currentRefId && phase !== 'done' && (
+        <div style={{ padding: '10px 14px', backgroundColor: '#0a1a0a', border: '1px solid #10b98133', borderRadius: '5px', marginBottom: '16px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <FiCheckCircle size={14} style={{ color: '#10b981', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '600' }}>Voice clone active</div>
+            <div style={{ fontSize: '11px', color: '#4a4a4a', fontFamily: 'Geist Mono, monospace', marginTop: '2px' }}>{currentRefId}</div>
+          </div>
+          <div style={{ fontSize: '10px', color: '#10b981', backgroundColor: '#0a2a1a', padding: '2px 8px', borderRadius: '10px', border: '1px solid #10b98133' }}>LIVE</div>
+        </div>
+      )}
+
+      {phase === 'done' && (
+        <div style={{ padding: '14px 16px', backgroundColor: '#0a1a0a', border: '1px solid #10b981', borderRadius: '8px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <FiCheckCircle size={16} style={{ color: '#10b981' }} />
+            <span style={{ fontSize: '13px', color: '#10b981', fontWeight: '700' }}>Voice clone created successfully!</span>
+          </div>
+          <div style={{ fontSize: '11px', color: '#4a4a4a', marginBottom: '8px' }}>Airis will now speak in your cloned voice for all responses.</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '11px', color: '#5a5a5a' }}>Model ID:</div>
+            <code style={{ fontSize: '11px', color: '#3b82f6', fontFamily: 'Geist Mono, monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{modelId}</code>
+          </div>
+          <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+            <div style={{ fontSize: '11px', color: '#10b981', backgroundColor: '#0a2a1a', padding: '3px 10px', borderRadius: '10px', border: '1px solid #10b98133' }}>Voice active</div>
+            <div style={{ fontSize: '11px', color: '#3b82f6', backgroundColor: '#0a0d1a', padding: '3px 10px', borderRadius: '10px', border: '1px solid #3b82f633' }}>Fish Audio</div>
+          </div>
+        </div>
+      )}
+
+      {phase === 'error' && (
+        <div style={{ padding: '10px 14px', backgroundColor: '#1a0808', border: '1px solid #ef444433', borderRadius: '5px', marginBottom: '16px' }}>
+          <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: '600', marginBottom: '3px' }}>Clone failed</div>
+          <div style={{ fontSize: '11px', color: '#5a5a5a', fontFamily: 'Geist Mono, monospace' }}>{errMsg}</div>
+        </div>
+      )}
 
       <Field label="Voice Model Name">
         <TextInput value={name} onChange={setName} placeholder="My Airis Voice" />
       </Field>
-      <Field label="Audio Sample" hint="WAV or MP3 — 10 to 60 seconds, clear speech, minimal background noise">
-        <input type="file" accept="audio/*" onChange={e => setFile(e.target.files?.[0])}
-          style={{ fontSize: '12px', color: '#8b8b8b', width: '100%' }} />
-      </Field>
-      <button onClick={handleClone} disabled={cloning || !name || !file}
-        style={{ padding: '8px 16px', backgroundColor: '#3b82f6', border: 'none', borderRadius: '4px', color: '#fff', fontSize: '12px', cursor: 'pointer', opacity: (!name || !file) ? 0.5 : 1 }}>
-        {cloning ? 'Processing...' : 'Clone Voice'}
+
+      <div style={{ marginBottom: '14px' }}>
+        <label style={{ fontSize: '12px', color: '#8b8b8b', fontWeight: '500', display: 'block', marginBottom: '6px' }}>
+          Audio Sample
+        </label>
+        <div
+          onDragOver={e => { e.preventDefault(); setDrag(true); }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={handleDrop}
+          onClick={() => fileRef.current?.click()}
+          style={{
+            border: `2px dashed ${drag ? '#3b82f6' : file ? '#10b981' : '#222'}`,
+            borderRadius: '8px', padding: '24px 16px', textAlign: 'center',
+            backgroundColor: drag ? '#0a0d1a' : file ? '#0a1a0a' : '#080808',
+            cursor: 'pointer', transition: 'all 0.2s',
+          }}
+        >
+          {file ? (
+            <div>
+              <div style={{ fontSize: '13px', color: '#10b981', fontWeight: '600', marginBottom: '4px' }}>
+                {file.name}
+              </div>
+              <div style={{ fontSize: '11px', color: '#5a5a5a' }}>
+                {fmt(file.size)}{durStr ? ` · ${durStr}` : ''} · {file.type.replace('audio/', '').toUpperCase()}
+              </div>
+              <div style={{ fontSize: '11px', color: '#3b82f6', marginTop: '8px' }}>Click to change file</div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: '28px', marginBottom: '8px' }}>🎙️</div>
+              <div style={{ fontSize: '13px', color: '#5a5a5a', marginBottom: '4px' }}>Drop your voice recording here</div>
+              <div style={{ fontSize: '11px', color: '#3a3a3a' }}>or click to browse — MP3, WAV, OGG, M4A</div>
+              <div style={{ marginTop: '10px', fontSize: '11px', color: '#2a2a2a' }}>Recommended: 30–60 seconds, clear speech, quiet room</div>
+            </div>
+          )}
+        </div>
+        <input ref={fileRef} type="file" accept="audio/*" style={{ display: 'none' }}
+          onChange={e => pickFile(e.target.files?.[0])} />
+      </div>
+
+      {file && (
+        <div style={{ marginBottom: '14px' }}>
+          <audio controls src={URL.createObjectURL(file)}
+            style={{ width: '100%', height: '36px', accentColor: '#3b82f6' }} />
+        </div>
+      )}
+
+      {phaseLabel[phase] && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontSize: '12px', color: '#3b82f6' }}>
+          <FiRefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
+          {phaseLabel[phase]}
+        </div>
+      )}
+
+      <button
+        onClick={handleClone}
+        disabled={!canClone}
+        style={{
+          width: '100%', padding: '10px', borderRadius: '6px', border: 'none',
+          backgroundColor: canClone ? '#3b82f6' : '#1a1a1a',
+          color: canClone ? '#fff' : '#3a3a3a',
+          fontSize: '13px', fontWeight: '600', cursor: canClone ? 'pointer' : 'not-allowed',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+          transition: 'all 0.2s',
+        }}
+      >
+        {phase === 'uploading' || phase === 'reading'
+          ? <><FiRefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> Creating voice clone…</>
+          : '🎭 Create Voice Clone'}
       </button>
-      {result && <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#111', borderRadius: '4px', fontSize: '12px', color: '#8b8b8b', lineHeight: '1.6' }}>{result}</div>}
+
+      <div style={{ marginTop: '20px', padding: '12px', backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a', borderRadius: '5px' }}>
+        <div style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600', marginBottom: '6px' }}>Tips for best results</div>
+        {[
+          'Record 30–60 seconds of natural, continuous speech',
+          'Speak clearly in a quiet room with no background music',
+          'Use the same microphone you normally speak into',
+          'Read aloud from a book or article — varied sentence lengths work best',
+          'Avoid long pauses, coughing, or filler sounds',
+        ].map((t, i) => (
+          <div key={i} style={{ fontSize: '11px', color: '#3a3a3a', marginBottom: '3px', paddingLeft: '10px', position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 0, color: '#3b82f6' }}>·</span>{t}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -593,7 +738,7 @@ const Settings = () => {
             {tab === 'voice'     && <VoiceTab s={s} set={set} status={status} />}
             {tab === 'language'  && <LanguageTab s={s} set={set} prefs={prefs} setPref={setPref} />}
             {tab === 'wakeword'  && <WakeWordTab s={s} set={set} />}
-            {tab === 'clone'     && <CloneTab status={status} />}
+            {tab === 'clone'     && <CloneTab status={status} currentRefId={s.fish_audio_reference_id} onCloneSuccess={id => set('fish_audio_reference_id', id)} />}
             {tab === 'prompt'    && <PromptTab prompt={systemPrompt} setPrompt={setSystemPrompt} saving={savingPrompt} onSave={handleSavePrompt} />}
             {tab === 'notifs'    && <NotifsTab prefs={prefs} setPref={setPref} />}
             {tab === 'appearance'&& <AppearanceTab prefs={prefs} setPref={setPref} />}
