@@ -36,6 +36,10 @@ export const api = {
   getCapabilities: () => axiosInstance.get('/capabilities'),
   // Analytics
   getAnalytics: () => axiosInstance.get('/analytics'),
+  // Vibe Coder
+  getVibeAgents: () => axiosInstance.get('/vibe/agents'),
+  vibeCode: (prompt, agent_id = 'auto') => axiosInstance.post('/vibe/code', { prompt, agent_id }),
+  vibeRun: (code, language = 'python') => axiosInstance.post('/vibe/run', { code, language }),
 };
 
 export default api;

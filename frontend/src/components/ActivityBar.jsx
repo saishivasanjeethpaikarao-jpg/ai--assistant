@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   FiMessageSquare, FiDatabase, FiTrendingUp, FiBell,
-  FiCommand, FiSettings, FiZap, FiBarChart2, FiCpu,
+  FiCommand, FiSettings, FiZap, FiBarChart2, FiCpu, FiCode,
 } from 'react-icons/fi';
 
 const ITEMS = {
@@ -12,11 +12,12 @@ const ITEMS = {
   skills:     { icon: FiZap,           label: 'Skills & Capabilities' },
   analytics:  { icon: FiBarChart2,     label: 'Analytics' },
   brain:      { icon: FiCpu,           label: '12-Layer AI Brain' },
+  vibe:       { icon: FiCode,          label: 'Vibe Coder — Build with AI agents' },
   command:    { icon: FiCommand,       label: 'Command Palette (Ctrl+K)' },
   settings:   { icon: FiSettings,      label: 'Settings' },
 };
 
-const TOP = ['chat', 'memory', 'trading', 'reminders', 'skills', 'analytics', 'brain'];
+const TOP = ['chat', 'memory', 'trading', 'reminders', 'skills', 'analytics', 'brain', 'vibe'];
 const BOTTOM = ['command', 'settings'];
 
 const IconBtn = ({ id, active, onClick }) => {

@@ -86,6 +86,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/system/prompt': self.api_get_system_prompt,
             '/api/capabilities': self.api_capabilities,
             '/api/analytics': self.api_analytics,
+            '/api/vibe/agents': self.api_vibe_agents,
         }
         handler = routes.get(path)
         if handler:
@@ -108,6 +109,8 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/settings': lambda: self.api_save_settings(data),
             '/api/system/prompt': lambda: self.api_save_system_prompt(data),
             '/api/reminders': lambda: self.api_add_reminder(data),
+            '/api/vibe/code': lambda: self.api_vibe_code(data),
+            '/api/vibe/run': lambda: self.api_vibe_run(data),
         }
         handler = routes.get(path)
         if handler:
@@ -500,6 +503,42 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
                 return
             result = add_reminder(text=text, when_text=when, user_id='guest')
             self.send_json({'success': True, 'message': result})
+        except Exception as e:
+            self.send_json({'error': str(e)}, 500)
+
+    # ── Vibe Coder ───────────────────────────────────────────────────────────
+
+    def api_vibe_agents(self):
+        try:
+            from vibe_coder import get_agents_list
+            self.send_json({'success': True, 'agents': get_agents_list()})
+        except Exception as e:
+            self.send_json({'error': str(e)}, 500)
+
+    def api_vibe_code(self, data):
+        try:
+            from vibe_coder import generate_code
+            prompt = (data.get('prompt') or '').strip()
+            agent_id = (data.get('agent_id') or 'auto').strip()
+            if not prompt:
+                self.send_json({'error': 'No prompt provided'}, 400)
+                return
+            result = generate_code(prompt, agent_id)
+            self.send_json({'success': True, **result})
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            self.send_json({'error': str(e)}, 500)
+
+    def api_vibe_run(self, data):
+        try:
+            from vibe_coder import run_code
+            code = (data.get('code') or '').strip()
+            language = (data.get('language') or 'python').strip()
+            if not code:
+                self.send_json({'error': 'No code provided'}, 400)
+                return
+            result = run_code(code, language)
+            self.send_json({'success': True, **result})
         except Exception as e:
             self.send_json({'error': str(e)}, 500)
 

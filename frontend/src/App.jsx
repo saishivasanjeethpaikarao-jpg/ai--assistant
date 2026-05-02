@@ -6,10 +6,12 @@ import CommandPalette from './components/CommandPalette';
 import AgentTaskView from './components/AgentTaskView';
 import StatusBar from './components/StatusBar';
 import Settings from './components/Settings';
+import VibeCoder from './components/VibeCoder';
 import useStore from './store/useStore';
 import { api } from './services/api';
 
 const SIDEBAR_PANELS = ['chat', 'memory', 'trading', 'reminders', 'skills', 'analytics', 'brain'];
+const VIBE_TRIGGERS = ['build me', 'build a', 'vibe code', 'vibe coder', 'create a component', 'write a script', 'make me a', 'code me a'];
 
 function App() {
   const [activePanel, setActivePanel] = useState('chat');
@@ -17,6 +19,7 @@ function App() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [voiceState, setVoiceState] = useState('idle');
   const [hasProvider, setHasProvider] = useState(null);
+  const [vibeInitialPrompt, setVibeInitialPrompt] = useState('');
 
   const { messages, isTyping, tasks, addMessage, setTyping, addTask, updateTask } = useStore();
 
@@ -36,8 +39,8 @@ function App() {
   }, []);
 
   const handlePanelChange = (panel) => {
-    if (panel === 'settings') {
-      setActivePanel('settings');
+    if (panel === 'settings' || panel === 'vibe') {
+      setActivePanel(panel);
       setSidebarOpen(false);
       return;
     }
@@ -50,6 +53,14 @@ function App() {
   };
 
   const handleSendMessage = async (text) => {
+    const lc = text.toLowerCase();
+    const isVibeTrigger = VIBE_TRIGGERS.some(t => lc.startsWith(t) || lc.includes(t));
+    if (isVibeTrigger) {
+      setVibeInitialPrompt(text);
+      setActivePanel('vibe');
+      setSidebarOpen(false);
+      return;
+    }
     addMessage({ role: 'user', content: text });
     setTyping(true);
     try {
@@ -100,7 +111,8 @@ function App() {
   };
 
   const isSettings = activePanel === 'settings';
-  const showSidebar = !isSettings && sidebarOpen && SIDEBAR_PANELS.includes(activePanel);
+  const isVibe = activePanel === 'vibe';
+  const showSidebar = !isSettings && !isVibe && sidebarOpen && SIDEBAR_PANELS.includes(activePanel);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#0a0a0a', color: '#e8e8e8', overflow: 'hidden' }}>
@@ -114,6 +126,8 @@ function App() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
           {isSettings ? (
             <Settings />
+          ) : isVibe ? (
+            <VibeCoder initialPrompt={vibeInitialPrompt} />
           ) : (
             <>
               <AgentTaskView tasks={tasks} />
