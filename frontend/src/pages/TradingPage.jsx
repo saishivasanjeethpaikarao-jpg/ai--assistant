@@ -740,6 +740,17 @@ export default function TradingPage() {
   const [quoteLoad, setQuoteLoad] = useState(false);
   const [portfolio, setPortfolio] = useState(() => loadLS(LS_PORTFOLIO, []));
   const [watchlist, setWatchlist] = useState(() => loadLS(LS_WATCHLIST, []));
+
+  useEffect(() => {
+    const onWL = (e) => setWatchlist(e.detail.watchlist || []);
+    const onPF = (e) => setPortfolio(e.detail.portfolio || []);
+    window.addEventListener('airis_watchlist_updated', onWL);
+    window.addEventListener('airis_portfolio_updated', onPF);
+    return () => {
+      window.removeEventListener('airis_watchlist_updated', onWL);
+      window.removeEventListener('airis_portfolio_updated', onPF);
+    };
+  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [w, setW] = useState(window.innerWidth);
 

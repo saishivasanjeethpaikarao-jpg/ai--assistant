@@ -17,6 +17,7 @@ import useStore             from './store/useStore';
 import { api }              from './services/api';
 import { useBreakpoint }    from './hooks/useBreakpoint';
 import { useAuth }          from './contexts/AuthContext';
+import { parseActions, executeActions, getAppState } from './utils/actionParser';
 
 const SIDEBAR_PANELS = ['chat', 'memory', 'trading', 'reminders', 'skills', 'analytics', 'brain'];
 const VIBE_TRIGGERS  = ['build me', 'build a', 'vibe code', 'vibe coder', 'create a component', 'write a script', 'make me a', 'code me a'];
@@ -108,10 +109,20 @@ function ProtectedApp() {
     addMessage({ role: 'user', content: text });
     setTyping(true);
     try {
-      const response = await api.chat(text);
-      const content  = typeof response === 'string' ? response
+      const appState = getAppState(activePanel, window.location.pathname);
+      const response = await api.chat(text, appState);
+      const rawContent = typeof response === 'string' ? response
         : response?.reply || response?.message || response?.output || 'Done.';
-      addMessage({ role: 'assistant', content, mode: response?.mode });
+
+      const { cleanText, actions } = parseActions(rawContent);
+      addMessage({ role: 'assistant', content: cleanText || rawContent, mode: response?.mode });
+
+      if (actions.length > 0) {
+        setTimeout(() => {
+          executeActions(actions, { navigate, setActivePanel, setSidebarOpen, setVibeInitialPrompt });
+        }, 350);
+      }
+
       if (hasProvider === false) {
         api.getProviderStatus().then(r => setHasProvider(r.has_provider)).catch(() => {});
       }

@@ -15,7 +15,7 @@ axiosInstance.interceptors.response.use(
 
 export const api = {
   // Core
-  chat: (text) => axiosInstance.post('/request', { message: text }),
+  chat: (text, appState = null) => axiosInstance.post('/request', { message: text, ...(appState ? { app_state: appState } : {}) }),
   run: (cmd) => axiosInstance.post('/request', { message: cmd }),
   health: () => axiosInstance.get('/health'),
   // History

@@ -504,7 +504,9 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
                             messages_payload.append({"role": "user", "content": h['input']})
                         if h.get('reply'):
                             messages_payload.append({"role": "assistant", "content": h['reply']})
-                    messages_payload.append({"role": "user", "content": user_input})
+                    app_state = (data.get('app_state') or '').strip()
+                    full_user_content = f"{app_state}\n\n{user_input}" if app_state else user_input
+                    messages_payload.append({"role": "user", "content": full_user_content})
 
                     import requests as req_lib
                     try:
