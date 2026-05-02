@@ -7,7 +7,7 @@ export default function LoginPage() {
   const [params]             = useSearchParams();
   const isSignup             = params.get('signup') === '1';
 
-  const { user, loading: authLoading, error, clearError, signInGoogle, signInGithub, signInEmail, signUpEmail, resetPassword } = useAuth();
+  const { user, loading: authLoading, error, clearError, signInGoogle, signInGithub, signInEmail, signUpEmail, resetPassword, signInGuest } = useAuth();
 
   const [mode, setMode]           = useState(isSignup ? 'signup' : 'signin');
   const [email, setEmail]         = useState('');
@@ -189,6 +189,24 @@ export default function LoginPage() {
               ← Back to sign in
             </button>
           )}
+
+          {/* Guest mode */}
+          {mode !== 'reset' && (
+            <div style={{ marginTop: 4 }}>
+              <div style={{ height: 1, background: 'rgba(0,0,0,0.07)', margin: '2px 0 12px' }} />
+              <button
+                onClick={handle(signInGuest, 'guest')}
+                disabled={!!busy}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', padding: '10px 16px', fontSize: 13.5, fontWeight: 500, color: '#555', background: 'transparent', border: '1px dashed rgba(0,0,0,0.15)', borderRadius: 12, cursor: busy ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'background 0.15s, border-color 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.25)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.15)'; }}
+              >
+                {busy === 'guest' ? <Spinner dark /> : <GuestIcon />}
+                Continue as Guest
+              </button>
+              <p style={{ fontSize: 11.5, color: '#bbb', marginTop: 8 }}>No account needed · Limited features</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -227,8 +245,17 @@ function Divider() {
   );
 }
 
-function Spinner() {
-  return <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />;
+function Spinner({ dark }) {
+  return <span style={{ width: 14, height: 14, border: `2px solid ${dark ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.3)'}`, borderTopColor: dark ? '#555' : '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />;
+}
+
+function GuestIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#777" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  );
 }
 
 function GoogleIcon() {

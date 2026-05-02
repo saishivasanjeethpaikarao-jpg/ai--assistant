@@ -6,6 +6,7 @@ import {
   getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signInAnonymously,
   signOut,
   sendPasswordResetEmail,
 } from 'firebase/auth';
@@ -102,12 +103,22 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const signInGuest = async () => {
+    setError('');
+    try { await signInAnonymously(auth); }
+    catch (e) {
+      console.error('[Guest sign-in error]', e.code, e.message);
+      setError(friendlyError(e.code, e.message));
+      throw e;
+    }
+  };
+
   const logout = () => signOut(auth);
 
   return (
     <AuthContext.Provider value={{
       user, loading, error, clearError,
-      signInGoogle, signInGithub, signInEmail, signUpEmail, resetPassword, logout,
+      signInGoogle, signInGithub, signInEmail, signUpEmail, resetPassword, signInGuest, logout,
     }}>
       {children}
     </AuthContext.Provider>

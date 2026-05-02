@@ -19,9 +19,36 @@ import { useAuth }          from './contexts/AuthContext';
 const SIDEBAR_PANELS = ['chat', 'memory', 'trading', 'reminders', 'skills', 'analytics', 'brain'];
 const VIBE_TRIGGERS  = ['build me', 'build a', 'vibe code', 'vibe coder', 'create a component', 'write a script', 'make me a', 'code me a'];
 
+function GuestBanner() {
+  const navigate = useNavigate();
+  return (
+    <div style={{ background: 'linear-gradient(90deg, rgba(67,125,253,0.12), rgba(253,91,93,0.08))', borderBottom: '1px solid rgba(67,125,253,0.15)', padding: '7px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0, fontFamily: "'DM Sans', sans-serif" }}>
+      <span style={{ fontSize: 12.5, color: '#555', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 14 }}>👤</span>
+        You're in <strong>Guest Mode</strong> — chats won't be saved
+      </span>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={() => navigate('/login?signup=1')}
+          style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: '#437DFD', border: 'none', borderRadius: 8, padding: '5px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          Sign up free
+        </button>
+        <button
+          onClick={() => navigate('/login')}
+          style={{ fontSize: 12, fontWeight: 500, color: '#437DFD', background: 'rgba(67,125,253,0.1)', border: 'none', borderRadius: 8, padding: '5px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          Sign in
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ProtectedApp() {
   const { user, loading } = useAuth();
   const navigate          = useNavigate();
+  const isGuest           = user?.isAnonymous ?? false;
 
   useEffect(() => {
     if (!loading && !user) navigate('/login');
@@ -140,6 +167,7 @@ function ProtectedApp() {
       height: '100dvh', overflow: 'hidden',
       background: '#f0ecff',
     }}>
+      {isGuest && <GuestBanner />}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {!isMobile && (
           <ActivityBar
