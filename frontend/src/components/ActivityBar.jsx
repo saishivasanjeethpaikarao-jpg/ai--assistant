@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   FiMessageSquare, FiDatabase, FiTrendingUp, FiBell,
-  FiCommand, FiSettings, FiZap, FiBarChart2, FiCpu, FiCode,
+  FiCommand, FiSettings, FiZap, FiBarChart2, FiCpu, FiCode, FiEdit3,
 } from 'react-icons/fi';
 
 const ITEMS = {
@@ -15,13 +15,14 @@ const ITEMS = {
   analytics: { icon: FiBarChart2,     label: 'Analytics', color: '#2C76FF' },
   brain:     { icon: FiCpu,           label: 'Brain',     color: '#BE185D' },
   vibe:      { icon: FiCode,          label: 'Code',      color: '#437DFD' },
+  canvas:    { icon: FiEdit3,         label: 'Canvas',    color: '#FF8C42' },
   command:   { icon: FiCommand,       label: 'Command',   color: '#888' },
   settings:  { icon: FiSettings,      label: 'Settings',  color: '#888' },
 };
 
-const TOP    = ['chat','memory','trading','reminders','skills','analytics','brain','vibe'];
+const TOP    = ['chat','memory','trading','reminders','skills','analytics','brain','vibe','canvas'];
 const BOTTOM = ['command','settings'];
-const MOBILE_NAV = ['chat','trading','vibe','brain','settings'];
+const MOBILE_NAV = ['chat','trading','vibe','canvas','settings'];
 
 function getInitials(user) {
   if (!user) return '?';

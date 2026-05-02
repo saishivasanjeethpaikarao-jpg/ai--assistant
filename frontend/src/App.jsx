@@ -8,6 +8,7 @@ import AgentTaskView        from './components/AgentTaskView';
 import StatusBar            from './components/StatusBar';
 import Settings             from './components/Settings';
 import VibeCoder            from './components/VibeCoder';
+import CanvasBoard          from './components/CanvasBoard';
 import ConversationHistory  from './components/ConversationHistory';
 import LandingPage          from './pages/LandingPage';
 import LoginPage            from './pages/LoginPage';
@@ -18,6 +19,7 @@ import { useAuth }          from './contexts/AuthContext';
 
 const SIDEBAR_PANELS = ['chat', 'memory', 'trading', 'reminders', 'skills', 'analytics', 'brain'];
 const VIBE_TRIGGERS  = ['build me', 'build a', 'vibe code', 'vibe coder', 'create a component', 'write a script', 'make me a', 'code me a'];
+const FULL_PANELS    = ['settings', 'vibe', 'canvas'];
 
 function GuestBanner() {
   const navigate = useNavigate();
@@ -83,7 +85,7 @@ function ProtectedApp() {
   }, [isMobile]);
 
   const handlePanelChange = (panel) => {
-    if (panel === 'settings' || panel === 'vibe') {
+    if (FULL_PANELS.includes(panel)) {
       setActivePanel(panel); setSidebarOpen(false); return;
     }
     if (isMobile) {
@@ -158,8 +160,10 @@ function ProtectedApp() {
 
   const isSettings = activePanel === 'settings';
   const isVibe     = activePanel === 'vibe';
-  const showSidebar = !isSettings && !isVibe && sidebarOpen && SIDEBAR_PANELS.includes(activePanel);
-  const showHistory = !isSettings && !isVibe && isDesktop;
+  const isCanvas   = activePanel === 'canvas';
+  const isFullPanel = FULL_PANELS.includes(activePanel);
+  const showSidebar = !isFullPanel && sidebarOpen && SIDEBAR_PANELS.includes(activePanel);
+  const showHistory = !isFullPanel && isDesktop;
 
   return (
     <div style={{
@@ -186,6 +190,8 @@ function ProtectedApp() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
           {isSettings ? (
             <Settings isMobile={isMobile} />
+          ) : isCanvas ? (
+            <CanvasBoard isMobile={isMobile} />
           ) : isVibe ? (
             <VibeCoder initialPrompt={vibeInitialPrompt} isMobile={isMobile} isTablet={isTablet} />
           ) : (
