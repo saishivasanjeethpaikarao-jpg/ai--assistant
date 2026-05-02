@@ -8,7 +8,7 @@ import os
 import sys
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
@@ -17,6 +17,171 @@ from system_coordinator import process_user_request, get_system_status, show_lea
 
 request_history = []
 MAX_HISTORY = 50
+
+# ── Market data cache ────────────────────────────────────────────────────────
+_market_cache = {}
+CACHE_TTL = 60  # seconds
+
+def _cached(key, fn):
+    now = datetime.now().timestamp()
+    if key in _market_cache:
+        ts, val = _market_cache[key]
+        if now - ts < CACHE_TTL:
+            return val
+    val = fn()
+    _market_cache[key] = (now, val)
+    return val
+
+INDICES = [
+    ('^NSEI',      'NIFTY 50'),
+    ('^BSESN',     'SENSEX'),
+    ('^NSEBANK',   'BANK NIFTY'),
+    ('^CNXIT',     'NIFTY IT'),
+    ('^NSEMDCP50', 'MIDCAP 50'),
+    ('^CNXFMCG',   'NIFTY FMCG'),
+    ('^CNXAUTO',   'NIFTY AUTO'),
+    ('^CNXPHARMA', 'NIFTY PHARMA'),
+]
+
+NSE_STOCKS = {
+    'RELIANCE':    ('Reliance Industries Ltd',          'RELIANCE.NS'),
+    'TCS':         ('Tata Consultancy Services',         'TCS.NS'),
+    'HDFCBANK':    ('HDFC Bank',                         'HDFCBANK.NS'),
+    'INFY':        ('Infosys Ltd',                       'INFY.NS'),
+    'ICICIBANK':   ('ICICI Bank',                        'ICICIBANK.NS'),
+    'HINDUNILVR':  ('Hindustan Unilever',                'HINDUNILVR.NS'),
+    'KOTAKBANK':   ('Kotak Mahindra Bank',               'KOTAKBANK.NS'),
+    'BHARTIARTL':  ('Bharti Airtel',                     'BHARTIARTL.NS'),
+    'LT':          ('Larsen & Toubro',                   'LT.NS'),
+    'AXISBANK':    ('Axis Bank',                         'AXISBANK.NS'),
+    'WIPRO':       ('Wipro Ltd',                         'WIPRO.NS'),
+    'MARUTI':      ('Maruti Suzuki India',               'MARUTI.NS'),
+    'ASIANPAINT':  ('Asian Paints',                      'ASIANPAINT.NS'),
+    'BAJFINANCE':  ('Bajaj Finance',                     'BAJFINANCE.NS'),
+    'TITAN':       ('Titan Company',                     'TITAN.NS'),
+    'ULTRACEMCO':  ('UltraTech Cement',                  'ULTRACEMCO.NS'),
+    'SBIN':        ('State Bank of India',               'SBIN.NS'),
+    'ADANIENT':    ('Adani Enterprises',                 'ADANIENT.NS'),
+    'ADANIPORTS':  ('Adani Ports & SEZ',                 'ADANIPORTS.NS'),
+    'DRREDDY':     ("Dr. Reddy's Laboratories",          'DRREDDY.NS'),
+    'SUNPHARMA':   ('Sun Pharmaceutical Industries',     'SUNPHARMA.NS'),
+    'POWERGRID':   ('Power Grid Corp of India',          'POWERGRID.NS'),
+    'NTPC':        ('NTPC Limited',                      'NTPC.NS'),
+    'ONGC':        ('Oil & Natural Gas Corp',            'ONGC.NS'),
+    'COALINDIA':   ('Coal India',                        'COALINDIA.NS'),
+    'MM':          ('Mahindra & Mahindra',               'M&M.NS'),
+    'BAJAJFINSV':  ('Bajaj Finserv',                     'BAJAJFINSV.NS'),
+    'GRASIM':      ('Grasim Industries',                 'GRASIM.NS'),
+    'HEROMOTOCO':  ('Hero MotoCorp',                     'HEROMOTOCO.NS'),
+    'ITC':         ('ITC Limited',                       'ITC.NS'),
+    'CIPLA':       ('Cipla Ltd',                         'CIPLA.NS'),
+    'DIVISLAB':    ("Divi's Laboratories",               'DIVISLAB.NS'),
+    'TECHM':       ('Tech Mahindra',                     'TECHM.NS'),
+    'TATAMOTORS':  ('Tata Motors',                       'TATAMOTORS.NS'),
+    'TATASTEEL':   ('Tata Steel',                        'TATASTEEL.NS'),
+    'HCLTECH':     ('HCL Technologies',                  'HCLTECH.NS'),
+    'INDUSINDBK':  ('IndusInd Bank',                     'INDUSINDBK.NS'),
+    'JSWSTEEL':    ('JSW Steel',                         'JSWSTEEL.NS'),
+    'EICHERMOT':   ('Eicher Motors',                     'EICHERMOT.NS'),
+    'BPCL':        ('Bharat Petroleum Corp',             'BPCL.NS'),
+    'TATACONSUM':  ('Tata Consumer Products',            'TATACONSUM.NS'),
+    'APOLLOHOSP':  ('Apollo Hospitals Enterprise',       'APOLLOHOSP.NS'),
+    'BRITANNIA':   ('Britannia Industries',              'BRITANNIA.NS'),
+    'PIDILITIND':  ('Pidilite Industries',               'PIDILITIND.NS'),
+    'SBILIFE':     ('SBI Life Insurance',                'SBILIFE.NS'),
+    'HDFCLIFE':    ('HDFC Life Insurance',               'HDFCLIFE.NS'),
+    'ICICIPRULI':  ('ICICI Prudential Life Insurance',   'ICICIPRULI.NS'),
+    'ADANIGREEN':  ('Adani Green Energy',                'ADANIGREEN.NS'),
+    'VEDL':        ('Vedanta Ltd',                       'VEDL.NS'),
+    'ZOMATO':      ('Zomato Ltd',                        'ZOMATO.NS'),
+    'PAYTM':       ('One97 Communications (Paytm)',      'PAYTM.NS'),
+    'NYKAA':       ('FSN E-Commerce (Nykaa)',            'NYKAA.NS'),
+    'POLICYBZR':   ('PB Fintech (PolicyBazaar)',         'POLICYBZR.NS'),
+    'TRENT':       ('Trent Ltd',                         'TRENT.NS'),
+    'DMART':       ('Avenue Supermarts (DMart)',         'DMART.NS'),
+    'NESTLEIND':   ('Nestle India',                      'NESTLEIND.NS'),
+    'GODREJCP':    ('Godrej Consumer Products',          'GODREJCP.NS'),
+    'HAVELLS':     ('Havells India',                     'HAVELLS.NS'),
+    'DABUR':       ('Dabur India',                       'DABUR.NS'),
+    'MARICO':      ('Marico Ltd',                        'MARICO.NS'),
+    'COLPAL':      ('Colgate-Palmolive India',           'COLPAL.NS'),
+    'BIOCON':      ('Biocon Ltd',                        'BIOCON.NS'),
+    'LUPIN':       ('Lupin Ltd',                         'LUPIN.NS'),
+    'AUROPHARMA':  ('Aurobindo Pharma',                  'AUROPHARMA.NS'),
+    'IOCL':        ('Indian Oil Corporation',            'IOC.NS'),
+    'HINDALCO':    ('Hindalco Industries',               'HINDALCO.NS'),
+    'BAJAJ-AUTO':  ('Bajaj Auto',                        'BAJAJ-AUTO.NS'),
+    'DLF':         ('DLF Ltd',                           'DLF.NS'),
+    'HDFCAMC':     ('HDFC Asset Management',             'HDFCAMC.NS'),
+    'MUTHOOTFIN':  ('Muthoot Finance',                   'MUTHOOTFIN.NS'),
+    'IRCTC':       ('Indian Railway Catering (IRCTC)',   'IRCTC.NS'),
+    'PFC':         ('Power Finance Corporation',         'PFC.NS'),
+    'RECLTD':      ('REC Limited',                       'RECLTD.NS'),
+    'HAL':         ('Hindustan Aeronautics (HAL)',        'HAL.NS'),
+    'BHEL':        ('Bharat Heavy Electricals',          'BHEL.NS'),
+    'BEL':         ('Bharat Electronics',                'BEL.NS'),
+    'TATAPOWER':   ('Tata Power Company',                'TATAPOWER.NS'),
+    'CANBK':       ('Canara Bank',                       'CANBK.NS'),
+    'BANKBARODA':  ('Bank of Baroda',                    'BANKBARODA.NS'),
+    'PNB':         ('Punjab National Bank',              'PNB.NS'),
+    'UNIONBANK':   ('Union Bank of India',               'UNIONBANK.NS'),
+    'IDEA':        ('Vodafone Idea',                     'IDEA.NS'),
+    'YESBANK':     ('Yes Bank',                          'YESBANK.NS'),
+}
+
+NIFTY50_MOVERS = [
+    'RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS',
+    'KOTAKBANK.NS','HINDUNILVR.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS',
+    'WIPRO.NS','MARUTI.NS','BAJFINANCE.NS','TITAN.NS','SBIN.NS',
+    'ADANIENT.NS','SUNPHARMA.NS','NTPC.NS','ONGC.NS','HCLTECH.NS',
+    'TATAMOTORS.NS','TATASTEEL.NS','JSWSTEEL.NS','TECHM.NS','CIPLA.NS',
+    'DRREDDY.NS','POWERGRID.NS','COALINDIA.NS','DIVISLAB.NS','ULTRACEMCO.NS',
+]
+
+def _yf_quote(symbol):
+    try:
+        import yfinance as yf
+        t = yf.Ticker(symbol)
+        fi = t.fast_info
+        price = float(fi.last_price or 0)
+        prev  = float(fi.previous_close or price)
+        change = price - prev
+        change_pct = (change / prev * 100) if prev else 0
+        return {
+            'symbol': symbol,
+            'price': round(price, 2),
+            'prev_close': round(prev, 2),
+            'change': round(change, 2),
+            'change_pct': round(change_pct, 2),
+        }
+    except Exception as e:
+        return {'symbol': symbol, 'price': 0, 'change': 0, 'change_pct': 0, 'error': str(e)}
+
+def _yf_detail(symbol):
+    try:
+        import yfinance as yf
+        t = yf.Ticker(symbol)
+        fi = t.fast_info
+        price = float(fi.last_price or 0)
+        prev  = float(fi.previous_close or price)
+        change = price - prev
+        change_pct = (change / prev * 100) if prev else 0
+        return {
+            'symbol': symbol,
+            'price': round(price, 2),
+            'prev_close': round(prev, 2),
+            'change': round(change, 2),
+            'change_pct': round(change_pct, 2),
+            'open': round(float(fi.open or 0), 2),
+            'high': round(float(fi.day_high or 0), 2),
+            'low':  round(float(fi.day_low or 0), 2),
+            'volume': int(fi.three_month_average_volume or 0),
+            'market_cap': int(fi.market_cap or 0),
+            'year_high': round(float(fi.year_high or 0), 2),
+            'year_low':  round(float(fi.year_low or 0), 2),
+        }
+    except Exception as e:
+        return {'symbol': symbol, 'price': 0, 'change': 0, 'change_pct': 0, 'error': str(e)}
 
 CAPABILITIES = [
     {"id": "chat",         "category": "AI",           "icon": "💬", "name": "Natural Conversation",   "desc": "Chat in English & Telugu with full context memory"},
@@ -89,6 +254,10 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/vibe/agents': self.api_vibe_agents,
             '/api/vibe/detect': self.api_vibe_detect_get,
             '/api/tts/config': self.api_tts_config,
+            '/api/market/indices': self.api_market_indices,
+            '/api/market/quote':   self.api_market_quote,
+            '/api/market/search':  self.api_market_search,
+            '/api/market/movers':  self.api_market_movers,
         }
         handler = routes.get(path)
         if handler:
@@ -743,6 +912,111 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             self.send_json({'success': True, 'stats': stats})
         except Exception as e:
             self.send_json({'success': True, 'stats': {}, 'note': str(e)})
+
+    # ── Market data (Yahoo Finance) ───────────────────────────────────────────
+
+    def api_market_indices(self):
+        try:
+            def fetch():
+                import yfinance as yf
+                result = []
+                for sym, name in INDICES:
+                    try:
+                        t = yf.Ticker(sym)
+                        fi = t.fast_info
+                        price = float(fi.last_price or 0)
+                        prev  = float(fi.previous_close or price)
+                        change = price - prev
+                        pct    = (change / prev * 100) if prev else 0
+                        result.append({
+                            'symbol': sym, 'name': name,
+                            'price': round(price, 2),
+                            'change': round(change, 2),
+                            'change_pct': round(pct, 2),
+                        })
+                    except Exception as e:
+                        result.append({'symbol': sym, 'name': name, 'price': 0, 'change': 0, 'change_pct': 0})
+                return result
+            data = _cached('indices', fetch)
+            self.send_json({'success': True, 'indices': data, 'timestamp': datetime.now().isoformat()})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
+
+    def api_market_quote(self):
+        try:
+            qs = parse_qs(urlparse(self.path).query)
+            raw = (qs.get('symbol', [''])[0] or '').strip().upper()
+            if not raw:
+                self.send_json({'error': 'symbol required'}, 400)
+                return
+            # Resolve symbol → Yahoo Finance ticker
+            yf_sym = raw
+            name   = raw
+            if raw in NSE_STOCKS:
+                name, yf_sym = NSE_STOCKS[raw]
+            elif not raw.endswith('.NS') and not raw.endswith('.BO') and not raw.startswith('^'):
+                yf_sym = raw + '.NS'
+
+            def fetch():
+                d = _yf_detail(yf_sym)
+                d['name'] = name
+                d['display_symbol'] = raw
+                return d
+
+            data = _cached(f'quote_{yf_sym}', fetch)
+            self.send_json({'success': True, 'quote': data})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
+
+    def api_market_search(self):
+        try:
+            qs = parse_qs(urlparse(self.path).query)
+            q  = (qs.get('q', [''])[0] or '').strip().upper()
+            results = []
+            if q:
+                for sym, (full_name, yf_sym) in NSE_STOCKS.items():
+                    if q in sym or q in full_name.upper():
+                        results.append({
+                            'symbol': sym,
+                            'name': full_name,
+                            'yf_symbol': yf_sym,
+                            'exchange': 'NSE',
+                        })
+                        if len(results) >= 10:
+                            break
+            self.send_json({'success': True, 'results': results})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
+
+    def api_market_movers(self):
+        try:
+            def fetch():
+                import yfinance as yf
+                quotes = []
+                for sym in NIFTY50_MOVERS:
+                    try:
+                        t = yf.Ticker(sym)
+                        fi = t.fast_info
+                        price = float(fi.last_price or 0)
+                        prev  = float(fi.previous_close or price)
+                        change = price - prev
+                        pct    = (change / prev * 100) if prev else 0
+                        display = sym.replace('.NS','').replace('.BO','')
+                        quotes.append({
+                            'symbol': display, 'yf_symbol': sym,
+                            'price': round(price, 2),
+                            'change': round(change, 2),
+                            'change_pct': round(pct, 2),
+                        })
+                    except:
+                        pass
+                gainers = sorted([q for q in quotes if q['change_pct'] > 0], key=lambda x: -x['change_pct'])[:6]
+                losers  = sorted([q for q in quotes if q['change_pct'] < 0], key=lambda x: x['change_pct'])[:6]
+                return {'gainers': gainers, 'losers': losers}
+            data = _cached('movers', fetch)
+            self.send_json({'success': True, **data, 'timestamp': datetime.now().isoformat()})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
 
     def log_message(self, format, *args):
         pass

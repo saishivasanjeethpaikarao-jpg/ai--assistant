@@ -27,6 +27,25 @@ Iron Man–style AI assistant: 12-layer brain, voice in/out, bilingual (English 
 
 AI Engine · Voice & Speech · Language · Wake Word · Voice Clone · System Prompt · Notifications · Appearance · All API Keys
 
+## Trading Panel — Live Yahoo Finance (yfinance 1.3.0)
+
+**Backend endpoints** (`/api/market/*`):
+- `GET /api/market/indices` — NIFTY 50, SENSEX, BANK NIFTY, NIFTY IT, MIDCAP 50, FMCG, AUTO, PHARMA
+- `GET /api/market/quote?symbol=RELIANCE` — Full quote (price, change, open/high/low, 52W, market cap)
+- `GET /api/market/search?q=tata` — Fuzzy search across 80+ NSE stocks by name/symbol
+- `GET /api/market/movers` — Top 6 gainers + top 6 losers from Nifty 50 universe
+- 60-second server-side cache to avoid Yahoo Finance rate limits
+
+**Ticker symbols**: NSE stocks use `.NS` suffix (e.g. `RELIANCE.NS`), indices use `^NSEI`, `^BSESN`, `^NSEBANK`, `^CNXIT`
+
+**Frontend TradingPanel** (`Sidebar.jsx`):
+- Index chips: NIFTY + SENSEX in top row, BANK NIFTY + IT in second row
+- Search bar: instant client-side filter + click to fetch full quote card
+- Tab bar: Watchlist | Gainers | Losers | All Indices
+- Watchlist: persisted in localStorage, live prices, add/remove with ★
+- Quote card: symbol, company name, price, Δ%, open/high/low/prev, 52W H/L, mkt cap
+- Auto-refresh every 60 seconds
+
 ## Sidebar Panels (7)
 
 Chat History · Memory · Trading · Reminders · Skills/Capabilities (29) · Analytics · 12-Layer Brain

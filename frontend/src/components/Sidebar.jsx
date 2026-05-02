@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   FiMessageSquare, FiDatabase, FiTrendingUp, FiBell,
   FiZap, FiBarChart2, FiCpu, FiPlus, FiRefreshCw,
   FiCheckCircle, FiAlertTriangle, FiActivity, FiX, FiSearch,
+  FiArrowUpRight, FiArrowDownRight, FiMinus, FiStar, FiChevronDown,
+  FiChevronUp,
 } from 'react-icons/fi';
 import { api } from '../services/api';
 
@@ -174,42 +176,501 @@ const RemindersPanel = ({ reminders, onRefresh }) => {
   );
 };
 
-const WATCHLIST = [
-  { symbol:'RELIANCE' },
-  { symbol:'TCS' },
-  { symbol:'HDFC' },
-  { symbol:'INFY' },
-  { symbol:'WIPRO' },
-  { symbol:'NIFTY50' },
-];
+const DEFAULT_WATCHLIST = ['RELIANCE','TCS','HDFCBANK','INFY','ICICIBANK','SBIN','WIPRO','ITC'];
 
-const TradingPanel = () => (
-  <div style={{ flex:1, overflowY:'auto' }}>
-    <SectionHdr title="Watchlist" onRefresh={()=>{}}/>
-    <div style={{ padding:'10px 16px 6px' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:'8px', padding:'9px 12px', background:'rgba(67,125,253,0.06)', border:'1px solid rgba(67,125,253,0.15)', borderRadius:'8px', marginBottom:'8px' }}>
-        <FiTrendingUp size={13} style={{ color:B }}/>
-        <span style={{ fontSize:'11px', color:'#555' }}>Live prices load via backend. Ask Airis for NIFTY analysis.</span>
+const fmt = (n) => {
+  if (!n && n !== 0) return '—';
+  if (n >= 1e12) return '₹' + (n/1e12).toFixed(2) + 'T';
+  if (n >= 1e9)  return '₹' + (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e7)  return '₹' + (n/1e7).toFixed(2) + 'Cr';
+  if (n >= 1e5)  return '₹' + (n/1e5).toFixed(2) + 'L';
+  return '₹' + n.toLocaleString('en-IN', {maximumFractionDigits:2});
+};
+const fmtP = (n) => {
+  if (n === undefined || n === null) return '—';
+  const s = Math.abs(n).toFixed(2) + '%';
+  return (n >= 0 ? '+' : '-') + s;
+};
+const clr = (n) => n > 0 ? '#00C48C' : n < 0 ? '#FD5B5D' : '#888';
+
+const IndexChip = ({ idx }) => {
+  if (!idx) return null;
+  const up = idx.change_pct >= 0;
+  return (
+    <div style={{
+      flex:1, minWidth:0, padding:'7px 8px', borderRadius:'8px',
+      background: up ? 'rgba(0,196,140,0.06)' : 'rgba(253,91,93,0.06)',
+      border: `1px solid ${up ? 'rgba(0,196,140,0.18)' : 'rgba(253,91,93,0.18)'}`,
+    }}>
+      <div style={{ fontSize:'9px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.06em', color:'#888', marginBottom:'2px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+        {idx.name}
+      </div>
+      <div style={{ fontSize:'12px', fontWeight:'700', color:'#0C0C0C', fontFamily:'monospace', whiteSpace:'nowrap' }}>
+        {idx.price ? idx.price.toLocaleString('en-IN', {maximumFractionDigits:0}) : '—'}
+      </div>
+      <div style={{ fontSize:'10px', color: clr(idx.change_pct), fontWeight:'600', display:'flex', alignItems:'center', gap:'2px' }}>
+        {up ? <FiArrowUpRight size={9}/> : <FiArrowDownRight size={9}/>}
+        {fmtP(idx.change_pct)}
       </div>
     </div>
-    {WATCHLIST.map(s=>(
-      <div key={s.symbol}
-        style={{ padding:'9px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', borderRadius:'8px', margin:'1px 8px', transition:'background 0.1s' }}
-        onMouseEnter={e=>e.currentTarget.style.background='rgba(67,125,253,0.04)'}
-        onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+  );
+};
+
+const QuoteCard = ({ quote, onClose }) => {
+  if (!quote) return null;
+  const up = quote.change >= 0;
+  return (
+    <div style={{ margin:'8px', padding:'10px 12px', background:'#fff', border:`1px solid ${BORDER}`, borderRadius:'10px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'6px' }}>
         <div>
-          <div style={{ fontSize:'12px', color:'#0C0C0C', fontWeight:'600', fontFamily:'monospace' }}>{s.symbol}</div>
-          <div style={{ fontSize:'11px', color:'#bbb', fontFamily:'monospace' }}>Ask Airis for price</div>
+          <div style={{ fontSize:'13px', fontWeight:'700', color:'#0C0C0C', fontFamily:'monospace' }}>
+            {quote.display_symbol || quote.symbol?.replace('.NS','').replace('.BO','')}
+          </div>
+          <div style={{ fontSize:'10px', color:'#888', marginTop:'1px', maxWidth:'140px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {quote.name}
+          </div>
         </div>
-        <span style={{ fontSize:'11px', color:'#ccc', fontFamily:'monospace' }}>—</span>
+        <button onClick={onClose} style={{ background:'none', border:'none', color:'#bbb', cursor:'pointer', padding:'2px' }}>
+          <FiX size={13}/>
+        </button>
       </div>
-    ))}
-    <SectionHdr title="Quick Commands"/>
-    {['Get NIFTY trend','Show portfolio','Top gainers today','Options analysis'].map(cmd=>(
-      <Row key={cmd} primary={cmd}/>
-    ))}
-  </div>
-);
+      <div style={{ display:'flex', alignItems:'baseline', gap:'8px', marginBottom:'8px' }}>
+        <span style={{ fontSize:'20px', fontWeight:'800', color:'#0C0C0C', fontFamily:'monospace' }}>
+          {quote.price ? '₹' + quote.price.toLocaleString('en-IN', {maximumFractionDigits:2}) : '—'}
+        </span>
+        <span style={{ fontSize:'12px', fontWeight:'600', color: clr(quote.change) }}>
+          {quote.change >= 0 ? '+' : ''}{quote.change?.toFixed(2)} ({fmtP(quote.change_pct)})
+        </span>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px 8px' }}>
+        {[
+          ['Open',    quote.open   ? '₹' + quote.open?.toLocaleString('en-IN')   : '—'],
+          ['High',    quote.high   ? '₹' + quote.high?.toLocaleString('en-IN')   : '—'],
+          ['Low',     quote.low    ? '₹' + quote.low?.toLocaleString('en-IN')    : '—'],
+          ['Prev',    quote.prev_close ? '₹' + quote.prev_close?.toLocaleString('en-IN') : '—'],
+          ['52W H',   quote.year_high ? '₹' + quote.year_high?.toLocaleString('en-IN') : '—'],
+          ['52W L',   quote.year_low  ? '₹' + quote.year_low?.toLocaleString('en-IN')  : '—'],
+          ['Mkt Cap', fmt(quote.market_cap)],
+        ].map(([label, val]) => (
+          <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span style={{ fontSize:'10px', color:'#aaa' }}>{label}</span>
+            <span style={{ fontSize:'10px', fontWeight:'600', color:'#444', fontFamily:'monospace' }}>{val}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const StockRow = ({ sym, price, change, change_pct, name, onAdd, onRemove, inWatchlist, onClick }) => {
+  const [hov, setHov] = useState(false);
+  const up = change_pct >= 0;
+  return (
+    <div
+      onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+      onClick={onClick}
+      style={{
+        padding:'8px 12px', display:'flex', alignItems:'center', justifyContent:'space-between',
+        cursor:'pointer', borderRadius:'8px', margin:'1px 8px', transition:'background 0.1s',
+        background: hov ? 'rgba(67,125,253,0.04)' : 'transparent',
+      }}>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:'12px', fontWeight:'700', color:'#0C0C0C', fontFamily:'monospace' }}>{sym}</div>
+        {name && <div style={{ fontSize:'10px', color:'#bbb', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'120px' }}>{name}</div>}
+      </div>
+      <div style={{ textAlign:'right', display:'flex', alignItems:'center', gap:'6px' }}>
+        <div>
+          <div style={{ fontSize:'12px', fontWeight:'700', color:'#0C0C0C', fontFamily:'monospace' }}>
+            {price ? '₹' + price.toLocaleString('en-IN', {maximumFractionDigits:2}) : '—'}
+          </div>
+          <div style={{ fontSize:'10px', color: clr(change_pct), fontWeight:'600', display:'flex', alignItems:'center', justifyContent:'flex-end', gap:'2px' }}>
+            {change_pct !== undefined && change_pct !== null
+              ? <>{up ? <FiArrowUpRight size={9}/> : <FiArrowDownRight size={9}/>}{fmtP(change_pct)}</>
+              : '—'}
+          </div>
+        </div>
+        {hov && (
+          <button
+            onClick={e=>{ e.stopPropagation(); inWatchlist ? onRemove?.(sym) : onAdd?.(sym); }}
+            style={{ background:'none', border:'none', color: inWatchlist ? B : '#ccc', cursor:'pointer', padding:'2px', display:'flex', alignItems:'center' }}>
+            <FiStar size={11} fill={inWatchlist ? B : 'none'}/>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const NSE_POPULAR = [
+  { symbol:'RELIANCE', name:'Reliance Industries' },
+  { symbol:'TCS', name:'Tata Consultancy Services' },
+  { symbol:'HDFCBANK', name:'HDFC Bank' },
+  { symbol:'INFY', name:'Infosys' },
+  { symbol:'ICICIBANK', name:'ICICI Bank' },
+  { symbol:'KOTAKBANK', name:'Kotak Mahindra Bank' },
+  { symbol:'SBIN', name:'State Bank of India' },
+  { symbol:'AXISBANK', name:'Axis Bank' },
+  { symbol:'WIPRO', name:'Wipro' },
+  { symbol:'ITC', name:'ITC Limited' },
+  { symbol:'BHARTIARTL', name:'Bharti Airtel' },
+  { symbol:'LT', name:'Larsen & Toubro' },
+  { symbol:'TATAMOTORS', name:'Tata Motors' },
+  { symbol:'TATASTEEL', name:'Tata Steel' },
+  { symbol:'SUNPHARMA', name:'Sun Pharmaceutical' },
+  { symbol:'BAJFINANCE', name:'Bajaj Finance' },
+  { symbol:'HCLTECH', name:'HCL Technologies' },
+  { symbol:'TITAN', name:'Titan Company' },
+  { symbol:'ADANIENT', name:'Adani Enterprises' },
+  { symbol:'NTPC', name:'NTPC Limited' },
+  { symbol:'ONGC', name:'Oil & Natural Gas Corp' },
+  { symbol:'MARUTI', name:'Maruti Suzuki' },
+  { symbol:'NESTLEIND', name:'Nestle India' },
+  { symbol:'DRREDDY', name:"Dr. Reddy's Laboratories" },
+  { symbol:'ZOMATO', name:'Zomato' },
+  { symbol:'IRCTC', name:'IRCTC' },
+  { symbol:'HAL', name:'HAL' },
+  { symbol:'BEL', name:'Bharat Electronics' },
+  { symbol:'TATAPOWER', name:'Tata Power' },
+  { symbol:'DMART', name:'Avenue Supermarts (DMart)' },
+];
+
+const TradingPanel = () => {
+  const [indices,    setIndices]    = useState([]);
+  const [tab,        setTab]        = useState('watchlist');
+  const [watchlist,  setWatchlist]  = useState(() => {
+    try { return JSON.parse(localStorage.getItem('airis_watchlist') || 'null') || DEFAULT_WATCHLIST; } catch { return DEFAULT_WATCHLIST; }
+  });
+  const [wlPrices,   setWlPrices]   = useState({});
+  const [movers,     setMovers]     = useState({ gainers:[], losers:[] });
+  const [loadIdx,    setLoadIdx]    = useState(false);
+  const [loadWl,     setLoadWl]     = useState(false);
+  const [loadMov,    setLoadMov]    = useState(false);
+  const [search,     setSearch]     = useState('');
+  const [searchRes,  setSearchRes]  = useState([]);
+  const [quote,      setQuote]      = useState(null);
+  const [quoteLoad,  setQuoteLoad]  = useState(false);
+  const [lastUpd,    setLastUpd]    = useState(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const timerRef = useRef(null);
+
+  const saveWatchlist = (list) => {
+    setWatchlist(list);
+    try { localStorage.setItem('airis_watchlist', JSON.stringify(list)); } catch {}
+  };
+
+  const addToWatchlist = (sym) => {
+    if (!watchlist.includes(sym)) saveWatchlist([...watchlist, sym]);
+  };
+  const removeFromWatchlist = (sym) => saveWatchlist(watchlist.filter(s => s !== sym));
+
+  const fetchIndices = async () => {
+    setLoadIdx(true);
+    try {
+      const r = await api.getMarketIndices();
+      if (r.success) { setIndices(r.indices || []); setLastUpd(new Date()); }
+    } catch {}
+    setLoadIdx(false);
+  };
+
+  const fetchWatchlistPrices = async (syms) => {
+    if (!syms?.length) return;
+    setLoadWl(true);
+    try {
+      const prices = {};
+      await Promise.all(syms.map(async sym => {
+        try {
+          const r = await api.getMarketQuote(sym);
+          if (r.success && r.quote) prices[sym] = r.quote;
+        } catch {}
+      }));
+      setWlPrices(prev => ({ ...prev, ...prices }));
+    } catch {}
+    setLoadWl(false);
+  };
+
+  const fetchMovers = async () => {
+    setLoadMov(true);
+    try {
+      const r = await api.getMarketMovers();
+      if (r.success) setMovers({ gainers: r.gainers || [], losers: r.losers || [] });
+    } catch {}
+    setLoadMov(false);
+  };
+
+  const refreshAll = useCallback(async () => {
+    await fetchIndices();
+    await fetchWatchlistPrices(watchlist);
+    if (tab === 'movers') fetchMovers();
+  }, [watchlist, tab]);
+
+  useEffect(() => {
+    fetchIndices();
+    fetchWatchlistPrices(watchlist);
+    timerRef.current = setInterval(() => {
+      fetchIndices();
+      fetchWatchlistPrices(watchlist);
+    }, 60000);
+    return () => clearInterval(timerRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'movers' && movers.gainers.length === 0) fetchMovers();
+    if (tab === 'watchlist') fetchWatchlistPrices(watchlist);
+  }, [tab]);
+
+  useEffect(() => {
+    if (!search.trim()) { setSearchRes([]); return; }
+    const q = search.toUpperCase();
+    const res = NSE_POPULAR.filter(s =>
+      s.symbol.includes(q) || s.name.toUpperCase().includes(q)
+    ).slice(0, 8);
+    setSearchRes(res);
+  }, [search]);
+
+  const openQuote = async (sym) => {
+    setQuote(null);
+    setQuoteLoad(true);
+    setShowSearch(false);
+    setSearch('');
+    try {
+      const r = await api.getMarketQuote(sym);
+      if (r.success) setQuote(r.quote);
+    } catch {}
+    setQuoteLoad(false);
+  };
+
+  const mainIdx = indices.find(i => i.symbol === '^NSEI');
+  const sensex  = indices.find(i => i.symbol === '^BSESN');
+  const bankNf  = indices.find(i => i.symbol === '^NSEBANK');
+  const nfIT    = indices.find(i => i.symbol === '^CNXIT');
+  const mid50   = indices.find(i => i.symbol === '^NSEMDCP50');
+
+  return (
+    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+
+      {/* Header */}
+      <div style={{ padding:'8px 12px 6px', flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px' }}>
+          <span style={{ fontSize:'10px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.10em', color:'#aaa' }}>
+            Live Markets
+          </span>
+          <div style={{ display:'flex', alignItems:'center', gap:'4px' }}>
+            {lastUpd && (
+              <span style={{ fontSize:'9px', color:'#ccc' }}>
+                {lastUpd.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
+              </span>
+            )}
+            <button onClick={refreshAll} disabled={loadIdx}
+              style={{ background:'none', border:'none', color: loadIdx ? '#ccc' : '#bbb', cursor:'pointer', padding:'2px', display:'flex', alignItems:'center',
+                transition:'transform 0.3s', transform: loadIdx ? 'rotate(360deg)' : 'none' }}>
+              <FiRefreshCw size={11}/>
+            </button>
+          </div>
+        </div>
+
+        {/* Index grid — NIFTY + SENSEX */}
+        <div style={{ display:'flex', gap:'5px', marginBottom:'4px' }}>
+          <IndexChip idx={mainIdx} />
+          <IndexChip idx={sensex} />
+        </div>
+        <div style={{ display:'flex', gap:'5px', marginBottom:'6px' }}>
+          <IndexChip idx={bankNf} />
+          <IndexChip idx={nfIT} />
+        </div>
+        {loadIdx && !indices.length && (
+          <div style={{ fontSize:'10px', color:'#bbb', textAlign:'center', padding:'4px 0' }}>Fetching live data…</div>
+        )}
+
+        {/* Search */}
+        <div style={{ position:'relative' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'#fff', border:`1px solid ${BORDER}`, borderRadius:'10px', padding:'7px 10px' }}>
+            <FiSearch size={12} style={{ color:'#bbb', flexShrink:0 }}/>
+            <input
+              value={search}
+              onChange={e=>{ setSearch(e.target.value); setShowSearch(true); }}
+              onFocus={()=>setShowSearch(true)}
+              placeholder="Search stocks, indices…"
+              style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:'12px', color:'#0C0C0C' }}
+            />
+            {search && (
+              <button onClick={()=>{ setSearch(''); setSearchRes([]); setShowSearch(false); }}
+                style={{ background:'none', border:'none', color:'#bbb', cursor:'pointer', padding:'0', display:'flex', alignItems:'center' }}>
+                <FiX size={11}/>
+              </button>
+            )}
+          </div>
+          {/* Search dropdown */}
+          {showSearch && searchRes.length > 0 && (
+            <div style={{
+              position:'absolute', top:'calc(100% + 4px)', left:0, right:0, zIndex:100,
+              background:'#fff', border:`1px solid ${BORDER}`, borderRadius:'10px',
+              boxShadow:'0 8px 24px rgba(0,0,0,0.1)', overflow:'hidden',
+            }}>
+              {searchRes.map(s => (
+                <div key={s.symbol}
+                  onClick={() => openQuote(s.symbol)}
+                  style={{ padding:'8px 12px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between',
+                    borderBottom:`1px solid ${BORDER}` }}
+                  onMouseEnter={e=>e.currentTarget.style.background='rgba(67,125,253,0.04)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <div>
+                    <div style={{ fontSize:'12px', fontWeight:'700', color:'#0C0C0C', fontFamily:'monospace' }}>{s.symbol}</div>
+                    <div style={{ fontSize:'10px', color:'#999' }}>{s.name}</div>
+                  </div>
+                  <span style={{ fontSize:'9px', color:'#aaa', background:'rgba(67,125,253,0.08)', padding:'2px 6px', borderRadius:'4px', fontWeight:'600' }}>NSE</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quote Card */}
+      {quoteLoad && (
+        <div style={{ padding:'12px 16px', textAlign:'center', fontSize:'12px', color:'#bbb' }}>Fetching quote…</div>
+      )}
+      {quote && !quoteLoad && (
+        <QuoteCard quote={quote} onClose={()=>setQuote(null)} />
+      )}
+
+      {/* Tab bar */}
+      <div style={{ display:'flex', gap:'4px', padding:'4px 12px 6px', flexShrink:0 }}>
+        {[['watchlist','Watchlist'],['gainers','Gainers'],['losers','Losers'],['indices','All Indices']].map(([k,label])=>(
+          <button key={k} onClick={()=>setTab(k)} style={{
+            flex:1, padding:'4px 2px', borderRadius:'20px', fontSize:'10px', fontWeight:'600', cursor:'pointer', border:'none',
+            background: tab===k ? B : 'transparent',
+            color: tab===k ? '#fff' : '#888',
+            transition:'all 0.15s', whiteSpace:'nowrap',
+          }}>{label}</button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div style={{ flex:1, overflowY:'auto' }}
+        onClick={()=>{ if(showSearch && !search) setShowSearch(false); }}>
+
+        {/* ─── Watchlist ─── */}
+        {tab === 'watchlist' && (
+          <>
+            {loadWl && watchlist.length === 0
+              ? <div style={{ padding:'16px', textAlign:'center', fontSize:'12px', color:'#bbb' }}>Loading watchlist…</div>
+              : watchlist.length === 0
+                ? <div style={{ padding:'16px', textAlign:'center', fontSize:'12px', color:'#bbb' }}>
+                    Add stocks with the ★ button
+                  </div>
+                : watchlist.map(sym => {
+                    const q = wlPrices[sym];
+                    return (
+                      <StockRow key={sym}
+                        sym={sym}
+                        name={q?.name}
+                        price={q?.price}
+                        change={q?.change}
+                        change_pct={q?.change_pct}
+                        inWatchlist={true}
+                        onRemove={removeFromWatchlist}
+                        onClick={()=>openQuote(sym)}
+                      />
+                    );
+                  })
+            }
+            {loadWl && watchlist.length > 0 && (
+              <div style={{ padding:'4px 16px', fontSize:'10px', color:'#ccc', textAlign:'center' }}>Updating prices…</div>
+            )}
+          </>
+        )}
+
+        {/* ─── Gainers ─── */}
+        {tab === 'gainers' && (
+          <>
+            {loadMov && movers.gainers.length === 0
+              ? <div style={{ padding:'16px', textAlign:'center', fontSize:'12px', color:'#bbb' }}>Fetching top gainers…</div>
+              : movers.gainers.map(s => (
+                  <StockRow key={s.symbol}
+                    sym={s.symbol} price={s.price} change={s.change} change_pct={s.change_pct}
+                    inWatchlist={watchlist.includes(s.symbol)}
+                    onAdd={addToWatchlist} onRemove={removeFromWatchlist}
+                    onClick={()=>openQuote(s.symbol)}
+                  />
+                ))
+            }
+          </>
+        )}
+
+        {/* ─── Losers ─── */}
+        {tab === 'losers' && (
+          <>
+            {loadMov && movers.losers.length === 0
+              ? <div style={{ padding:'16px', textAlign:'center', fontSize:'12px', color:'#bbb' }}>Fetching top losers…</div>
+              : movers.losers.map(s => (
+                  <StockRow key={s.symbol}
+                    sym={s.symbol} price={s.price} change={s.change} change_pct={s.change_pct}
+                    inWatchlist={watchlist.includes(s.symbol)}
+                    onAdd={addToWatchlist} onRemove={removeFromWatchlist}
+                    onClick={()=>openQuote(s.symbol)}
+                  />
+                ))
+            }
+          </>
+        )}
+
+        {/* ─── All Indices ─── */}
+        {tab === 'indices' && (
+          <>
+            {loadIdx && indices.length === 0
+              ? <div style={{ padding:'16px', textAlign:'center', fontSize:'12px', color:'#bbb' }}>Fetching indices…</div>
+              : indices.map(idx => {
+                  const up = idx.change_pct >= 0;
+                  return (
+                    <div key={idx.symbol} style={{
+                      padding:'9px 14px', display:'flex', alignItems:'center', justifyContent:'space-between',
+                      borderBottom:`1px solid ${BORDER}`,
+                    }}>
+                      <div>
+                        <div style={{ fontSize:'11px', fontWeight:'700', color:'#0C0C0C' }}>{idx.name}</div>
+                        <div style={{ fontSize:'9px', color:'#bbb', fontFamily:'monospace' }}>{idx.symbol}</div>
+                      </div>
+                      <div style={{ textAlign:'right' }}>
+                        <div style={{ fontSize:'12px', fontWeight:'700', fontFamily:'monospace', color:'#0C0C0C' }}>
+                          {idx.price ? idx.price.toLocaleString('en-IN', {maximumFractionDigits:0}) : '—'}
+                        </div>
+                        <div style={{ fontSize:'10px', color: clr(idx.change_pct), fontWeight:'600', display:'flex', alignItems:'center', justifyContent:'flex-end', gap:'2px' }}>
+                          {up ? <FiArrowUpRight size={9}/> : <FiArrowDownRight size={9}/>}
+                          {fmtP(idx.change_pct)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+            }
+          </>
+        )}
+
+        {/* Popular suggestions for empty watchlist */}
+        {tab === 'watchlist' && watchlist.length < 5 && (
+          <div style={{ padding:'8px 12px 4px' }}>
+            <div style={{ fontSize:'9px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.1em', color:'#ccc', marginBottom:'6px' }}>
+              Popular Stocks
+            </div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'4px' }}>
+              {NSE_POPULAR.filter(s => !watchlist.includes(s.symbol)).slice(0, 10).map(s => (
+                <button key={s.symbol}
+                  onClick={() => { addToWatchlist(s.symbol); fetchWatchlistPrices([s.symbol]); }}
+                  style={{
+                    padding:'3px 8px', borderRadius:'20px', fontSize:'10px', fontWeight:'600',
+                    background:'rgba(67,125,253,0.07)', border:'1px solid rgba(67,125,253,0.15)',
+                    color: B, cursor:'pointer',
+                  }}>
+                  + {s.symbol}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const SkillsPanel = ({ caps }) => {
   const categories = [...new Set(caps.map(c=>c.category))];

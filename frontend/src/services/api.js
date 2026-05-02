@@ -43,6 +43,11 @@ export const api = {
   ttsConfig: () => axiosInstance.get('/tts/config'),
   tts: (text, reference_id, model) => axiosInstance.post('/tts', { text, reference_id, model }, { responseType: 'arraybuffer' }),
   cloneVoice: (name, audio_b64, content_type) => axiosInstance.post('/voice/clone', { name, audio_b64, content_type }),
+  // Market Data (Yahoo Finance)
+  getMarketIndices: () => axiosInstance.get('/market/indices'),
+  getMarketQuote: (symbol) => axiosInstance.get(`/market/quote?symbol=${encodeURIComponent(symbol)}`),
+  searchStocks: (q) => axiosInstance.get(`/market/search?q=${encodeURIComponent(q)}`),
+  getMarketMovers: () => axiosInstance.get('/market/movers'),
   // Vibe Coder
   getVibeAgents: () => axiosInstance.get('/vibe/agents'),
   vibeCode: (prompt, agent_id = 'auto') => axiosInstance.post('/vibe/code', { prompt, agent_id }),
