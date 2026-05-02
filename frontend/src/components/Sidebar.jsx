@@ -420,11 +420,25 @@ const TradingPanel = () => {
 
   useEffect(() => {
     if (!search.trim()) { setSearchRes([]); return; }
-    const q = search.toUpperCase();
-    const res = NSE_POPULAR.filter(s =>
-      s.symbol.includes(q) || s.name.toUpperCase().includes(q)
-    ).slice(0, 8);
-    setSearchRes(res);
+    const timer = setTimeout(async () => {
+      try {
+        const r = await api.searchStocks(search.trim());
+        if (r.success && r.results?.length > 0) {
+          setSearchRes(r.results);
+        } else {
+          const q = search.toUpperCase();
+          setSearchRes(NSE_POPULAR.filter(s =>
+            s.symbol.includes(q) || s.name.toUpperCase().includes(q)
+          ).slice(0, 8));
+        }
+      } catch {
+        const q = search.toUpperCase();
+        setSearchRes(NSE_POPULAR.filter(s =>
+          s.symbol.includes(q) || s.name.toUpperCase().includes(q)
+        ).slice(0, 8));
+      }
+    }, 200);
+    return () => clearTimeout(timer);
   }, [search]);
 
   const openQuote = async (sym) => {
