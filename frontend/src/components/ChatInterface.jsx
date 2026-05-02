@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { FiSend, FiVolume2, FiVolumeX } from 'react-icons/fi';
+import { FiSend, FiVolume2, FiVolumeX, FiPaperclip, FiX, FiImage, FiFileText } from 'react-icons/fi';
 import AIVoiceOrb from './AIVoiceOrb';
 import { api } from '../services/api';
 
@@ -381,12 +381,14 @@ const SpeakingIndicator = ({ isMobile }) => (
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceStateChange, isMobile }) => {
-  const [input,      setInput]      = useState('');
-  const [ttsEnabled, setTtsEnabled] = useState(true);
-  const [speaking,   setSpeaking]   = useState(false);
-  const [ttsConfig,  setTtsConfig]  = useState(null);
+  const [input,          setInput]          = useState('');
+  const [ttsEnabled,     setTtsEnabled]     = useState(true);
+  const [speaking,       setSpeaking]       = useState(false);
+  const [ttsConfig,      setTtsConfig]      = useState(null);
+  const [attachedFiles,  setAttachedFiles]  = useState([]);
   const textareaRef    = useRef(null);
   const messagesEndRef = useRef(null);
+  const fileInputRef   = useRef(null);
 
   const { listening, start: startListening, stop: stopListening, supported: micSupported } =
     useSpeechToText({
@@ -423,9 +425,46 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
     el.style.height = Math.min(el.scrollHeight, isMobile ? 120 : 180) + 'px';
   };
 
+  const handleFileAttach = (e) => {
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => {
+      const isImage = file.type.startsWith('image/');
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setAttachedFiles(prev => [...prev, {
+          id: Math.random().toString(36).slice(2),
+          name: file.name,
+          type: isImage ? 'image' : 'document',
+          mime: file.type,
+          content: isImage ? ev.target.result : ev.target.result,
+          size: file.size,
+        }]);
+      };
+      if (isImage) reader.readAsDataURL(file);
+      else reader.readAsText(file);
+    });
+    e.target.value = '';
+  };
+
+  const removeAttachment = (id) => setAttachedFiles(prev => prev.filter(f => f.id !== id));
+
   const handleSend = () => {
-    const text = input.trim(); if (!text) return;
-    onSendMessage(text); setInput('');
+    const text = input.trim();
+    if (!text && attachedFiles.length === 0) return;
+    let message = text;
+    if (attachedFiles.length > 0) {
+      const ctx = attachedFiles.map(f => {
+        if (f.type === 'image') return `[Image attached: ${f.name}]`;
+        const preview = typeof f.content === 'string' && f.content.length < 8000
+          ? `\n\`\`\`\n${f.content.slice(0, 4000)}${f.content.length > 4000 ? '\n... (truncated)' : ''}\n\`\`\``
+          : '';
+        return `[File attached: ${f.name}]${preview}`;
+      }).join('\n\n');
+      message = text ? `${text}\n\n${ctx}` : ctx;
+    }
+    onSendMessage(message);
+    setInput('');
+    setAttachedFiles([]);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
@@ -452,7 +491,7 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
   };
 
   const btnSize = isMobile ? 44 : 38;
-  const hasContent = input.trim() && !listening;
+  const hasContent = (input.trim() || attachedFiles.length > 0) && !listening;
   const currentVoiceState = listening ? 'listening' : speaking ? 'speaking' : 'idle';
 
   return (
@@ -512,12 +551,45 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
       </div>
 
       {/* Input */}
-      <div style={{ background:'#fff', borderTop:'1px solid rgba(0,0,0,0.08)', padding: isMobile?'12px 14px 14px':'14px 20px 16px', flexShrink:0 }}>
+      <div style={{ background:'#fff', borderTop:'1px solid rgba(0,0,0,0.08)', padding: isMobile?'10px 12px 12px':'12px 18px 14px', flexShrink:0 }}>
+
+        {/* Attached file chips */}
+        {attachedFiles.length > 0 && (
+          <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginBottom:'8px' }}>
+            {attachedFiles.map(f => (
+              <div key={f.id} style={{
+                display:'inline-flex', alignItems:'center', gap:'5px',
+                padding:'4px 10px 4px 8px', borderRadius:'99px',
+                background:'rgba(67,125,253,0.07)', border:'1px solid rgba(67,125,253,0.2)',
+                fontSize:'11px', color:'#437DFD', fontWeight:'600',
+                maxWidth:'180px',
+              }}>
+                {f.type === 'image' ? <FiImage size={11}/> : <FiFileText size={11}/>}
+                <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{f.name}</span>
+                <button onClick={() => removeAttachment(f.id)}
+                  style={{ background:'none', border:'none', cursor:'pointer', color:'#437DFD', padding:'0', lineHeight:0, opacity:0.6, flexShrink:0 }}>
+                  <FiX size={11}/>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,.txt,.md,.js,.jsx,.ts,.tsx,.py,.json,.csv,.html,.css,.pdf,.doc,.docx"
+          multiple
+          onChange={handleFileAttach}
+          style={{ display:'none' }}
+        />
+
         <div
           style={{
             display:'flex', gap:'8px', alignItems:'flex-end',
             background:'#F5F4F2', border:'1.5px solid rgba(67,125,253,0.2)',
-            borderRadius:'16px', padding: isMobile?'10px 10px 10px 16px':'12px 10px 12px 20px',
+            borderRadius:'16px', padding: isMobile?'10px 10px 10px 16px':'12px 10px 12px 16px',
             transition:'border-color 0.2s, box-shadow 0.2s',
             boxShadow:'0 2px 8px rgba(67,125,253,0.06)',
           }}
@@ -536,7 +608,23 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
               resize:'none', fontFamily:'inherit',
             }}
           />
-          <div style={{ display:'flex', gap:'6px', alignItems:'flex-end', paddingBottom:'1px' }}>
+          <div style={{ display:'flex', gap:'5px', alignItems:'flex-end', paddingBottom:'1px' }}>
+            {/* Paperclip */}
+            <button onClick={() => fileInputRef.current?.click()}
+              title="Attach file or image"
+              style={{
+                width:`${btnSize}px`, height:`${btnSize}px`,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                borderRadius:'11px',
+                background: attachedFiles.length ? 'rgba(67,125,253,0.1)' : 'transparent',
+                border:`1.5px solid ${attachedFiles.length ? 'rgba(67,125,253,0.3)' : 'rgba(67,125,253,0.15)'}`,
+                color: attachedFiles.length ? '#437DFD' : 'rgba(67,125,253,0.4)',
+                cursor:'pointer', transition:'all 0.15s', flexShrink:0,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background='rgba(67,125,253,0.08)'; e.currentTarget.style.color='#437DFD'; }}
+              onMouseLeave={e => { if(!attachedFiles.length){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='rgba(67,125,253,0.4)'; } }}>
+              <FiPaperclip size={15}/>
+            </button>
             {micSupported && (
               <button onClick={toggleMic}
                 style={{
@@ -544,8 +632,8 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
                   display:'flex', alignItems:'center', justifyContent:'center',
                   borderRadius:'11px',
                   background: listening ? 'rgba(0,196,140,0.1)' : 'transparent',
-                  border:`1.5px solid ${listening ? 'rgba(0,196,140,0.4)' : 'rgba(67,125,253,0.2)'}`,
-                  color: listening ? '#00C48C' : 'rgba(67,125,253,0.5)',
+                  border:`1.5px solid ${listening ? 'rgba(0,196,140,0.4)' : 'rgba(67,125,253,0.15)'}`,
+                  color: listening ? '#00C48C' : 'rgba(67,125,253,0.4)',
                   cursor:'pointer', transition:'all 0.15s', flexShrink:0,
                   animation: listening ? 'ciPulse 1.5s ease-in-out infinite' : 'none',
                 }}>

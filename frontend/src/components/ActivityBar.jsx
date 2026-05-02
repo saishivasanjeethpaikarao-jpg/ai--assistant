@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -32,29 +33,47 @@ function getInitials(user) {
   return '?';
 }
 
-const Tooltip = ({ label, visible }) =>
-  visible ? (
+// Tooltip rendered via React Portal — never clipped by overflow containers
+const TooltipPortal = ({ label, visible, rect }) => {
+  if (!visible || !rect) return null;
+  return createPortal(
     <div style={{
-      position: 'absolute', left: '62px', top: '50%', transform: 'translateY(-50%)',
+      position: 'fixed',
+      left: rect.right + 8,
+      top: rect.top + rect.height / 2,
+      transform: 'translateY(-50%)',
       background: '#0C0C0C', color: '#fff',
       fontSize: '12px', fontWeight: '600',
       padding: '5px 11px', borderRadius: '9px', whiteSpace: 'nowrap',
-      pointerEvents: 'none', zIndex: 200,
+      pointerEvents: 'none', zIndex: 9999,
       boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
       letterSpacing: '-0.01em',
     }}>
       {label}
-      <div style={{ position: 'absolute', left: '-4px', top: '50%', transform: 'translateY(-50%) rotate(45deg)', width: '7px', height: '7px', background: '#0C0C0C' }}/>
-    </div>
-  ) : null;
+      <div style={{
+        position: 'absolute', left: '-4px', top: '50%',
+        transform: 'translateY(-50%) rotate(45deg)',
+        width: '7px', height: '7px', background: '#0C0C0C',
+      }}/>
+    </div>,
+    document.body
+  );
+};
 
 const IconBtn = ({ id, active, onClick }) => {
   const [hov, setHov] = useState(false);
+  const [rect, setRect] = useState(null);
+  const btnRef = useRef(null);
   const { icon: Icon, label, color } = ITEMS[id];
+
   return (
     <button
+      ref={btnRef}
       onClick={() => onClick(id)}
-      onMouseEnter={() => setHov(true)}
+      onMouseEnter={() => {
+        setHov(true);
+        if (btnRef.current) setRect(btnRef.current.getBoundingClientRect());
+      }}
       onMouseLeave={() => setHov(false)}
       title={label}
       style={{
@@ -85,7 +104,7 @@ const IconBtn = ({ id, active, onClick }) => {
           style={{ color: active ? color : hov ? '#555' : '#aaa' }}
         />
       </div>
-      <Tooltip label={label} visible={hov && !active}/>
+      <TooltipPortal label={label} visible={hov && !active} rect={rect}/>
     </button>
   );
 };
@@ -167,23 +186,38 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
       background: 'rgba(255,255,255,0.95)',
       borderRight: '1px solid rgba(0,0,0,0.08)',
       display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'space-between',
-      userSelect: 'none', overflow: 'visible',
+      alignItems: 'center',
+      userSelect: 'none',
+      overflow: 'hidden',
       backdropFilter: 'blur(20px)',
     }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{
-          width: '52px', height: '54px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          borderBottom: '1px solid rgba(0,0,0,0.07)',
-          marginBottom: '4px',
-        }}>
-          <img src="/airis-sphere.png" alt="Airis" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(67,125,253,0.3))' }}/>
-        </div>
+      {/* Logo */}
+      <div style={{
+        width: '52px', height: '54px', flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        borderBottom: '1px solid rgba(0,0,0,0.07)',
+      }}>
+        <img src="/airis-sphere.png" alt="Airis" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(67,125,253,0.3))' }}/>
+      </div>
+
+      {/* Scrollable top items — scrollbar hidden */}
+      <div
+        className="ab-scroll"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          paddingTop: '4px',
+        }}
+      >
         {TOP.map(id => <IconBtn key={id} id={id} active={activePanel === id} onClick={handleClick}/>)}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: '10px' }}>
+      {/* Bottom items */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: '10px', flexShrink: 0 }}>
         {BOTTOM.map(id => <IconBtn key={id} id={id} active={activePanel === id} onClick={handleClick}/>)}
         <div
           onClick={handleAvatarClick}
@@ -210,6 +244,8 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
           }
         </div>
       </div>
+
+      <style>{`.ab-scroll::-webkit-scrollbar{display:none}`}</style>
     </div>
   );
 };
