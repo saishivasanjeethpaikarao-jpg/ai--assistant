@@ -1,284 +1,974 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  FiCode, FiPlay, FiMic, FiMicOff, FiZap, FiTerminal,
-  FiCopy, FiCheck, FiLoader, FiAlertCircle, FiEye, FiRefreshCw,
-  FiMonitor, FiSend, FiPlus, FiColumns, FiSmartphone, FiTablet,
-  FiFolder, FiFile, FiTrash2, FiDownload, FiUpload, FiEdit3,
-  FiChevronRight, FiChevronDown, FiX, FiMessageSquare,
-  FiArrowLeft, FiImage, FiMoreVertical,
+  FiCode, FiPlay, FiZap, FiTerminal, FiCopy, FiCheck, FiLoader,
+  FiEye, FiRefreshCw, FiMonitor, FiSend, FiPlus, FiColumns,
+  FiSmartphone, FiTablet, FiFolder, FiFile, FiTrash2, FiDownload,
+  FiUpload, FiEdit3, FiChevronRight, FiChevronDown, FiX,
+  FiArrowLeft, FiImage, FiGlobe, FiBox, FiBarChart2, FiUser,
+  FiGrid, FiStar, FiMic, FiMicOff,
 } from 'react-icons/fi';
 
-// ── Storage ───────────────────────────────────────────────────────────────────
-const PK  = 'airis_vp';
-const FK  = id => `airis_vf_${id}`;
-const LP  = () => { try { return JSON.parse(localStorage.getItem(PK) || '[]'); } catch { return []; } };
-const SP  = p  => localStorage.setItem(PK, JSON.stringify(p));
-const LF  = id => { try { return JSON.parse(localStorage.getItem(FK(id)) || '[]'); } catch { return []; } };
-const SF  = (id,f) => localStorage.setItem(FK(id), JSON.stringify(f));
+// ── Storage ─────────────────────────────────────────────────────────────────
+const PK = 'airis_vp';
+const FK = id => `airis_vf_${id}`;
+const LP = () => { try { return JSON.parse(localStorage.getItem(PK) || '[]'); } catch { return []; } };
+const SP = p  => localStorage.setItem(PK, JSON.stringify(p));
+const LF = id => { try { return JSON.parse(localStorage.getItem(FK(id)) || '[]'); } catch { return []; } };
+const SF = (id, f) => localStorage.setItem(FK(id), JSON.stringify(f));
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const ts  = () => Date.now();
 
-function getExt(name) { return (name.split('.').pop() || '').toLowerCase(); }
-
 function getFileType(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
   const map = { html:'html', htm:'html', css:'css', js:'javascript', jsx:'react',
     ts:'typescript', tsx:'react', py:'python', json:'json', md:'markdown',
-    txt:'text', png:'image', jpg:'image', jpeg:'image', gif:'image', svg:'image', webp:'image' };
-  return map[getExt(name)] || 'text';
+    txt:'text', png:'image', jpg:'image', jpeg:'image', gif:'image', svg:'image' };
+  return map[ext] || 'text';
 }
 
 function getFileIcon(name) {
   const t = getFileType(name);
   const map = { html:'🌐', css:'🎨', javascript:'⚡', react:'⚛️', typescript:'💎',
-    python:'🐍', json:'{ }', markdown:'📝', image:'🖼️', text:'📄' };
+    python:'🐍', json:'{}', markdown:'📝', image:'🖼️', text:'📄' };
   return map[t] || '📄';
 }
 
-function langFromType(t) {
-  const m = { html:'html', css:'css', javascript:'javascript', react:'react', typescript:'javascript', python:'python', json:'json', markdown:'text', text:'text' };
-  return m[t] || 'text';
-}
-
-const SpeechRecognitionAPI = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
-
-function detectLanguage(raw) {
-  if (!raw) return 'unknown';
-  const m = raw.match(/^```(\w+)/m);
-  if (m) {
-    const l = m[1].toLowerCase();
-    if (['html','htm'].includes(l)) return 'html';
-    if (['jsx','tsx','react'].includes(l)) return 'react';
-    if (['js','javascript'].includes(l)) return 'javascript';
-    if (l === 'css') return 'css';
-    if (['py','python'].includes(l)) return 'python';
-    return l;
-  }
-  const c = raw.trim();
-  if (c.startsWith('<!DOCTYPE') || c.startsWith('<html')) return 'html';
-  if (/import React|from 'react'/.test(c)) return 'react';
-  return 'unknown';
-}
-
-function extractCode(raw) {
-  if (!raw) return '';
-  const m = raw.match(/```(?:\w+)?\n?([\s\S]*?)```/);
-  return m ? m[1].trim() : raw.trim();
-}
-
-function extractFilenameFromReply(reply) {
-  const m = reply.match(/(?:file|filename|create|named?|called?)\s+[`"']?([\w.-]+\.\w+)[`"']?/i)
-    || reply.match(/`([\w.-]+\.\w+)`/);
-  return m ? m[1] : null;
-}
-
-function downloadBlob(name, content, mime = 'text/plain') {
-  const blob = new Blob([content], { type: mime });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = name; a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ── Preview builder ───────────────────────────────────────────────────────────
-function buildProjectPreview(files, activeFile) {
+// ── Preview builder (CDN links are kept as-is — critical fix) ───────────────
+function buildPreview(files) {
   if (!files.length) return null;
   const htmlFile = files.find(f => f.name === 'index.html')
-    || files.find(f => getFileType(f.name) === 'html');
-
-  if (!htmlFile && activeFile) {
-    const t = getFileType(activeFile.name);
-    if (t === 'css') return buildSinglePreview(activeFile.content, 'css');
-    if (['javascript','react'].includes(t)) return buildSinglePreview(activeFile.content, t);
-    return null;
-  }
+    || files.find(f => f.name.endsWith('.html'));
   if (!htmlFile) return null;
 
   let html = htmlFile.content;
-  // Inline linked CSS
-  html = html.replace(/<link[^>]+rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*\/?>/gi, (_, href) => {
-    const f = files.find(f => f.name === href || f.name.endsWith(href));
-    return f ? `<style>${f.content}</style>` : '';
+
+  // Inline local CSS (keep external/CDN links unchanged)
+  html = html.replace(/<link([^>]*)href=["']([^"']+)["']([^>]*)>/gi, (match, pre, href, post) => {
+    if (href.startsWith('http') || href.startsWith('//') || href.startsWith('data:')) return match;
+    const name = href.replace(/^\.\//, '');
+    const f = files.find(f => f.name === name || f.name === href);
+    return f ? `<style>${f.content}</style>` : match;
   });
-  // Inline linked JS
-  html = html.replace(/<script[^>]+src=["']([^"']+)["'][^>]*><\/script>/gi, (_, src) => {
-    const f = files.find(f => f.name === src || f.name.endsWith(src));
-    return f ? `<script>${f.content}</script>` : '';
+
+  // Inline local JS (keep CDN scripts unchanged)
+  html = html.replace(/<script([^>]*)src=["']([^"']+)["']([^>]*)><\/script>/gi, (match, pre, src, post) => {
+    if (src.startsWith('http') || src.startsWith('//') || src.startsWith('data:')) return match;
+    const name = src.replace(/^\.\//, '');
+    const f = files.find(f => f.name === name || f.name === src);
+    return f ? `<script${pre}>${f.content}</script>` : match;
   });
+
   return html;
 }
 
-function buildSinglePreview(code, lang) {
-  const base = `*{box-sizing:border-box}body{margin:0;padding:16px;font-family:system-ui,sans-serif;background:#fff;color:#111}`;
-  if (lang === 'html') {
-    if (code.trim().startsWith('<!DOCTYPE') || code.trim().startsWith('<html')) return code;
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${base}</style></head><body>${code}</body></html>`;
+// ── AI multi-file response parser ────────────────────────────────────────────
+function parseFileBlocks(text) {
+  const blocks = [];
+  const re = /\[FILE:([\w.\-/ ]+)\]\n?([\s\S]*?)\n?\[\/FILE\]/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    blocks.push({ name: m[1].trim(), content: m[2] || '' });
   }
-  if (lang === 'react') {
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<style>${base}</style></head><body><div id="root"></div>
-<script type="text/babel" data-presets="react">
-${code}
-;(function(){
-  const names=['App','Dashboard','Home','Main','Page','Component','Widget','Preview'];
-  let C=null;for(const n of names){try{if(typeof eval(n)!=='undefined'){C=eval(n);break;}}catch(e){}}
-  try{if(C)ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(C));
-  else document.getElementById('root').innerHTML='<p style="color:red">Name component App, Dashboard, etc.</p>';}
-  catch(e){document.getElementById('root').innerHTML='<p style="color:red">'+e.message+'</p>';}
-})();
-</script></body></html>`;
+  // Fallback: if no blocks found, look for markdown code fences with filenames
+  if (!blocks.length) {
+    const fenceRe = /(?:^|\n)(?:\/\/\s*|##\s*)?(?:file|FILE):\s*([\w.\-/]+)\s*\n```(?:\w+)?\n([\s\S]*?)```/g;
+    while ((m = fenceRe.exec(text)) !== null) {
+      blocks.push({ name: m[1].trim(), content: m[2].trim() });
+    }
   }
-  if (lang === 'javascript') {
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${base}pre{font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word}.e{color:#dc2626}</style></head><body><pre id="o"></pre>
-<script>const o=document.getElementById('o');console.log=(...a)=>{o.textContent+=a.join(' ')+'\n';};
-console.error=(...a)=>{o.innerHTML+='<span class="e">ERR: '+a.join(' ')+'</span>\n';};
-try{${code}}catch(e){o.innerHTML+='<span class="e">'+e.message+'</span>';}</script></body></html>`;
-  }
-  if (lang === 'css') {
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${base}${code}</style></head><body>
-<div class="container"><h1 class="title">Heading</h1><p class="text">Sample paragraph text for your CSS preview.</p>
-<button class="btn">Button</button><nav class="nav"><a href="#" class="nav-link">Home</a><a href="#" class="nav-link">About</a></nav></div></body></html>`;
-  }
-  return null;
+  return blocks;
 }
 
-function canPreview(type) { return ['html','css','javascript','react'].includes(type); }
-
-// ── Syntax highlighter ────────────────────────────────────────────────────────
-function highlightCode(code) {
-  if (!code) return '';
-  const e = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  return e
-    .replace(/("""[\s\S]*?"""|'''[\s\S]*?''')/g,'<span style="color:#98c379">$1</span>')
-    .replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g,'<span style="color:#98c379">$1</span>')
-    .replace(/(#[^\n]*)/g,'<span style="color:#5c6370;font-style:italic">$1</span>')
-    .replace(/(\/\/[^\n]*)/g,'<span style="color:#5c6370;font-style:italic">$1</span>')
-    .replace(/\b(\d+\.?\d*)\b/g,'<span style="color:#d19a66">$1</span>')
-    .replace(/\b(import|from|def|class|return|if|elif|else|for|while|in|not|and|or|True|False|None|try|except|with|as|async|await|const|let|var|function|export|default|typeof|new|this|extends)\b/g,'<span style="color:#c678dd">$1</span>')
-    .replace(/(&lt;\/?[A-Z][a-zA-Z]*)/g,'<span style="color:#e06c75">$1</span>')
-    .replace(/\b([a-zA-Z_]\w*)\s*(?=\()/g,'<span style="color:#61afef">$1</span>');
-}
-
-// ── LivePreview ───────────────────────────────────────────────────────────────
-const LivePreview = ({ html, viewport }) => {
-  const [key, setKey] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const widths = { desktop:'100%', tablet:'768px', mobile:'375px' };
-  const w = widths[viewport] || '100%';
-
-  useEffect(() => { setLoading(true); setKey(k=>k+1); }, [html]);
-
-  if (!html) return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, background:'#F5F4F2' }}>
-      <FiMonitor size={36} style={{ color:'#ddd' }}/>
-      <div style={{ fontSize:13, color:'#bbb' }}>No preview available for this file type</div>
-    </div>
-  );
-
-  return (
-    <div style={{ flex:1, position:'relative', background:'#e5e5e5', display:'flex', flexDirection:'column', alignItems:'center', overflowY: w!=='100%'?'auto':'hidden', padding: w!=='100%'?'16px 0':0 }}>
-      {loading && (
-        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(245,244,242,0.9)', zIndex:5 }}>
-          <div style={{ display:'flex', gap:5 }}>{[0,.15,.3].map((d,i)=><div key={i} style={{ width:7, height:7, borderRadius:'50%', background:'#437DFD', animation:`vcP 1.2s ease-in-out ${d}s infinite` }}/>)}</div>
-        </div>
-      )}
-      <iframe
-        key={key}
-        srcDoc={html}
-        sandbox="allow-scripts allow-modals allow-forms"
-        title="Live Preview"
-        onLoad={() => setLoading(false)}
-        style={{ width:w, flex:1, minHeight: w!=='100%'?'500px':'100%', border:'none', background:'#fff', boxShadow: w!=='100%'?'0 4px 24px rgba(0,0,0,0.18)':'none', borderRadius: w!=='100%'?8:0 }}
-      />
-    </div>
-  );
-};
-
-// ── PythonTerminal ────────────────────────────────────────────────────────────
-const PythonTerminal = ({ code, runTrigger }) => {
-  const [out, setOut] = useState(''); const [err, setErr] = useState('');
-  const [running, setRunning] = useState(false); const [ok, setOk] = useState(null);
-  const ref = useRef(null);
-  const run = useCallback(async () => {
-    if (!code||running) return;
-    setRunning(true); setOut(''); setErr(''); setOk(null);
-    try {
-      const r = await fetch('/api/vibe/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,language:'python'})});
-      const d = await r.json();
-      setOut(d.output||''); setErr(d.error||''); setOk(d.success);
-    } catch(e) { setErr('Failed: '+e.message); setOk(false); }
-    finally { setRunning(false); }
-  }, [code,running]);
-  useEffect(()=>{ run(); },[runTrigger]);
-  useEffect(()=>{ if(ref.current) ref.current.scrollTop=ref.current.scrollHeight; },[out,err]);
-  return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', background:'#0d1117', overflow:'hidden' }}>
-      <div style={{ height:34, background:'rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 14px', flexShrink:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <FiTerminal size={12} style={{ color:'#34d399' }}/>
-          <span style={{ fontSize:11, color:'#6b7280', fontFamily:'monospace' }}>python — script.py</span>
-          {ok!==null && <span style={{ fontSize:10, padding:'1px 7px', borderRadius:10, background:ok?'rgba(52,211,153,0.15)':'rgba(248,113,113,0.15)', color:ok?'#34d399':'#f87171' }}>{ok?'✓ exit 0':'✗ exit 1'}</span>}
-        </div>
-        <button onClick={run} disabled={running} style={{ display:'flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:4, fontSize:11, cursor:running?'not-allowed':'pointer', background:'transparent', border:`1px solid ${running?'#333':'#34d39944'}`, color:running?'#444':'#34d399' }}>
-          {running?<FiLoader size={10} style={{animation:'vcS 1s linear infinite'}}/>:<FiPlay size={10}/>} {running?'Running…':'Re-run'}
-        </button>
-      </div>
-      <div ref={ref} style={{ flex:1, overflowY:'auto', padding:'14px 16px', fontFamily:"'Fira Code',monospace", fontSize:12, lineHeight:1.7 }}>
-        {running&&<span style={{color:'#5a5a5a'}}>Executing...</span>}
-        {!running&&out&&<pre style={{margin:0,whiteSpace:'pre-wrap',wordBreak:'break-word',color:'#a8cc8c'}}>{out}</pre>}
-        {!running&&err&&<pre style={{margin:out?'8px 0 0':0,whiteSpace:'pre-wrap',wordBreak:'break-word',color:'#f87171'}}>{err}</pre>}
-        {!running&&!out&&!err&&<span style={{color:'#444',fontSize:12}}>(no output)</span>}
-      </div>
-    </div>
-  );
-};
-
-// ── Design tokens ─────────────────────────────────────────────────────────────
-const B = '#437DFD';
-const DARK = '#0d1117';
-
-// ── Default starter files ─────────────────────────────────────────────────────
-function makeDefaultFiles(projectId) {
-  return [{
-    id: uid(), projectId, name:'index.html',
-    content:`<!DOCTYPE html>
+// ── Templates ────────────────────────────────────────────────────────────────
+const TEMPLATES = [
+  {
+    id: 'blank', name: 'Blank', icon: FiFile, color: '#888',
+    desc: 'Start from scratch with HTML, CSS & JS',
+    files: [
+      { name: 'index.html', content: `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Project</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <h1>Hello World</h1>
-  <p>Start editing or ask AI to build something!</p>
+  <p>Edit this file or ask the AI to build something!</p>
+  <button id="btn">Click me</button>
   <script src="app.js"></script>
 </body>
-</html>`,
-    type:'html', createdAt:ts(),
-  },{
-    id: uid(), projectId, name:'styles.css',
-    content:`* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: system-ui, sans-serif;
-  background: #f8f9fa;
-  color: #212529;
-  padding: 40px;
+</html>` },
+      { name: 'style.css', content: `* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #f8f9fa; color: #212529; padding: 40px; }
+h1 { font-size: 2rem; margin-bottom: 12px; color: #437DFD; }
+p  { font-size: 1rem; color: #666; line-height: 1.6; margin-bottom: 20px; }
+button { padding: 10px 22px; background: #437DFD; color: #fff; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; }
+button:hover { background: #2C76FF; }` },
+      { name: 'app.js', content: `document.getElementById('btn').addEventListener('click', () => {
+  alert('Hello from JavaScript!');
+});` },
+    ],
+  },
+  {
+    id: 'landing', name: 'Landing Page', icon: FiGlobe, color: '#437DFD',
+    desc: 'Modern glassmorphism landing with animations',
+    files: [
+      { name: 'index.html', content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Launch — The Future Platform</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-gradient"></div>
+  <nav>
+    <div class="logo"><span class="logo-dot"></span>Launch</div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a class="nav-cta" href="#start">Get Started</a>
+    </div>
+  </nav>
+  <section class="hero">
+    <div class="hero-badge">✨ Introducing v2.0 — Now with AI</div>
+    <h1>Build <span class="grad">beautiful apps</span><br>in minutes</h1>
+    <p>The modern platform trusted by 50,000+ developers worldwide. Ship faster, scale effortlessly.</p>
+    <div class="hero-btns">
+      <a href="#start" class="btn-primary">Start for free →</a>
+      <a href="#demo" class="btn-ghost">Watch demo ▶</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><strong>50K+</strong><span>Users</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><strong>99.9%</strong><span>Uptime</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><strong>4.9★</strong><span>Rating</span></div>
+    </div>
+  </section>
+  <section id="features" class="features">
+    <div class="section-label">Features</div>
+    <h2>Everything you need to ship</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feat-icon">⚡</div>
+        <h3>Lightning Fast</h3>
+        <p>Global CDN ensures <100ms load times for users anywhere in the world.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">🔒</div>
+        <h3>Enterprise Security</h3>
+        <p>SOC 2 certified with end-to-end encryption and zero-trust architecture.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">📊</div>
+        <h3>Deep Analytics</h3>
+        <p>Real-time insights into user behavior, performance, and conversion.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">🤖</div>
+        <h3>AI-Powered</h3>
+        <p>Built-in AI tools that automate workflows and supercharge productivity.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">🌍</div>
+        <h3>Global Scale</h3>
+        <p>Auto-scales to handle millions of requests with zero configuration.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">🎨</div>
+        <h3>Beautiful UI</h3>
+        <p>Designer-crafted components that make your product look incredible.</p>
+      </div>
+    </div>
+  </section>
+  <section class="cta-section" id="start">
+    <h2>Ready to launch?</h2>
+    <p>Join 50,000+ teams building the future.</p>
+    <a href="#" class="btn-primary">Get started free</a>
+  </section>
+  <footer>
+    <div class="logo"><span class="logo-dot"></span>Launch</div>
+    <p>© 2025 Launch Inc. All rights reserved.</p>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>` },
+      { name: 'style.css', content: `*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: -apple-system, 'Inter', sans-serif; background: #050811; color: #e8eaf0; min-height: 100vh; overflow-x: hidden; }
+
+.bg-gradient { position: fixed; inset: 0; background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(67,125,253,0.15), transparent), radial-gradient(ellipse 60% 40% at 80% 60%, rgba(123,97,255,0.08), transparent); pointer-events: none; z-index: 0; }
+
+nav { position: fixed; top: 0; left: 0; right: 0; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 6%; background: rgba(5,8,17,0.8); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.06); z-index: 100; }
+.logo { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 800; letter-spacing: -0.03em; color: #fff; }
+.logo-dot { width: 10px; height: 10px; border-radius: 50%; background: linear-gradient(135deg, #437DFD, #7B61FF); box-shadow: 0 0 12px rgba(67,125,253,0.6); }
+.nav-links { display: flex; align-items: center; gap: 32px; }
+.nav-links a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
+.nav-links a:hover { color: #fff; }
+.nav-cta { background: rgba(67,125,253,0.15) !important; color: #437DFD !important; padding: 8px 18px; border-radius: 8px; border: 1px solid rgba(67,125,253,0.3) !important; transition: all 0.2s !important; }
+.nav-cta:hover { background: rgba(67,125,253,0.25) !important; color: #7badfd !important; }
+
+.hero { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 160px 6% 100px; }
+.hero-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; background: rgba(67,125,253,0.1); border: 1px solid rgba(67,125,253,0.25); border-radius: 99px; font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 28px; }
+h1 { font-size: clamp(36px, 6vw, 72px); font-weight: 900; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 20px; color: #fff; }
+.grad { background: linear-gradient(135deg, #437DFD 0%, #7B61FF 50%, #FD5B5D 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.hero p { font-size: 18px; color: rgba(255,255,255,0.5); max-width: 520px; line-height: 1.7; margin-bottom: 36px; }
+.hero-btns { display: flex; gap: 12px; justify-content: center; margin-bottom: 60px; }
+.btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 14px 28px; background: linear-gradient(135deg, #437DFD, #2C76FF); color: #fff; text-decoration: none; border-radius: 10px; font-size: 15px; font-weight: 700; box-shadow: 0 8px 32px rgba(67,125,253,0.35); transition: all 0.2s; border: none; cursor: pointer; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(67,125,253,0.5); }
+.btn-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 14px 28px; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); text-decoration: none; border-radius: 10px; font-size: 15px; font-weight: 600; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; }
+.btn-ghost:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.hero-stats { display: flex; align-items: center; gap: 24px; opacity: 0.7; }
+.stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.stat strong { font-size: 20px; font-weight: 800; color: #fff; }
+.stat span { font-size: 12px; color: rgba(255,255,255,0.5); }
+.stat-divider { width: 1px; height: 32px; background: rgba(255,255,255,0.15); }
+
+.features { position: relative; z-index: 1; padding: 80px 6%; }
+.section-label { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #437DFD; margin-bottom: 12px; text-align: center; }
+.features h2 { font-size: clamp(28px, 4vw, 44px); font-weight: 800; letter-spacing: -0.03em; text-align: center; margin-bottom: 48px; color: #fff; }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1100px; margin: 0 auto; }
+.feature-card { padding: 28px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; transition: all 0.25s; cursor: default; }
+.feature-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(67,125,253,0.25); transform: translateY(-4px); }
+.feat-icon { font-size: 28px; margin-bottom: 16px; }
+.feature-card h3 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+.feature-card p { font-size: 14px; color: rgba(255,255,255,0.45); line-height: 1.7; }
+
+.cta-section { position: relative; z-index: 1; text-align: center; padding: 100px 6%; }
+.cta-section h2 { font-size: clamp(28px, 4vw, 48px); font-weight: 800; letter-spacing: -0.03em; color: #fff; margin-bottom: 12px; }
+.cta-section p { font-size: 18px; color: rgba(255,255,255,0.5); margin-bottom: 36px; }
+
+footer { position: relative; z-index: 1; border-top: 1px solid rgba(255,255,255,0.06); padding: 32px 6%; display: flex; align-items: center; justify-content: space-between; }
+footer p { font-size: 13px; color: rgba(255,255,255,0.3); }
+
+.fade-up { opacity: 0; transform: translateY(24px); transition: all 0.6s ease; }
+.fade-up.visible { opacity: 1; transform: translateY(0); }` },
+      { name: 'app.js', content: `// Scroll animations
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.feature-card, .hero-badge, .cta-section h2').forEach(el => {
+  el.classList.add('fade-up');
+  observer.observe(el);
+});
+
+// Stagger feature cards
+document.querySelectorAll('.feature-card').forEach((card, i) => {
+  card.style.transitionDelay = \`\${i * 0.08}s\`;
+});` },
+    ],
+  },
+  {
+    id: '3d', name: '3D Landing', icon: FiBox, color: '#7B61FF',
+    desc: 'Interactive Three.js 3D scene with particles',
+    files: [
+      { name: 'index.html', content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexus — 3D Experience</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="bg"></canvas>
+  <div class="ui">
+    <nav>
+      <div class="brand">◈ NEXUS</div>
+      <div class="nav-right">
+        <a href="#">About</a>
+        <a href="#" class="btn-outline">Launch App</a>
+      </div>
+    </nav>
+    <section class="hero">
+      <div class="eyebrow">Next-generation platform</div>
+      <h1>Explore the<br><span>Digital Frontier</span></h1>
+      <p>An immersive 3D experience built for the future web. Infinite possibilities, zero limits.</p>
+      <div class="hero-actions">
+        <button class="btn-cta" id="enterBtn">Enter Experience →</button>
+      </div>
+    </section>
+    <div class="scroll-hint">scroll to explore ↓</div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>` },
+      { name: 'style.css', content: `* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body { font-family: -apple-system, 'SF Pro Display', sans-serif; background: #000; color: #fff; }
+#bg { position: fixed; inset: 0; z-index: 0; }
+.ui { position: relative; z-index: 10; height: 100vh; display: flex; flex-direction: column; pointer-events: none; }
+nav { display: flex; align-items: center; justify-content: space-between; padding: 24px 48px; pointer-events: all; }
+.brand { font-size: 20px; font-weight: 900; letter-spacing: 0.1em; color: #fff; }
+.nav-right { display: flex; align-items: center; gap: 32px; }
+.nav-right a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
+.nav-right a:hover { color: #fff; }
+.btn-outline { padding: 8px 20px; border: 1px solid rgba(255,255,255,0.25) !important; border-radius: 8px !important; backdrop-filter: blur(10px); background: rgba(255,255,255,0.05) !important; transition: all 0.2s !important; color: rgba(255,255,255,0.8) !important; }
+.btn-outline:hover { border-color: rgba(255,255,255,0.6) !important; background: rgba(255,255,255,0.1) !important; color: #fff !important; }
+.hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 24px; pointer-events: all; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(150,120,255,0.8); margin-bottom: 20px; }
+h1 { font-size: clamp(42px, 7vw, 88px); font-weight: 900; letter-spacing: -0.04em; line-height: 1.05; margin-bottom: 20px; }
+h1 span { background: linear-gradient(135deg, #a78bfa, #60a5fa, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+p { font-size: 18px; color: rgba(255,255,255,0.5); max-width: 480px; line-height: 1.7; margin-bottom: 40px; }
+.hero-actions { pointer-events: all; }
+.btn-cta { padding: 16px 36px; background: linear-gradient(135deg, #7B61FF, #437DFD); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 32px rgba(123,97,255,0.4); transition: all 0.2s; }
+.btn-cta:hover { transform: translateY(-3px); box-shadow: 0 16px 48px rgba(123,97,255,0.5); }
+.scroll-hint { text-align: center; padding-bottom: 32px; font-size: 12px; color: rgba(255,255,255,0.25); letter-spacing: 0.1em; pointer-events: none; animation: fadeInOut 3s ease-in-out infinite; }
+@keyframes fadeInOut { 0%,100%{opacity:0.3} 50%{opacity:0.7} }` },
+      { name: 'app.js', content: `const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg'), antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+camera.position.z = 5;
+
+// Particle galaxy
+const particleCount = 3000;
+const geometry = new THREE.BufferGeometry();
+const positions = new Float32Array(particleCount * 3);
+const colors = new Float32Array(particleCount * 3);
+const colorPalette = [
+  new THREE.Color('#7B61FF'), new THREE.Color('#437DFD'),
+  new THREE.Color('#60a5fa'), new THREE.Color('#f472b6'),
+];
+for (let i = 0; i < particleCount; i++) {
+  const r = Math.random() * 8 + 1;
+  const theta = Math.random() * Math.PI * 2;
+  const phi   = Math.random() * Math.PI;
+  positions[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+  positions[i*3+1] = r * Math.sin(phi) * Math.sin(theta) * 0.4;
+  positions[i*3+2] = r * Math.cos(phi);
+  const c = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+  colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
 }
-h1 { font-size: 2rem; margin-bottom: 16px; color: #437DFD; }
-p  { font-size: 1rem; color: #666; line-height: 1.6; }`,
-    type:'css', createdAt:ts(),
-  },{
-    id: uid(), projectId, name:'app.js',
-    content:`// Your JavaScript goes here
-console.log('Project loaded!');`,
-    type:'javascript', createdAt:ts(),
-  }];
+geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+const material = new THREE.PointsMaterial({ size: 0.028, vertexColors: true, transparent: true, opacity: 0.85 });
+const particles = new THREE.Points(geometry, material);
+scene.add(particles);
+
+// Floating torus knot
+const torusGeo = new THREE.TorusKnotGeometry(1.1, 0.32, 120, 16);
+const torusMat = new THREE.MeshStandardMaterial({ color: '#7B61FF', wireframe: true, opacity: 0.18, transparent: true });
+const torus = new THREE.Mesh(torusGeo, torusMat);
+scene.add(torus);
+
+// Lights
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+scene.add(ambientLight);
+const pointLight = new THREE.PointLight(0x7B61FF, 2, 20);
+pointLight.position.set(2, 3, 2);
+scene.add(pointLight);
+const pointLight2 = new THREE.PointLight(0x437DFD, 1.5, 20);
+pointLight2.position.set(-3, -2, 1);
+scene.add(pointLight2);
+
+let mouseX = 0, mouseY = 0;
+document.addEventListener('mousemove', (e) => {
+  mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+  mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+document.getElementById('enterBtn')?.addEventListener('click', () => {
+  document.querySelector('.hero').style.opacity = '0';
+  document.querySelector('.hero').style.transition = 'opacity 1s';
+  setTimeout(() => {
+    torus.material.opacity = 0.6;
+    particles.material.size = 0.045;
+  }, 800);
+});
+
+let t = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  t += 0.004;
+  particles.rotation.y = t * 0.12;
+  particles.rotation.x = t * 0.04;
+  torus.rotation.x = t * 0.3;
+  torus.rotation.y = t * 0.5;
+  camera.position.x += (mouseX * 1.2 - camera.position.x) * 0.04;
+  camera.position.y += (-mouseY * 0.8 - camera.position.y) * 0.04;
+  camera.lookAt(scene.position);
+  renderer.render(scene, camera);
 }
+animate();` },
+    ],
+  },
+  {
+    id: 'dashboard', name: 'Dashboard App', icon: FiBarChart2, color: '#00C48C',
+    desc: 'Analytics dashboard with charts and stats',
+    files: [
+      { name: 'index.html', content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pulse — Analytics Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-logo">◈ Pulse</div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active"><span>📊</span> Dashboard</a>
+        <a href="#" class="nav-item"><span>📈</span> Analytics</a>
+        <a href="#" class="nav-item"><span>👥</span> Users</a>
+        <a href="#" class="nav-item"><span>🛒</span> Sales</a>
+        <a href="#" class="nav-item"><span>⚙️</span> Settings</a>
+      </nav>
+    </aside>
+    <main class="main">
+      <header class="top-bar">
+        <div>
+          <h1>Dashboard</h1>
+          <p class="subtitle">Welcome back, Alex</p>
+        </div>
+        <div class="top-actions">
+          <button class="btn-outline">Export</button>
+          <button class="btn-primary">+ New Report</button>
+        </div>
+      </header>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value">$48,295</div><div class="stat-change positive">↑ 12.5%</div></div>
+        <div class="stat-card"><div class="stat-label">Active Users</div><div class="stat-value">8,412</div><div class="stat-change positive">↑ 8.1%</div></div>
+        <div class="stat-card"><div class="stat-label">Conversion</div><div class="stat-value">3.24%</div><div class="stat-change negative">↓ 0.4%</div></div>
+        <div class="stat-card"><div class="stat-label">Avg. Session</div><div class="stat-value">4m 32s</div><div class="stat-change positive">↑ 1.2%</div></div>
+      </div>
+      <div class="charts-row">
+        <div class="chart-card wide">
+          <div class="card-header"><h3>Revenue Overview</h3><select><option>Last 7 days</option><option>30 days</option><option>3 months</option></select></div>
+          <canvas id="revenueChart" height="180"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="card-header"><h3>Traffic Sources</h3></div>
+          <div id="donut"></div>
+          <div class="donut-legend" id="donutLegend"></div>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="card-header"><h3>Recent Orders</h3><a href="#">View all →</a></div>
+        <table>
+          <thead><tr><th>Order</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody id="ordersTable"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>` },
+      { name: 'style.css', content: `*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, 'Inter', sans-serif; background: #F0F2F5; color: #1a1a2e; }
+.app { display: flex; height: 100vh; overflow: hidden; }
+.sidebar { width: 220px; background: #0f0f1a; display: flex; flex-direction: column; padding: 24px 0; flex-shrink: 0; }
+.sidebar-logo { font-size: 18px; font-weight: 800; color: #fff; padding: 0 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 12px; letter-spacing: -0.02em; }
+.sidebar-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 12px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.45); text-decoration: none; transition: all 0.15s; }
+.nav-item:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
+.nav-item.active { background: rgba(0,196,140,0.15); color: #00C48C; }
+.main { flex: 1; overflow-y: auto; }
+.top-bar { display: flex; align-items: center; justify-content: space-between; padding: 28px 28px 0; }
+.top-bar h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.subtitle { font-size: 13px; color: #888; margin-top: 2px; }
+.top-actions { display: flex; gap: 10px; }
+.btn-primary { padding: 9px 18px; background: #437DFD; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-outline { padding: 9px 18px; background: #fff; color: #444; border: 1px solid rgba(0,0,0,0.12); border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 28px 0; }
+.stat-card { background: #fff; border-radius: 14px; padding: 18px 20px; border: 1px solid rgba(0,0,0,0.06); }
+.stat-label { font-size: 12px; color: #888; font-weight: 500; margin-bottom: 8px; }
+.stat-value { font-size: 24px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 4px; }
+.stat-change { font-size: 12px; font-weight: 600; }
+.stat-change.positive { color: #00C48C; }
+.stat-change.negative { color: #FD5B5D; }
+.charts-row { display: grid; grid-template-columns: 1fr 320px; gap: 16px; padding: 16px 28px 0; }
+.chart-card { background: #fff; border-radius: 14px; padding: 20px; border: 1px solid rgba(0,0,0,0.06); }
+.chart-card.wide {}
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.card-header h3 { font-size: 14px; font-weight: 700; }
+.card-header select, .card-header a { font-size: 12px; color: #437DFD; border: 1px solid rgba(67,125,253,0.2); border-radius: 6px; padding: 4px 8px; outline: none; text-decoration: none; font-weight: 600; }
+#donut { display: flex; justify-content: center; margin: 8px 0; }
+.donut-legend { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.legend-val { margin-left: auto; font-weight: 700; font-size: 13px; }
+.table-card { background: #fff; border-radius: 14px; margin: 16px 28px 28px; padding: 20px; border: 1px solid rgba(0,0,0,0.06); }
+table { width: 100%; border-collapse: collapse; }
+thead th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #aaa; padding: 8px 12px; text-align: left; border-bottom: 1px solid rgba(0,0,0,0.07); }
+tbody td { padding: 12px 12px; font-size: 13px; border-bottom: 1px solid rgba(0,0,0,0.04); }
+tbody tr:last-child td { border-bottom: none; }
+.status-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+.status-badge.paid { background: rgba(0,196,140,0.1); color: #00C48C; }
+.status-badge.pending { background: rgba(255,140,66,0.1); color: #FF8C42; }
+.status-badge.failed { background: rgba(253,91,93,0.1); color: #FD5B5D; }` },
+      { name: 'app.js', content: `// Revenue bar chart
+const canvas = document.getElementById('revenueChart');
+const ctx = canvas.getContext('2d');
+canvas.width = canvas.parentElement.offsetWidth - 40;
+const data = [4200, 5800, 4900, 7200, 6100, 8400, 7900];
+const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const max = Math.max(...data) * 1.2;
+const barW = (canvas.width - 60) / data.length - 10;
+const h = 180;
+
+data.forEach((v, i) => {
+  const x = 30 + i * ((canvas.width - 60) / data.length);
+  const barH = (v / max) * (h - 40);
+  const grad = ctx.createLinearGradient(0, h - 20 - barH, 0, h - 20);
+  grad.addColorStop(0, '#437DFD');
+  grad.addColorStop(1, 'rgba(67,125,253,0.2)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.roundRect(x, h - 20 - barH, barW, barH, [4, 4, 0, 0]);
+  ctx.fill();
+  ctx.fillStyle = '#aaa';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText(labels[i], x + barW / 2, h - 4);
+  ctx.fillStyle = '#555';
+  ctx.font = '10px system-ui';
+  ctx.fillText('$' + (v/1000).toFixed(1) + 'k', x + barW / 2, h - 20 - barH - 5);
+});
+
+// Donut chart
+const donutData = [{ label: 'Organic', value: 42, color: '#437DFD' }, { label: 'Social', value: 28, color: '#7B61FF' }, { label: 'Paid', value: 18, color: '#00C48C' }, { label: 'Direct', value: 12, color: '#FF8C42' }];
+const dc = document.createElement('canvas'); dc.width = 120; dc.height = 120;
+const dx = dc.getContext('2d');
+let angle = -Math.PI / 2, total = donutData.reduce((s, d) => s + d.value, 0);
+donutData.forEach(d => {
+  const slice = (d.value / total) * Math.PI * 2;
+  dx.beginPath(); dx.moveTo(60, 60);
+  dx.arc(60, 60, 50, angle, angle + slice);
+  dx.closePath(); dx.fillStyle = d.color; dx.fill();
+  angle += slice;
+});
+dx.beginPath(); dx.arc(60, 60, 30, 0, Math.PI * 2); dx.fillStyle = '#fff'; dx.fill();
+document.getElementById('donut').appendChild(dc);
+const leg = document.getElementById('donutLegend');
+donutData.forEach(d => { leg.innerHTML += \`<div class="legend-item"><div class="legend-dot" style="background:\${d.color}"></div><span>\${d.label}</span><span class="legend-val">\${d.value}%</span></div>\`; });
+
+// Orders table
+const orders = [
+  { id: '#ORD-1042', customer: 'Sarah Chen', amount: '$234.00', status: 'paid', date: 'Jan 12' },
+  { id: '#ORD-1041', customer: 'Mike Johnson', amount: '$89.50', status: 'pending', date: 'Jan 12' },
+  { id: '#ORD-1040', customer: 'Priya Sharma', amount: '$412.00', status: 'paid', date: 'Jan 11' },
+  { id: '#ORD-1039', customer: 'James Wilson', amount: '$156.75', status: 'failed', date: 'Jan 11' },
+  { id: '#ORD-1038', customer: 'Emma Davis', amount: '$298.00', status: 'paid', date: 'Jan 10' },
+];
+const tbody = document.getElementById('ordersTable');
+orders.forEach(o => {
+  tbody.innerHTML += \`<tr><td><strong>\${o.id}</strong></td><td>\${o.customer}</td><td>\${o.amount}</td><td><span class="status-badge \${o.status}">\${o.status}</span></td><td>\${o.date}</td></tr>\`;
+});` },
+    ],
+  },
+  {
+    id: 'portfolio', name: 'Portfolio', icon: FiUser, color: '#FF8C42',
+    desc: 'Creative portfolio with grid & animations',
+    files: [
+      { name: 'index.html', content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alex Morgan — Designer & Developer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav><div class="brand">AM.</div><div class="nav-right"><a href="#work">Work</a><a href="#about">About</a><a href="#contact" class="hire-btn">Hire me</a></div></nav>
+  <section class="hero">
+    <div class="hero-tag">Available for freelance</div>
+    <h1>I design & build<br><span>digital products</span><br>people love.</h1>
+    <p>Senior product designer & frontend developer with 5+ years crafting beautiful, functional experiences.</p>
+    <div class="hero-cta"><a href="#work" class="btn-primary">View my work ↓</a></div>
+    <div class="hero-logos"><span>Worked with</span><strong>Airbnb</strong><strong>Stripe</strong><strong>Figma</strong><strong>Notion</strong></div>
+  </section>
+  <section id="work" class="work">
+    <h2>Selected Work</h2>
+    <div class="work-grid" id="workGrid"></div>
+  </section>
+  <section id="about" class="about">
+    <div class="about-text">
+      <h2>About me</h2>
+      <p>I'm Alex, a product designer and developer based in San Francisco. I specialize in creating user-centered digital experiences that balance beauty with functionality.</p>
+      <p>When I'm not designing, you'll find me hiking, reading about cognitive psychology, or experimenting with generative art.</p>
+      <div class="skills">
+        <span class="skill">Figma</span><span class="skill">React</span><span class="skill">CSS</span><span class="skill">Motion</span><span class="skill">TypeScript</span><span class="skill">Design Systems</span>
+      </div>
+    </div>
+    <div class="about-img"><div class="img-placeholder">AM</div></div>
+  </section>
+  <footer id="contact">
+    <h2>Let's work together</h2>
+    <a href="mailto:alex@design.co" class="email-link">alex@design.co →</a>
+    <div class="socials"><a href="#">Twitter</a><a href="#">LinkedIn</a><a href="#">Dribbble</a></div>
+    <p class="copyright">© 2025 Alex Morgan</p>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>` },
+      { name: 'style.css', content: `*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: #fff; color: #111; }
+nav { display: flex; align-items: center; justify-content: space-between; padding: 24px 6%; position: sticky; top: 0; background: rgba(255,255,255,0.9); backdrop-filter: blur(20px); z-index: 100; border-bottom: 1px solid rgba(0,0,0,0.06); }
+.brand { font-size: 22px; font-weight: 900; letter-spacing: -0.05em; }
+.nav-right { display: flex; align-items: center; gap: 28px; }
+.nav-right a { color: #555; text-decoration: none; font-size: 14px; font-weight: 500; }
+.hire-btn { background: #111 !important; color: #fff !important; padding: 8px 18px; border-radius: 99px; }
+.hero { padding: 80px 6% 100px; max-width: 900px; }
+.hero-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 99px; background: rgba(0,196,140,0.1); color: #00A876; font-size: 13px; font-weight: 600; margin-bottom: 28px; border: 1px solid rgba(0,196,140,0.2); }
+.hero-tag::before { content: '●'; font-size: 8px; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+h1 { font-size: clamp(40px, 6vw, 78px); font-weight: 900; letter-spacing: -0.05em; line-height: 1.05; margin-bottom: 24px; }
+h1 span { color: #437DFD; }
+.hero p { font-size: 18px; color: #666; max-width: 500px; line-height: 1.7; margin-bottom: 36px; }
+.hero-cta { margin-bottom: 48px; }
+.btn-primary { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; background: #111; color: #fff; text-decoration: none; border-radius: 10px; font-size: 15px; font-weight: 700; transition: all 0.2s; }
+.btn-primary:hover { background: #333; transform: translateY(-2px); }
+.hero-logos { display: flex; align-items: center; gap: 20px; font-size: 14px; color: #aaa; }
+.hero-logos strong { color: #555; font-weight: 600; }
+.work { padding: 60px 6%; }
+.work h2 { font-size: clamp(24px, 3vw, 36px); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 36px; }
+.work-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+.work-item { border-radius: 16px; overflow: hidden; cursor: pointer; transition: transform 0.3s; }
+.work-item:hover { transform: translateY(-6px); }
+.work-thumb { height: 220px; display: flex; align-items: center; justify-content: center; font-size: 48px; }
+.work-info { padding: 16px; background: #f8f9fa; }
+.work-info h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.work-info p { font-size: 12px; color: #888; }
+.about { display: flex; align-items: center; gap: 80px; padding: 80px 6%; background: #f8f9fa; }
+.about-text { flex: 1; }
+.about h2 { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 20px; }
+.about p { font-size: 16px; color: #555; line-height: 1.8; margin-bottom: 16px; }
+.skills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.skill { padding: 6px 14px; background: #fff; border: 1px solid rgba(0,0,0,0.1); border-radius: 99px; font-size: 13px; font-weight: 600; color: #444; }
+.about-img { flex-shrink: 0; }
+.img-placeholder { width: 240px; height: 300px; background: linear-gradient(135deg, #437DFD, #7B61FF); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 64px; font-weight: 900; color: #fff; letter-spacing: -0.05em; }
+footer { padding: 80px 6%; text-align: center; }
+footer h2 { font-size: 40px; font-weight: 900; letter-spacing: -0.04em; margin-bottom: 16px; }
+.email-link { display: inline-block; font-size: 22px; font-weight: 700; color: #437DFD; text-decoration: none; margin-bottom: 32px; }
+.socials { display: flex; gap: 20px; justify-content: center; margin-bottom: 48px; }
+.socials a { color: #888; text-decoration: none; font-size: 14px; font-weight: 500; }
+.copyright { font-size: 13px; color: #ccc; }` },
+      { name: 'app.js', content: `const projects = [
+  { title: 'Pulse Analytics', desc: 'Dashboard & data viz', emoji: '📊', bg: 'linear-gradient(135deg,#437DFD22,#7B61FF22)', tags: 'Web App' },
+  { title: 'Bloom — Plant App', desc: 'iOS & Android', emoji: '🌿', bg: 'linear-gradient(135deg,#00C48C22,#00A87622)', tags: 'Mobile' },
+  { title: 'Frame Design System', desc: '80+ components', emoji: '⚡', bg: 'linear-gradient(135deg,#FF8C4222,#FD5B5D22)', tags: 'Design System' },
+  { title: 'Orbit SaaS Platform', desc: 'B2B productivity tool', emoji: '🚀', bg: 'linear-gradient(135deg,#7B61FF22,#437DFD22)', tags: 'SaaS' },
+  { title: 'Koto — Finance App', desc: 'Personal budgeting', emoji: '💰', bg: 'linear-gradient(135deg,#00C48C22,#437DFD22)', tags: 'Fintech' },
+  { title: 'Waves Music Player', desc: 'Generative cover art', emoji: '🎵', bg: 'linear-gradient(135deg,#FD5B5D22,#FF8C4222)', tags: 'Creative' },
+];
+const grid = document.getElementById('workGrid');
+projects.forEach(p => {
+  grid.innerHTML += \`
+    <div class="work-item">
+      <div class="work-thumb" style="background:\${p.bg}">\${p.emoji}</div>
+      <div class="work-info"><h3>\${p.title}</h3><p>\${p.desc} · \${p.tags}</p></div>
+    </div>
+  \`;
+});
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.style.opacity = '1'; e.target.style.transform = 'translateY(0)'; } });
+}, { threshold: 0.1 });
+document.querySelectorAll('.work-item').forEach((el, i) => {
+  el.style.cssText = 'opacity:0;transform:translateY(30px);transition:all 0.5s ease ' + (i * 0.08) + 's';
+  observer.observe(el);
+});` },
+    ],
+  },
+  {
+    id: 'game', name: 'Canvas Game', icon: FiGrid, color: '#FD5B5D',
+    desc: 'Playable Breakout-style canvas game',
+    files: [
+      { name: 'index.html', content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Breaker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrapper">
+    <div class="hud"><span id="scoreDisplay">SCORE: 0</span><span id="livesDisplay">LIVES: ♥♥♥</span></div>
+    <canvas id="game"></canvas>
+    <div class="hint">← → Arrow Keys  ·  Space to Start</div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>` },
+      { name: 'style.css', content: `* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #050811; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: 'Courier New', monospace; overflow: hidden; }
+.wrapper { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.hud { display: flex; justify-content: space-between; width: 480px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: rgba(255,255,255,0.5); }
+#game { border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); }
+.hint { font-size: 11px; color: rgba(255,255,255,0.2); letter-spacing: 0.1em; }` },
+      { name: 'app.js', content: `const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = 480; canvas.height = 360;
+
+let score = 0, lives = 3, state = 'start';
+const COLORS = ['#437DFD','#7B61FF','#00C48C','#FF8C42','#FD5B5D'];
+
+const ball = { x:240, y:320, vx:3, vy:-4, r:7 };
+const pad  = { x:190, y:340, w:100, h:12, speed:6 };
+const keys = {};
+
+const COLS = 8, ROWS = 5, BW = 52, BH = 18, GAP = 4;
+const offX = (480 - COLS*(BW+GAP)) / 2;
+let bricks = [];
+function initBricks() {
+  bricks = [];
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      bricks.push({ x: offX + c*(BW+GAP), y: 40 + r*(BH+GAP), w:BW, h:BH, color:COLORS[r%COLORS.length], alive:true });
+}
+initBricks();
+
+document.addEventListener('keydown', e => { keys[e.key] = true; if (e.key === ' ') { if (state === 'start' || state === 'dead') start(); } });
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+function start() { state = 'play'; ball.x=pad.x+pad.w/2; ball.y=335; ball.vx=3.5*(Math.random()>.5?1:-1); ball.vy=-4.5; }
+
+function update() {
+  if (state !== 'play') return;
+  if (keys['ArrowLeft']) pad.x = Math.max(0, pad.x - pad.speed);
+  if (keys['ArrowRight']) pad.x = Math.min(480 - pad.w, pad.x + pad.speed);
+
+  ball.x += ball.vx; ball.y += ball.vy;
+  if (ball.x < ball.r || ball.x > 480-ball.r) ball.vx *= -1;
+  if (ball.y < ball.r) ball.vy *= -1;
+  if (ball.y > 370) { lives--; document.getElementById('livesDisplay').textContent = 'LIVES: ' + '♥'.repeat(Math.max(0,lives)) + '♡'.repeat(Math.max(0,3-lives)); if (lives <= 0) { state = 'over'; } else { state = 'dead'; ball.x=pad.x+pad.w/2; ball.y=335; } }
+  if (ball.y+ball.r > pad.y && ball.x > pad.x && ball.x < pad.x+pad.w && ball.vy > 0) {
+    ball.vy *= -1; ball.vx += (ball.x-(pad.x+pad.w/2))*0.08;
+  }
+  bricks.forEach(b => {
+    if (!b.alive) return;
+    if (ball.x>b.x && ball.x<b.x+b.w && ball.y>b.y && ball.y<b.y+b.h) {
+      b.alive=false; ball.vy*=-1; score+=10;
+      document.getElementById('scoreDisplay').textContent='SCORE: '+score;
+    }
+  });
+  if (bricks.every(b=>!b.alive)) { initBricks(); ball.vy = Math.min(ball.vy-0.5, -3); }
+}
+
+function draw() {
+  ctx.fillStyle='#050811'; ctx.fillRect(0,0,480,360);
+  ctx.strokeStyle='rgba(255,255,255,0.03)';
+  for(let i=0;i<480;i+=20){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,360);ctx.stroke();}
+  for(let i=0;i<360;i+=20){ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(480,i);ctx.stroke();}
+
+  bricks.forEach(b => {
+    if (!b.alive) return;
+    ctx.fillStyle = b.color + '33';
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(b.x+0.5, b.y+0.5, b.w-1, b.h-1);
+    ctx.lineWidth = 1;
+  });
+
+  const pg = ctx.createLinearGradient(pad.x, pad.y, pad.x+pad.w, pad.y+pad.h);
+  pg.addColorStop(0,'#437DFD'); pg.addColorStop(1,'#7B61FF');
+  ctx.fillStyle=pg; ctx.beginPath(); ctx.roundRect(pad.x, pad.y, pad.w, pad.h, 6); ctx.fill();
+  ctx.shadowBlur=12; ctx.shadowColor='#437DFD';
+
+  const bg = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, ball.r);
+  bg.addColorStop(0,'#fff'); bg.addColorStop(1,'#437DFD');
+  ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur=20; ctx.shadowColor='#437DFD80';
+  ctx.shadowBlur=0;
+
+  if (state==='start'||state==='dead') {
+    ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='bold 16px Courier New'; ctx.textAlign='center';
+    ctx.fillText(state==='start'?'PRESS SPACE TO START':'PRESS SPACE TO CONTINUE', 240, 200);
+  }
+  if (state==='over') {
+    ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(0,0,480,360);
+    ctx.fillStyle='#FD5B5D'; ctx.font='bold 28px Courier New'; ctx.textAlign='center'; ctx.fillText('GAME OVER', 240, 170);
+    ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='14px Courier New'; ctx.fillText('SCORE: '+score, 240, 200);
+    ctx.fillText('PRESS SPACE TO RESTART', 240, 230);
+    document.addEventListener('keydown', e => { if(e.key===' '&&state==='over'){score=0;lives=3;initBricks();document.getElementById('scoreDisplay').textContent='SCORE: 0';document.getElementById('livesDisplay').textContent='LIVES: ♥♥♥';state='start';} }, {once:true});
+  }
+}
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+loop();` },
+    ],
+  },
+];
+
+// ── LivePreview component ─────────────────────────────────────────────────────
+const VIEWPORTS = {
+  desktop: { width: '100%',  label: 'Desktop', icon: FiMonitor },
+  tablet:  { width: '768px', label: 'Tablet',  icon: FiTablet },
+  mobile:  { width: '375px', label: 'Mobile',  icon: FiSmartphone },
+};
+
+const LivePreview = ({ html, viewport, onRefresh }) => {
+  const [key, setKey] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const w = VIEWPORTS[viewport]?.width || '100%';
+  const isConstrained = w !== '100%';
+
+  useEffect(() => { setLoading(true); setKey(k => k + 1); }, [html]);
+
+  if (!html) return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, background: '#F5F4F2' }}>
+      <FiMonitor size={40} style={{ color: '#ddd' }}/>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#bbb', marginBottom: 6 }}>No HTML file found</div>
+        <div style={{ fontSize: 12, color: '#ccc' }}>Create an index.html or ask AI to build something</div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ flex: 1, position: 'relative', background: '#e8e8e8', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: isConstrained ? 'auto' : 'hidden', padding: isConstrained ? '20px 0' : 0 }}>
+      {loading && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(245,244,242,0.95)', zIndex: 10, pointerEvents: 'none' }}>
+          <div style={{ display: 'flex', gap: 5 }}>
+            {[0, 0.15, 0.3].map((d, i) => (
+              <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#437DFD', animation: `vcDot 1s ease-in-out ${d}s infinite` }}/>
+            ))}
+          </div>
+        </div>
+      )}
+      <iframe
+        key={key}
+        srcDoc={html}
+        sandbox="allow-scripts allow-modals allow-forms allow-same-origin"
+        title="Live Preview"
+        onLoad={() => setLoading(false)}
+        style={{
+          width: w,
+          flex: isConstrained ? 'none' : 1,
+          height: isConstrained ? '600px' : '100%',
+          minHeight: isConstrained ? '600px' : undefined,
+          border: 'none',
+          background: '#fff',
+          boxShadow: isConstrained ? '0 8px 40px rgba(0,0,0,0.25)' : 'none',
+          borderRadius: isConstrained ? 10 : 0,
+        }}
+      />
+    </div>
+  );
+};
+
+// ── Template Picker Modal ─────────────────────────────────────────────────────
+const TemplatePicker = ({ onSelect, onClose }) => {
+  const [name, setName] = useState('');
+  const [selected, setSelected] = useState('landing');
+
+  const tpl = TEMPLATES.find(t => t.id === selected);
+  const handleCreate = () => {
+    if (!name.trim()) return;
+    onSelect(name.trim(), selected);
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
+      <div style={{ background: '#fff', borderRadius: 20, width: 620, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 32px 80px rgba(0,0,0,0.3)', padding: 32 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em', color: '#0C0C0C' }}>New Project</h2>
+            <p style={{ fontSize: 13, color: '#888', marginTop: 4 }}>Choose a template to get started</p>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#555' }}><FiX size={15}/></button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 24 }}>
+          {TEMPLATES.map(t => {
+            const Icon = t.icon;
+            const isActive = selected === t.id;
+            return (
+              <button key={t.id} onClick={() => setSelected(t.id)} style={{
+                padding: '14px 12px', borderRadius: 12, cursor: 'pointer', textAlign: 'left', border: 'none',
+                background: isActive ? `${t.color}10` : 'rgba(0,0,0,0.03)',
+                outline: isActive ? `2px solid ${t.color}` : '2px solid transparent',
+                transition: 'all 0.15s',
+              }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: `${t.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                  <Icon size={16} style={{ color: t.color }}/>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#0C0C0C', marginBottom: 3 }}>{t.name}</div>
+                <div style={{ fontSize: 11, color: '#aaa', lineHeight: 1.4 }}>{t.desc}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#555', display: 'block', marginBottom: 8 }}>PROJECT NAME</label>
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+            placeholder={`My ${tpl?.name || 'Project'}`}
+            autoFocus
+            style={{ width: '100%', padding: '10px 14px', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 10, fontSize: 14, outline: 'none', fontFamily: 'inherit', color: '#0C0C0C', transition: 'border-color 0.15s' }}
+            onFocus={e => e.target.style.borderColor = '#437DFD'}
+            onBlur={e => e.target.style.borderColor = 'rgba(0,0,0,0.12)'}
+          />
+        </div>
+
+        <button onClick={handleCreate} disabled={!name.trim()} style={{
+          width: '100%', padding: '12px', background: name.trim() ? 'linear-gradient(135deg,#437DFD,#2C76FF)' : 'rgba(0,0,0,0.06)',
+          border: 'none', borderRadius: 10, color: name.trim() ? '#fff' : '#bbb',
+          fontSize: 14, fontWeight: 700, cursor: name.trim() ? 'pointer' : 'not-allowed',
+          boxShadow: name.trim() ? '0 4px 16px rgba(67,125,253,0.35)' : 'none',
+          transition: 'all 0.15s',
+        }}>
+          Create Project →
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── File tree ─────────────────────────────────────────────────────────────────
+const FileItem = ({ file, active, renaming, renameVal, onOpen, onRename, onRenameSubmit, onDelete, onSetRenaming, onSetRenameVal }) => {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, height: 28, paddingLeft: 12, paddingRight: 6, cursor: 'pointer', background: active ? 'rgba(67,125,253,0.1)' : hov ? 'rgba(0,0,0,0.04)' : 'transparent', borderRadius: 6, marginBottom: 1 }}
+    >
+      <span style={{ fontSize: 12, flexShrink: 0 }}>{getFileIcon(file.name)}</span>
+      {renaming ? (
+        <input
+          value={renameVal}
+          onChange={e => onSetRenameVal(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') onRenameSubmit(); if (e.key === 'Escape') onSetRenaming(null); }}
+          onBlur={onRenameSubmit}
+          autoFocus
+          style={{ flex: 1, fontSize: 12, border: '1px solid #437DFD', borderRadius: 4, padding: '1px 6px', outline: 'none', background: '#fff', color: '#0C0C0C' }}
+        />
+      ) : (
+        <span onClick={onOpen} style={{ flex: 1, fontSize: 12, color: active ? '#437DFD' : '#444', fontWeight: active ? 700 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+      )}
+      {hov && !renaming && (
+        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+          <button onClick={() => { onSetRenaming(file.id); onSetRenameVal(file.name); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', padding: '2px', display: 'flex', alignItems: 'center' }}><FiEdit3 size={11}/></button>
+          <button onClick={onDelete} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', padding: '2px', display: 'flex', alignItems: 'center' }}><FiTrash2 size={11}/></button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ── Main VibeCoder ────────────────────────────────────────────────────────────
 const VibeCoder = ({ isMobile = false }) => {
@@ -287,80 +977,63 @@ const VibeCoder = ({ isMobile = false }) => {
   const [files,        setFiles]        = useState([]);
   const [activeFileId, setActiveFileId] = useState(null);
   const [openTabs,     setOpenTabs]     = useState([]);
-  const [leftTab,      setLeftTab]      = useState('chat');
   const [messages,     setMessages]     = useState([]);
   const [input,        setInput]        = useState('');
   const [isWorking,    setIsWorking]    = useState(false);
-  const [viewTab,      setViewTab]      = useState('split');
+  const [viewMode,     setViewMode]     = useState('split'); // split|editor|preview
   const [viewport,     setViewport]     = useState('desktop');
-  const [editingCode,  setEditingCode]  = useState(false);
-  const [runTrigger,   setRunTrigger]   = useState(0);
-  const [listening,    setListening]    = useState(false);
-  const [newProjName,  setNewProjName]  = useState('');
   const [newFileName,  setNewFileName]  = useState('');
-  const [showNewProj,  setShowNewProj]  = useState(false);
   const [showNewFile,  setShowNewFile]  = useState(false);
+  const [showNewProj,  setShowNewProj]  = useState(false);
   const [renamingId,   setRenamingId]   = useState(null);
   const [renameVal,    setRenameVal]    = useState('');
-  const [expandedFolders, setExpandedFolders] = useState(new Set(['/']));
-  const [contextMenu,  setContextMenu]  = useState(null); // { fileId, x, y }
+  const [listening,    setListening]    = useState(false);
+  const [copied,       setCopied]       = useState(false);
+  const [chatOpen,     setChatOpen]     = useState(true);
 
-  const inputRef   = useRef(null);
-  const msgsEndRef = useRef(null);
-  const recRef     = useRef(null);
+  const inputRef     = useRef(null);
+  const msgsEndRef   = useRef(null);
   const fileInputRef = useRef(null);
-  const codeEditRef = useRef(null);
+  const recRef       = useRef(null);
+  const prevHtmlRef  = useRef(null);
 
-  // ── Persist files ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (activeProj) SF(activeProj.id, files);
-  }, [files, activeProj]);
+  useEffect(() => { if (activeProj) SF(activeProj.id, files); }, [files, activeProj]);
+  useEffect(() => { msgsEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isWorking]);
 
-  useEffect(() => {
-    msgsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isWorking]);
-
-  // ── Close context menu on click ────────────────────────────────────────────
-  useEffect(() => {
-    const close = () => setContextMenu(null);
-    window.addEventListener('click', close);
-    return () => window.removeEventListener('click', close);
-  }, []);
-
-  // ── Derived ────────────────────────────────────────────────────────────────
   const activeFile  = files.find(f => f.id === activeFileId) || null;
-  const activeType  = activeFile ? getFileType(activeFile.name) : 'text';
-  const previewHtml = activeProj ? buildProjectPreview(files, activeFile) : null;
+  const previewHtml = activeProj ? buildPreview(files) : null;
+  // Only update preview ref when HTML actually changes (prevents flicker on typing in non-HTML files)
+  if (previewHtml !== null) prevHtmlRef.current = previewHtml;
+  const displayHtml = previewHtml ?? prevHtmlRef.current;
 
-  // ── Project actions ────────────────────────────────────────────────────────
-  const createProject = (name, initialFiles = null) => {
+  // ── Project actions ─────────────────────────────────────────────────────────
+  const createProject = (name, templateId = 'blank') => {
+    const tpl = TEMPLATES.find(t => t.id === templateId) || TEMPLATES[0];
     const id = uid();
-    const proj = { id, name: name || 'Untitled Project', createdAt: ts(), updatedAt: ts(), fileCount: 0 };
-    const projFiles = initialFiles || makeDefaultFiles(id);
+    const projFiles = tpl.files.map(f => ({ id: uid(), projectId: id, name: f.name, content: f.content, type: getFileType(f.name), createdAt: ts() }));
+    const proj = { id, name, createdAt: ts(), updatedAt: ts(), template: templateId, fileCount: projFiles.length };
     SF(id, projFiles);
     const updated = [proj, ...projects];
-    SP(updated);
-    setProjects(updated);
-    setActiveProj(proj);
-    setFiles(projFiles);
+    SP(updated); setProjects(updated);
+    setActiveProj(proj); setFiles(projFiles);
     setActiveFileId(projFiles[0]?.id || null);
-    setOpenTabs(projFiles.map(f => f.id).slice(0, 3));
-    setMessages([]);
+    setOpenTabs(projFiles.map(f => f.id));
+    setMessages([{ role: 'assistant', text: `✅ Created **${name}** with the ${tpl.name} template.\n\nThe preview is live on the right. Try asking me to make changes!`, id: uid() }]);
+    setShowNewProj(false);
+    setViewMode('split');
   };
 
   const openProject = (proj) => {
     const projFiles = LF(proj.id);
-    setActiveProj(proj);
-    setFiles(projFiles);
+    setActiveProj(proj); setFiles(projFiles);
     setActiveFileId(projFiles[0]?.id || null);
-    setOpenTabs(projFiles.map(f => f.id).slice(0, 3));
-    setMessages([]);
-    setInput('');
+    setOpenTabs(projFiles.map(f => f.id).slice(0, 5));
+    setMessages([]); setInput(''); prevHtmlRef.current = null;
   };
 
   const closeProject = () => {
     setActiveProj(null); setFiles([]); setActiveFileId(null);
-    setOpenTabs([]); setMessages([]); setInput('');
+    setOpenTabs([]); setMessages([]); prevHtmlRef.current = null;
   };
 
   const deleteProject = (id) => {
@@ -370,42 +1043,29 @@ const VibeCoder = ({ isMobile = false }) => {
     if (activeProj?.id === id) closeProject();
   };
 
-  const updateProjMeta = (proj, extra = {}) => {
-    const updated = projects.map(p => p.id === proj.id ? { ...p, updatedAt: ts(), fileCount: files.length, ...extra } : p);
-    SP(updated); setProjects(updated);
-  };
-
-  // ── File actions ───────────────────────────────────────────────────────────
+  // ── File actions ────────────────────────────────────────────────────────────
   const createFile = (name) => {
     if (!activeProj || !name.trim()) return;
-    const file = { id: uid(), projectId: activeProj.id, name: name.trim(), content: '', type: getFileType(name.trim()), createdAt: ts() };
-    const updated = [...files, file];
-    setFiles(updated);
-    setOpenTabs(t => [...t, file.id]);
-    setActiveFileId(file.id);
+    const f = { id: uid(), projectId: activeProj.id, name: name.trim(), content: '', type: getFileType(name.trim()), createdAt: ts() };
+    setFiles(prev => [...prev, f]);
+    setOpenTabs(t => [...t, f.id]);
+    setActiveFileId(f.id);
     setShowNewFile(false); setNewFileName('');
-    updateProjMeta(activeProj);
   };
 
   const deleteFile = (id) => {
     setFiles(f => f.filter(x => x.id !== id));
     setOpenTabs(t => t.filter(x => x !== id));
-    if (activeFileId === id) {
-      const remaining = files.filter(x => x.id !== id);
-      setActiveFileId(remaining[0]?.id || null);
-    }
-    setContextMenu(null);
+    if (activeFileId === id) setActiveFileId(files.find(x => x.id !== id)?.id || null);
   };
 
-  const renameFile = (id, newName) => {
-    if (!newName.trim()) return;
-    setFiles(f => f.map(x => x.id === id ? { ...x, name: newName.trim(), type: getFileType(newName.trim()) } : x));
+  const renameFile = (id, name) => {
+    if (!name.trim()) return;
+    setFiles(f => f.map(x => x.id === id ? { ...x, name: name.trim(), type: getFileType(name.trim()) } : x));
     setRenamingId(null); setRenameVal('');
   };
 
-  const updateFileContent = (id, content) => {
-    setFiles(f => f.map(x => x.id === id ? { ...x, content } : x));
-  };
+  const updateContent = (id, content) => setFiles(f => f.map(x => x.id === id ? { ...x, content } : x));
 
   const openTab = (id) => {
     if (!openTabs.includes(id)) setOpenTabs(t => [...t, id]);
@@ -414,573 +1074,486 @@ const VibeCoder = ({ isMobile = false }) => {
 
   const closeTab = (id, e) => {
     e.stopPropagation();
+    const next = openTabs.find(x => x !== id);
     setOpenTabs(t => t.filter(x => x !== id));
-    if (activeFileId === id) {
-      const idx = openTabs.indexOf(id);
-      const next = openTabs[idx + 1] || openTabs[idx - 1];
-      setActiveFileId(next || null);
-    }
+    if (activeFileId === id) setActiveFileId(next || null);
   };
 
   const uploadFile = (e) => {
-    const fileObj = e.target.files[0]; if (!fileObj || !activeProj) return;
+    const f = e.target.files[0]; if (!f || !activeProj) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const isImg = fileObj.type.startsWith('image/');
-      const content = isImg ? ev.target.result : (ev.target.result || '');
-      const file = { id: uid(), projectId: activeProj.id, name: fileObj.name, content, type: getFileType(fileObj.name), createdAt: ts() };
-      const updated = [...files, file];
-      setFiles(updated);
+    reader.onload = ev => {
+      const file = { id: uid(), projectId: activeProj.id, name: f.name, content: ev.target.result || '', type: getFileType(f.name), createdAt: ts() };
+      setFiles(prev => [...prev, file]);
       setOpenTabs(t => [...t, file.id]);
       setActiveFileId(file.id);
-      updateProjMeta(activeProj);
     };
-    if (fileObj.type.startsWith('image/')) reader.readAsDataURL(fileObj);
-    else reader.readAsText(fileObj);
+    f.type.startsWith('image/') ? reader.readAsDataURL(f) : reader.readAsText(f);
     e.target.value = '';
   };
 
-  const downloadFile = (file) => {
-    if (getFileType(file.name) === 'image') {
-      const a = document.createElement('a');
-      a.href = file.content; a.download = file.name; a.click();
-    } else {
-      downloadBlob(file.name, file.content);
-    }
-    setContextMenu(null);
-  };
+  const downloadAll = () => files.forEach((f, i) => {
+    setTimeout(() => {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([f.content])); a.download = f.name; a.click();
+    }, i * 80);
+  });
 
-  const downloadProject = () => {
-    if (!files.length) return;
-    files.forEach((f, i) => {
-      setTimeout(() => downloadBlob(f.name, f.content), i * 100);
-    });
-  };
-
-  // ── AI Chat ────────────────────────────────────────────────────────────────
-  const addMsg = (role, text, meta = null) => setMessages(prev => [...prev, { role, text, meta, id: uid() }]);
+  // ── AI Chat ─────────────────────────────────────────────────────────────────
+  const addMsg = (role, text) => setMessages(prev => [...prev, { role, text, id: uid() }]);
 
   const handleSend = async () => {
     const msg = input.trim(); if (!msg || isWorking) return;
-    setInput(''); if (inputRef.current) inputRef.current.style.height = 'auto';
+    setInput('');
+    if (inputRef.current) inputRef.current.style.height = 'auto';
     addMsg('user', msg);
     setIsWorking(true);
 
     try {
-      if (!activeProj) {
-        // Create a new project from the prompt
-        const r = await fetch('/api/vibe/code', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ prompt: msg, agent_id:'auto' }) });
-        const d = await r.json();
-        if (!r.ok || d.error) throw new Error(d.error || 'Backend error');
-        const raw = d.code || '';
-        const lang = detectLanguage(raw);
-        const code = extractCode(raw);
-        const ext  = lang === 'react' ? 'jsx' : lang === 'unknown' ? 'txt' : lang;
-        const fname = `index.${ext}`;
-        const pid  = uid();
-        const projName = msg.slice(0, 40);
-        const proj = { id: pid, name: projName, createdAt: ts(), updatedAt: ts(), fileCount: 1 };
-        const file = { id: uid(), projectId: pid, name: fname, content: code, type: lang, createdAt: ts() };
-        SF(pid, [file]); SP([proj, ...projects]);
-        setProjects(p => [proj, ...p]);
-        setActiveProj(proj); setFiles([file]); setActiveFileId(file.id); setOpenTabs([file.id]);
-        setViewTab(canPreview(lang) ? 'split' : 'code');
-        if (lang === 'python') setRunTrigger(k=>k+1);
-        addMsg('assistant', `✓ Created project "${projName}" with ${code.split('\n').length} lines of ${lang.toUpperCase()}.${d.description ? ' ' + d.description : ''}`, { type:'built' });
-      } else if (!activeFile) {
-        // No file selected — create a new one
-        const r = await fetch('/api/vibe/code', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ prompt: msg, agent_id:'auto' }) });
-        const d = await r.json();
-        if (!r.ok || d.error) throw new Error(d.error || 'Backend error');
-        const raw = d.code || '';
-        const lang = detectLanguage(raw);
-        const code = extractCode(raw);
-        const suggestedName = extractFilenameFromReply(d.description || '') || `component.${lang === 'react' ? 'jsx' : lang}`;
-        const file = { id: uid(), projectId: activeProj.id, name: suggestedName, content: code, type: lang, createdAt: ts() };
-        setFiles(f => [...f, file]);
-        setOpenTabs(t => [...t, file.id]); setActiveFileId(file.id);
-        setViewTab(canPreview(lang) ? 'split' : 'code');
-        addMsg('assistant', `✓ Created ${suggestedName} (${code.split('\n').length} lines).`, { type:'built' });
+      const filesContext = files.map(f => `[FILE:${f.name}]\n${f.content}\n[/FILE]`).join('\n\n');
+      const systemInstr = `You are VibeCoder, an AI web app generator integrated in the Airis IDE.
+You create and modify HTML, CSS, and JavaScript apps.
+RULES:
+- For EVERY file you create or update, use this EXACT format: [FILE:filename.ext]\\ncontent\\n[/FILE]
+- Always return COMPLETE, WORKING file contents (never truncate or use "...")
+- Use CDN links for libraries (Three.js, Chart.js, etc) — no build tools
+- Write clean, beautiful, production-quality code
+- When asked to build something, generate ALL needed files
+- When updating, return ALL files (including unchanged ones if they're needed)
+- Prefer vanilla HTML/CSS/JS unless the user asks for a framework
+
+Current project: ${activeProj?.name || 'New Project'}
+Current files:
+${filesContext || '(no files yet)'}
+
+User request: ${msg}
+
+Respond ONLY with file blocks. Add a brief 1-line description after all the file blocks.`;
+
+      const res = await fetch('/api/vibe/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: systemInstr, code_context: '' }),
+      });
+      const data = await res.json();
+      const reply = data.reply || data.response || '';
+
+      const fileBlocks = parseFileBlocks(reply);
+
+      if (fileBlocks.length > 0) {
+        // Apply all file changes
+        setFiles(prev => {
+          let updated = [...prev];
+          const newFiles = [];
+          fileBlocks.forEach(fb => {
+            const existing = updated.find(f => f.name === fb.name);
+            if (existing) {
+              updated = updated.map(f => f.name === fb.name ? { ...f, content: fb.content } : f);
+            } else {
+              newFiles.push({ id: uid(), projectId: activeProj?.id || uid(), name: fb.name, content: fb.content, type: getFileType(fb.name), createdAt: ts() });
+            }
+          });
+          return [...updated, ...newFiles];
+        });
+
+        // Open new/updated tabs
+        setOpenTabs(prev => {
+          const current = [...prev];
+          fileBlocks.forEach(fb => {
+            // find the id later after setFiles settles
+          });
+          return current;
+        });
+
+        const desc = reply.replace(/\[FILE:[^\]]+\][\s\S]*?\[\/FILE\]/g, '').trim();
+        const fileList = fileBlocks.map(f => `\`${f.name}\``).join(', ');
+        addMsg('assistant', `✅ Updated ${fileList}${desc ? `\n\n${desc}` : ''}`);
+
+        // Switch to preview
+        setViewMode('split');
       } else {
-        // Update active file
-        const r = await fetch('/api/vibe/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ message: msg, code_context: activeFile.content }) });
-        const d = await r.json();
-        const reply = d.reply || '';
-        const newCode = extractCode(reply);
-        const hasCode = newCode && newCode.length > 30 && newCode !== activeFile.content;
-        if (hasCode) {
-          updateFileContent(activeFileId, newCode);
-          const desc = reply.replace(/```[\s\S]*?```/g, '').trim();
-          addMsg('assistant', (desc || `Updated ${activeFile.name}!`) + ' ✓', { type:'updated' });
-        } else {
-          addMsg('assistant', reply, { type:'chat' });
-        }
+        // Fallback: just a chat reply with no file blocks
+        addMsg('assistant', reply || 'I couldn\'t generate files for that request. Try being more specific!');
       }
-    } catch(e) {
-      addMsg('error', e.message || 'Something went wrong');
+    } catch (e) {
+      addMsg('error', `Error: ${e.message}`);
     } finally {
       setIsWorking(false);
     }
   };
 
-  // ── Voice ──────────────────────────────────────────────────────────────────
   const startListening = useCallback(() => {
-    if (!SpeechRecognitionAPI) { alert('Speech recognition needs Chrome/Edge.'); return; }
-    const rec = new SpeechRecognitionAPI();
-    rec.lang='en-US'; rec.interimResults=false; rec.continuous=false;
-    rec.onstart=()=>setListening(true);
-    rec.onresult=(e)=>{ setInput(p=>p?p+' '+e.results[0][0].transcript:e.results[0][0].transcript); };
-    rec.onerror=rec.onend=()=>setListening(false);
-    recRef.current=rec; rec.start();
+    const SRA = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SRA) return;
+    const rec = new SRA(); rec.lang = 'en-US'; rec.interimResults = false;
+    rec.onstart = () => setListening(true);
+    rec.onresult = e => setInput(p => p ? p + ' ' + e.results[0][0].transcript : e.results[0][0].transcript);
+    rec.onerror = rec.onend = () => setListening(false);
+    recRef.current = rec; rec.start();
   }, []);
-  const stopListening = useCallback(()=>{ recRef.current?.stop(); setListening(false); },[]);
+  const stopListening = useCallback(() => { recRef.current?.stop(); setListening(false); }, []);
+
+  const copyCode = () => {
+    if (!activeFile) return;
+    navigator.clipboard.writeText(activeFile.content);
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
+  };
 
   const autoResize = () => {
     const el = inputRef.current; if (!el) return;
-    el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,160)+'px';
+    el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 140) + 'px';
   };
 
-  // ── Project list view ──────────────────────────────────────────────────────
+  const B = '#437DFD';
+  const SIDEBAR_W = 185;
+
+  // ── Project list ────────────────────────────────────────────────────────────
   if (!activeProj) {
     return (
-      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:'#F5F4F2' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#F5F4F2', overflow: 'hidden' }}>
+        {showNewProj && <TemplatePicker onSelect={createProject} onClose={() => setShowNewProj(false)}/>}
+
         {/* Header */}
-        <div style={{ height:44, background:'#fff', borderBottom:'1px solid rgba(0,0,0,0.08)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 20px', flexShrink:0 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <FiCode size={15} style={{ color:B }}/>
-            <span style={{ fontSize:13, fontWeight:700, color:'#0C0C0C', letterSpacing:'-0.02em' }}>Vibe Coder</span>
-            <span style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:'rgba(67,125,253,0.08)', color:B, border:`1px solid ${B}22`, fontWeight:600 }}>IDE</span>
+        <div style={{ height: 44, background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FiCode size={15} style={{ color: B }}/>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#0C0C0C', letterSpacing: '-0.02em' }}>Vibe Coder</span>
+            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: `${B}12`, color: B, border: `1px solid ${B}22`, fontWeight: 700 }}>IDE</span>
           </div>
-          <button onClick={() => setShowNewProj(true)} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:9, border:'none', cursor:'pointer', background:`linear-gradient(135deg,${B},#2C76FF)`, color:'#fff', fontSize:12, fontWeight:600, boxShadow:'0 3px 12px rgba(67,125,253,0.3)' }}>
+          <button onClick={() => setShowNewProj(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', background: `linear-gradient(135deg,${B},#2C76FF)`, color: '#fff', fontSize: 12, fontWeight: 700, boxShadow: '0 3px 12px rgba(67,125,253,0.3)' }}>
             <FiPlus size={13}/> New Project
           </button>
         </div>
 
-        <div style={{ flex:1, overflowY:'auto', padding:'24px' }}>
-
-          {/* New project dialog */}
-          {showNewProj && (
-            <div style={{ background:'#fff', borderRadius:16, border:'1px solid rgba(0,0,0,0.08)', padding:'20px', marginBottom:24, boxShadow:'0 4px 24px rgba(0,0,0,0.08)' }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'#0C0C0C', marginBottom:12 }}>New Project</div>
-              <input
-                autoFocus value={newProjName} onChange={e=>setNewProjName(e.target.value)}
-                onKeyDown={e=>{ if(e.key==='Enter') { createProject(newProjName); setNewProjName(''); setShowNewProj(false); }; if(e.key==='Escape') setShowNewProj(false); }}
-                placeholder="Project name..."
-                style={{ width:'100%', padding:'10px 14px', borderRadius:9, border:'1.5px solid rgba(67,125,253,0.3)', outline:'none', fontSize:13, fontFamily:'inherit', marginBottom:12 }}
-              />
-              <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => { createProject(newProjName); setNewProjName(''); setShowNewProj(false); }} style={{ flex:1, padding:'9px', borderRadius:9, border:'none', cursor:'pointer', background:`linear-gradient(135deg,${B},#2C76FF)`, color:'#fff', fontSize:12, fontWeight:600 }}>Create Project</button>
-                <button onClick={() => setShowNewProj(false)} style={{ padding:'9px 16px', borderRadius:9, border:'1px solid rgba(0,0,0,0.1)', cursor:'pointer', background:'transparent', fontSize:12, color:'#888' }}>Cancel</button>
-              </div>
+        {/* Quick start */}
+        {projects.length === 0 && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48 }}>
+            <div style={{ width: 56, height: 56, borderRadius: 16, background: `${B}12`, border: `1px solid ${B}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+              <FiCode size={24} style={{ color: B }}/>
             </div>
-          )}
-
-          {/* Projects grid */}
-          {projects.length > 0 && (
-            <div style={{ marginBottom:32 }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#aaa', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:12 }}>Recent Projects</div>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:12 }}>
-                {projects.map(p => (
-                  <div key={p.id} onClick={() => openProject(p)}
-                    style={{ background:'#fff', borderRadius:14, border:'1px solid rgba(0,0,0,0.07)', padding:'16px', cursor:'pointer', transition:'all 0.15s', position:'relative' }}
-                    onMouseEnter={e=>{ e.currentTarget.style.boxShadow='0 4px 20px rgba(67,125,253,0.12)'; e.currentTarget.style.borderColor='rgba(67,125,253,0.2)'; }}
-                    onMouseLeave={e=>{ e.currentTarget.style.boxShadow='none'; e.currentTarget.style.borderColor='rgba(0,0,0,0.07)'; }}>
-                    <div style={{ fontSize:28, marginBottom:10 }}>📁</div>
-                    <div style={{ fontSize:13, fontWeight:700, color:'#0C0C0C', marginBottom:4, letterSpacing:'-0.01em', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
-                    <div style={{ fontSize:11, color:'#aaa' }}>{LF(p.id).length} files · {new Date(p.createdAt).toLocaleDateString()}</div>
-                    <button onClick={e=>{ e.stopPropagation(); deleteProject(p.id); }}
-                      style={{ position:'absolute', top:10, right:10, background:'none', border:'none', cursor:'pointer', color:'#ddd', padding:4, borderRadius:6, fontSize:14, transition:'all 0.15s' }}
-                      onMouseEnter={e=>{ e.currentTarget.style.color='#dc2626'; e.currentTarget.style.background='rgba(220,38,38,0.08)'; }}
-                      onMouseLeave={e=>{ e.currentTarget.style.color='#ddd'; e.currentTarget.style.background='none'; }}>
-                      <FiTrash2 size={12}/>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quick start */}
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid rgba(0,0,0,0.07)', padding:'24px' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#0C0C0C', marginBottom:6 }}>Quick Start with AI</div>
-            <div style={{ fontSize:12, color:'#999', marginBottom:16 }}>Describe what you want to build and AI will generate the project with working code and live preview.</div>
-            <div style={{ display:'flex', gap:8 }}>
-              <input
-                value={input} onChange={e=>setInput(e.target.value)}
-                onKeyDown={e=>{ if(e.key==='Enter' && input.trim()) handleSend(); }}
-                placeholder="e.g. A responsive landing page with hero section and pricing..."
-                style={{ flex:1, padding:'11px 14px', borderRadius:10, border:'1.5px solid rgba(67,125,253,0.2)', outline:'none', fontSize:13, fontFamily:'inherit' }}
-              />
-              <button onClick={handleSend} disabled={!input.trim()||isWorking} style={{ display:'flex', alignItems:'center', gap:6, padding:'11px 18px', borderRadius:10, border:'none', cursor:input.trim()&&!isWorking?'pointer':'not-allowed', background:input.trim()&&!isWorking?`linear-gradient(135deg,${B},#2C76FF)`:'rgba(67,125,253,0.1)', color:input.trim()&&!isWorking?'#fff':'rgba(67,125,253,0.3)', fontSize:13, fontWeight:600 }}>
-                {isWorking?<FiLoader size={13} style={{animation:'vcS 1s linear infinite'}}/>:<FiZap size={13}/>}
-                {isWorking?'Building…':'Build'}
-              </button>
-            </div>
-            {/* Quick idea chips */}
-            <div style={{ display:'flex', flexWrap:'wrap', gap:7, marginTop:14 }}>
-              {[
-                '🎨 Landing page with hero + CTA',
-                '📋 Todo app with local storage',
-                '🛒 Product card with add-to-cart',
-                '🧭 Navbar with mobile menu',
-                '📊 Dashboard with stats cards',
-                '💬 Chat bubble UI',
-              ].map((idea,i)=>(
-                <button key={i} onClick={()=>setInput(idea.replace(/^[\w\W]{2}\s*/,''))}
-                  style={{ padding:'6px 12px', borderRadius:20, fontSize:12, cursor:'pointer', background:'#F5F4F2', border:'1px solid transparent', color:'#666', transition:'all 0.15s' }}
-                  onMouseEnter={e=>{ e.currentTarget.style.background='rgba(67,125,253,0.06)'; e.currentTarget.style.borderColor='rgba(67,125,253,0.2)'; e.currentTarget.style.color=B; }}
-                  onMouseLeave={e=>{ e.currentTarget.style.background='#F5F4F2'; e.currentTarget.style.borderColor='transparent'; e.currentTarget.style.color='#666'; }}>
-                  {idea}
-                </button>
-              ))}
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0C0C0C', letterSpacing: '-0.03em', marginBottom: 10 }}>Build your first app</h2>
+            <p style={{ fontSize: 14, color: '#888', textAlign: 'center', maxWidth: 360, lineHeight: 1.7, marginBottom: 28 }}>
+              Create web apps, 3D landing pages, dashboards, portfolios and more with AI. Pick a template and describe what you want.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, width: '100%', maxWidth: 480, marginBottom: 24 }}>
+              {TEMPLATES.slice(0, 6).map(t => {
+                const Icon = t.icon;
+                return (
+                  <button key={t.id} onClick={() => setShowNewProj(true)} style={{ padding: '14px 10px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = `${t.color}08`; e.currentTarget.style.borderColor = `${t.color}40`; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; }}>
+                    <Icon size={18} style={{ color: t.color, marginBottom: 8, display: 'block' }}/>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0C0C0C' }}>{t.name}</div>
+                    <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{t.desc}</div>
+                  </button>
+                );
+              })}
             </div>
           </div>
-        </div>
-        <style>{`@keyframes vcS{from{transform:rotate(0)}to{transform:rotate(360deg)}}@keyframes vcP{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>
+        )}
+
+        {/* Project grid */}
+        {projects.length > 0 && (
+          <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+              {projects.map(proj => {
+                const tpl = TEMPLATES.find(t => t.id === proj.template) || TEMPLATES[0];
+                const Icon = tpl.icon;
+                return (
+                  <div key={proj.id} style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, overflow: 'hidden', cursor: 'pointer', transition: 'all 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.1)'}
+                    onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+                    onClick={() => openProject(proj)}>
+                    <div style={{ height: 90, background: `${tpl.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: `1px solid ${tpl.color}18` }}>
+                      <Icon size={32} style={{ color: tpl.color }}/>
+                    </div>
+                    <div style={{ padding: '12px 14px' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#0C0C0C', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proj.name}</div>
+                      <div style={{ fontSize: 11, color: '#aaa', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span>{tpl.name}</span>
+                        <button onClick={e => { e.stopPropagation(); deleteProject(proj.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ddd', padding: 2, display: 'flex', alignItems: 'center' }}>
+                          <FiTrash2 size={11}/>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <style>{`@keyframes vcDot{0%,100%{transform:scale(0.5);opacity:0.3}50%{transform:scale(1);opacity:1}}`}</style>
       </div>
     );
   }
 
-  // ── IDE View ───────────────────────────────────────────────────────────────
+  // ── IDE View ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:'#F5F4F2' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#1e1e2e', overflow: 'hidden', minWidth: 0 }}>
+      {showNewProj && <TemplatePicker onSelect={createProject} onClose={() => setShowNewProj(false)}/>}
+      <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={uploadFile}/>
 
-      {/* ── Top Bar ─────────────────────────────────────────────────────── */}
-      <div style={{ height:44, background:'#fff', borderBottom:'1px solid rgba(0,0,0,0.08)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0, padding:'0 12px', gap:8 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
-          <button onClick={closeProject} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:7, border:'1px solid rgba(0,0,0,0.1)', cursor:'pointer', background:'transparent', color:'#888', flexShrink:0, transition:'all 0.15s' }}
-            onMouseEnter={e=>{ e.currentTarget.style.borderColor=B; e.currentTarget.style.color=B; }}
-            onMouseLeave={e=>{ e.currentTarget.style.borderColor='rgba(0,0,0,0.1)'; e.currentTarget.style.color='#888'; }}>
-            <FiArrowLeft size={13}/>
+      {/* Top bar */}
+      <div style={{ height: 44, background: '#16161e', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px 0 0', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+          <button onClick={closeProject} style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: '#555', flexShrink: 0, transition: 'color 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#888'}
+            onMouseLeave={e => e.currentTarget.style.color = '#555'}>
+            <FiArrowLeft size={16}/>
           </button>
-          <span style={{ fontSize:13, fontWeight:700, color:'#0C0C0C', letterSpacing:'-0.01em', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{activeProj.name}</span>
-          <span style={{ fontSize:10, padding:'2px 7px', borderRadius:20, background:'rgba(0,196,140,0.1)', color:'#00C48C', border:'1px solid rgba(0,196,140,0.2)', fontWeight:600, flexShrink:0 }}>{files.length} files</span>
+          <div style={{ height: 44, borderLeft: '1px solid rgba(255,255,255,0.06)', marginRight: 12 }}/>
+          <FiCode size={13} style={{ color: B, flexShrink: 0, marginRight: 6 }}/>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#e0e0f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{activeProj.name}</span>
         </div>
 
-        <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-          {/* View tabs */}
-          {!isMobile && (
-            <div style={{ display:'flex', background:'rgba(0,0,0,0.05)', borderRadius:8, padding:3, marginRight:4 }}>
-              {[{id:'code',icon:FiCode,label:'Code'},{id:'preview',icon:FiEye,label:'Preview'},{id:'split',icon:FiColumns,label:'Split'}].map(({id,icon:Icon,label})=>(
-                <button key={id} onClick={()=>setViewTab(id)} style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:6, border:'none', cursor:'pointer', fontSize:11, fontWeight:500, background:viewTab===id?'#fff':'transparent', color:viewTab===id?'#0C0C0C':'#999', boxShadow:viewTab===id?'0 1px 4px rgba(0,0,0,0.1)':'none', transition:'all 0.15s' }}>
-                  <Icon size={11}/>{label}
+        {/* View controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: 3, marginRight: 10 }}>
+          {[
+            { id: 'editor',  label: 'Editor',  icon: FiCode },
+            { id: 'split',   label: 'Split',   icon: FiColumns },
+            { id: 'preview', label: 'Preview', icon: FiEye },
+          ].map(v => {
+            const Icon = v.icon;
+            const active = viewMode === v.id;
+            return (
+              <button key={v.id} onClick={() => setViewMode(v.id)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: active ? 'rgba(255,255,255,0.1)' : 'transparent', color: active ? '#e0e0f0' : '#555', fontSize: 11, fontWeight: active ? 700 : 500, transition: 'all 0.15s' }}>
+                <Icon size={12}/>{!isMobile && v.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Viewport */}
+        {(viewMode === 'split' || viewMode === 'preview') && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginRight: 10 }}>
+            {Object.entries(VIEWPORTS).map(([k, v]) => {
+              const Icon = v.icon;
+              return (
+                <button key={k} onClick={() => setViewport(k)} title={v.label} style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', cursor: 'pointer', background: viewport === k ? 'rgba(255,255,255,0.1)' : 'transparent', color: viewport === k ? B : '#555', transition: 'all 0.15s' }}>
+                  <Icon size={13}/>
                 </button>
-              ))}
-            </div>
-          )}
-          {/* Viewport */}
-          {['preview','split'].includes(viewTab) && !isMobile && (
-            <div style={{ display:'flex', gap:2, marginRight:4 }}>
-              {[{id:'desktop',icon:FiMonitor},{id:'tablet',icon:FiTablet},{id:'mobile',icon:FiSmartphone}].map(({id,icon:Icon})=>(
-                <button key={id} onClick={()=>setViewport(id)} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:6, border:'none', cursor:'pointer', background:viewport===id?'rgba(67,125,253,0.1)':'transparent', color:viewport===id?B:'#bbb', transition:'all 0.15s' }}>
-                  <Icon size={12}/>
-                </button>
-              ))}
-            </div>
-          )}
-          {/* Download */}
-          <button onClick={downloadProject} title="Download all files" style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8, border:'1px solid rgba(0,0,0,0.1)', cursor:'pointer', background:'transparent', fontSize:11, color:'#888', transition:'all 0.15s' }}
-            onMouseEnter={e=>{ e.currentTarget.style.borderColor=B; e.currentTarget.style.color=B; }}
-            onMouseLeave={e=>{ e.currentTarget.style.borderColor='rgba(0,0,0,0.1)'; e.currentTarget.style.color='#888'; }}>
-            <FiDownload size={12}/>{!isMobile && ' Download'}
+              );
+            })}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => setShowNewProj(true)} title="New Project" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: 'transparent', color: '#555', fontSize: 11, transition: 'color 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#888'}
+            onMouseLeave={e => e.currentTarget.style.color = '#555'}>
+            <FiPlus size={13}/>{!isMobile && 'New'}
           </button>
-          {/* New file */}
-          <button onClick={()=>setShowNewFile(true)} title="New file" style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8, border:'none', cursor:'pointer', background:`linear-gradient(135deg,${B},#2C76FF)`, fontSize:11, color:'#fff', fontWeight:600, boxShadow:'0 2px 8px rgba(67,125,253,0.25)' }}>
-            <FiPlus size={12}/>{!isMobile && ' File'}
+          <button onClick={downloadAll} title="Download all files" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: 'transparent', color: '#555', fontSize: 11, transition: 'color 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#888'}
+            onMouseLeave={e => e.currentTarget.style.color = '#555'}>
+            <FiDownload size={13}/>{!isMobile && 'Export'}
           </button>
         </div>
       </div>
 
-      {/* ── IDE Body ─────────────────────────────────────────────────────── */}
-      <div style={{ flex:1, display:'flex', overflow:'hidden', flexDirection:isMobile?'column':'row' }}>
+      {/* Main area */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
-        {/* ── Left Panel: Chat + Files ───────────────────────────────────── */}
-        <div style={{ width:isMobile?'100%':270, flexShrink:0, display:'flex', flexDirection:'column', borderRight:isMobile?'none':'1px solid rgba(0,0,0,0.08)', borderBottom:isMobile?'1px solid rgba(0,0,0,0.08)':'none', background:'#fff', overflow:'hidden', maxHeight:isMobile?240:undefined }}>
-
-          {/* Left tab switcher */}
-          <div style={{ height:36, borderBottom:'1px solid rgba(0,0,0,0.07)', display:'flex', alignItems:'stretch', flexShrink:0 }}>
-            {[{id:'chat',icon:FiMessageSquare,label:'Chat'},{id:'files',icon:FiFolder,label:'Files'}].map(({id,icon:Icon,label})=>(
-              <button key={id} onClick={()=>setLeftTab(id)} style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:5, border:'none', cursor:'pointer', fontSize:11, fontWeight:600, background:'transparent', color:leftTab===id?B:'#bbb', borderBottom:leftTab===id?`2px solid ${B}`:'2px solid transparent', transition:'all 0.15s' }}>
-                <Icon size={11}/>{label}
-              </button>
-            ))}
-          </div>
-
-          {/* Chat panel */}
-          {leftTab === 'chat' && (
-            <>
-              <div style={{ flex:1, overflowY:'auto', padding:10, display:'flex', flexDirection:'column', gap:8 }}>
-                {messages.length === 0 && (
-                  <div style={{ padding:'8px 0', color:'#aaa', fontSize:12, lineHeight:1.6 }}>
-                    {activeFile
-                      ? <><strong style={{color:'#0C0C0C', display:'block', marginBottom:4}}>Editing: {activeFile.name}</strong>Describe a change or ask a question about the active file.</>
-                      : <><strong style={{color:'#0C0C0C', display:'block', marginBottom:4}}>AI Assistant</strong>Ask me to build something, add a feature, fix a bug, or explain the code.</>}
-                  </div>
-                )}
-                {messages.map(msg => <ChatMsg key={msg.id} msg={msg}/>)}
-                {isWorking && (
-                  <div style={{ display:'flex', alignItems:'center', gap:8, padding:10, borderRadius:10, background:'rgba(67,125,253,0.05)', border:`1px solid ${B}18` }}>
-                    <div style={{ width:26, height:26, borderRadius:8, background:`linear-gradient(135deg,${B},#2C76FF)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <FiZap size={12} style={{ color:'#fff', animation:'vcP 0.8s ease-in-out infinite' }}/>
-                    </div>
-                    <div style={{ fontSize:11, fontWeight:600, color:B }}>AI is coding…</div>
-                  </div>
-                )}
-                <div ref={msgsEndRef}/>
+        {/* File sidebar */}
+        {viewMode !== 'preview' && (
+          <div style={{ width: SIDEBAR_W, flexShrink: 0, background: '#12121a', borderRight: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ height: 36, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', borderBottom: '1px solid rgba(255,255,255,0.04)', flexShrink: 0 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Files</span>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button onClick={() => fileInputRef.current?.click()} title="Upload file" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#444', display: 'flex', alignItems: 'center', padding: 3, borderRadius: 4, transition: 'color 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#777'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#444'}>
+                  <FiUpload size={12}/>
+                </button>
+                <button onClick={() => setShowNewFile(true)} title="New file" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#444', display: 'flex', alignItems: 'center', padding: 3, borderRadius: 4, transition: 'color 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#777'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#444'}>
+                  <FiPlus size={13}/>
+                </button>
               </div>
-              <div style={{ borderTop:'1px solid rgba(0,0,0,0.07)', padding:8, flexShrink:0 }}>
-                <div style={{ display:'flex', flexDirection:'column', gap:6, background:'#F5F4F2', border:`1.5px solid rgba(67,125,253,0.15)`, borderRadius:11, padding:'8px 10px', transition:'all 0.15s' }}
-                  onFocusCapture={e=>{ e.currentTarget.style.borderColor=B; e.currentTarget.style.boxShadow=`0 0 0 3px rgba(67,125,253,0.1)`; }}
-                  onBlurCapture={e=>{ e.currentTarget.style.borderColor='rgba(67,125,253,0.15)'; e.currentTarget.style.boxShadow='none'; }}>
-                  <textarea ref={inputRef} value={input} onChange={e=>{setInput(e.target.value);autoResize();}}
-                    onKeyDown={e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();} }}
-                    placeholder={activeFile?`Modify ${activeFile.name}… (Enter)`:'Describe what to build… (Enter)'}
-                    rows={1} style={{ background:'transparent', border:'none', outline:'none', color:'#0C0C0C', fontSize:12, lineHeight:1.65, resize:'none', fontFamily:'inherit', minHeight:20, maxHeight:120 }}/>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    {SpeechRecognitionAPI && (
-                      <button onClick={listening?stopListening:startListening} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:26, height:26, borderRadius:7, border:'none', cursor:'pointer', background:listening?'rgba(0,196,140,0.1)':'transparent', color:listening?'#00C48C':'#bbb' }}>
-                        {listening?<FiMic size={12}/>:<FiMicOff size={12}/>}
-                      </button>
-                    )}
-                    <button onClick={handleSend} disabled={!input.trim()||isWorking} style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:7, border:'none', cursor:input.trim()&&!isWorking?'pointer':'not-allowed', fontSize:11, fontWeight:600, background:input.trim()&&!isWorking?`linear-gradient(135deg,${B},#2C76FF)`:'rgba(67,125,253,0.08)', color:input.trim()&&!isWorking?'#fff':'rgba(67,125,253,0.3)', marginLeft:'auto', boxShadow:input.trim()&&!isWorking?'0 2px 8px rgba(67,125,253,0.3)':'none' }}>
-                      {isWorking?<FiLoader size={11} style={{animation:'vcS 1s linear infinite'}}/>:<FiSend size={11}/>}
-                      {isWorking?'…':activeFile?'Update':'Build'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* File tree panel */}
-          {leftTab === 'files' && (
-            <div style={{ flex:1, overflowY:'auto', padding:'8px 0' }}>
-              <input ref={fileInputRef} type="file" style={{ display:'none' }} onChange={uploadFile} accept="*/*"/>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 12px 8px', gap:6 }}>
-                <span style={{ fontSize:10, fontWeight:700, color:'#aaa', letterSpacing:'0.08em', textTransform:'uppercase' }}>Files</span>
-                <div style={{ display:'flex', gap:4 }}>
-                  <button onClick={()=>fileInputRef.current?.click()} title="Upload file" style={{ display:'flex', alignItems:'center', gap:3, padding:'3px 7px', borderRadius:6, border:'1px solid rgba(0,0,0,0.08)', cursor:'pointer', background:'transparent', fontSize:10, color:'#888' }}>
-                    <FiUpload size={10}/> Upload
-                  </button>
-                  <button onClick={()=>setShowNewFile(true)} style={{ display:'flex', alignItems:'center', gap:3, padding:'3px 7px', borderRadius:6, border:'none', cursor:'pointer', background:`rgba(67,125,253,0.1)`, fontSize:10, color:B, fontWeight:600 }}>
-                    <FiPlus size={10}/> New
-                  </button>
-                </div>
-              </div>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '6px 6px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.06) transparent' }}>
               {showNewFile && (
-                <div style={{ padding:'0 8px 8px' }}>
-                  <input autoFocus value={newFileName} onChange={e=>setNewFileName(e.target.value)}
-                    onKeyDown={e=>{ if(e.key==='Enter')createFile(newFileName); if(e.key==='Escape'){setShowNewFile(false);setNewFileName('');} }}
-                    placeholder="filename.html" style={{ width:'100%', padding:'6px 10px', borderRadius:7, border:`1.5px solid ${B}44`, outline:'none', fontSize:12, fontFamily:'inherit' }}/>
+                <div style={{ marginBottom: 4 }}>
+                  <input value={newFileName} onChange={e => setNewFileName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') createFile(newFileName); if (e.key === 'Escape') { setShowNewFile(false); setNewFileName(''); } }}
+                    onBlur={() => { if (newFileName.trim()) createFile(newFileName); else { setShowNewFile(false); setNewFileName(''); } }}
+                    placeholder="filename.html"
+                    autoFocus
+                    style={{ width: '100%', padding: '4px 8px', fontSize: 12, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(67,125,253,0.5)', borderRadius: 6, color: '#e0e0f0', outline: 'none', fontFamily: 'monospace' }}
+                  />
                 </div>
               )}
               {files.map(f => (
-                <FileRow key={f.id} file={f} active={activeFileId===f.id}
-                  onOpen={()=>openTab(f.id)}
-                  onContextMenu={(e)=>{ e.preventDefault(); setContextMenu({ fileId:f.id, x:e.clientX, y:e.clientY }); }}
-                  renamingId={renamingId} renameVal={renameVal}
-                  onRenameChange={setRenameVal} onRenameSubmit={()=>renameFile(renamingId,renameVal)} onRenameKey={e=>{ if(e.key==='Enter')renameFile(renamingId,renameVal); if(e.key==='Escape'){setRenamingId(null);setRenameVal('');} }}
+                <FileItem
+                  key={f.id}
+                  file={f}
+                  active={activeFileId === f.id}
+                  renaming={renamingId === f.id}
+                  renameVal={renameVal}
+                  onOpen={() => openTab(f.id)}
+                  onRename={() => renameFile(f.id, renameVal)}
+                  onRenameSubmit={() => renameFile(f.id, renameVal)}
+                  onDelete={() => deleteFile(f.id)}
+                  onSetRenaming={setRenamingId}
+                  onSetRenameVal={setRenameVal}
                 />
               ))}
-              {files.length === 0 && <div style={{ padding:'12px 14px', fontSize:12, color:'#ccc' }}>No files yet. Create one!</div>}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* ── Right: Editor + Preview ────────────────────────────────────── */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
+        {/* Editor */}
+        {viewMode !== 'preview' && (
+          <div style={{ flex: viewMode === 'split' ? '0 0 45%' : 1, display: 'flex', flexDirection: 'column', background: '#1e1e2e', overflow: 'hidden', minWidth: 0, borderRight: viewMode === 'split' ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+            {/* Tabs */}
+            <div style={{ height: 36, display: 'flex', alignItems: 'stretch', background: '#16161e', borderBottom: '1px solid rgba(255,255,255,0.05)', overflowX: 'auto', flexShrink: 0, scrollbarWidth: 'none' }}>
+              {openTabs.map(tid => {
+                const f = files.find(x => x.id === tid); if (!f) return null;
+                const isActive = activeFileId === tid;
+                return (
+                  <div key={tid} onClick={() => setActiveFileId(tid)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '0 12px', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap', background: isActive ? '#1e1e2e' : 'transparent', color: isActive ? '#e0e0f0' : '#555', borderBottom: isActive ? `2px solid ${B}` : '2px solid transparent', borderRight: '1px solid rgba(255,255,255,0.04)', transition: 'all 0.12s', flexShrink: 0 }}>
+                    <span style={{ fontSize: 11 }}>{getFileIcon(f.name)}</span>
+                    <span style={{ fontWeight: isActive ? 700 : 400 }}>{f.name}</span>
+                    <span onClick={e => closeTab(tid, e)} style={{ color: isActive ? '#555' : 'transparent', fontSize: 10, marginLeft: 2, display: 'flex', alignItems: 'center', transition: 'color 0.1s' }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#888'}
+                      onMouseLeave={e => e.currentTarget.style.color = isActive ? '#555' : 'transparent'}>
+                      <FiX size={11}/>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
 
-          {/* File tabs */}
-          <div style={{ height:36, background:'#fff', borderBottom:'1px solid rgba(0,0,0,0.08)', display:'flex', alignItems:'stretch', overflowX:'auto', flexShrink:0 }}>
-            {openTabs.map(tid => {
-              const f = files.find(x => x.id === tid); if (!f) return null;
-              const active = tid === activeFileId;
-              return (
-                <div key={tid} onClick={()=>setActiveFileId(tid)} style={{ display:'flex', alignItems:'center', gap:6, padding:'0 12px', borderRight:'1px solid rgba(0,0,0,0.06)', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0, background:active?'#F5F4F2':'transparent', borderBottom:active?`2px solid ${B}`:'2px solid transparent', fontSize:11, color:active?'#0C0C0C':'#999', transition:'all 0.15s' }}>
-                  <span style={{ fontSize:12 }}>{getFileIcon(f.name)}</span>
-                  <span style={{ fontWeight:active?600:400 }}>{f.name}</span>
-                  <button onClick={e=>closeTab(tid,e)} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:4, border:'none', cursor:'pointer', background:'transparent', color:active?'#999':'#ccc', fontSize:10, padding:0, marginLeft:2 }}>×</button>
+            {/* Code editor */}
+            {activeFile ? (
+              <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 8, right: 10, zIndex: 5 }}>
+                  <button onClick={copyCode} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 5, fontSize: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#777', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    {copied ? <FiCheck size={11}/> : <FiCopy size={11}/>}
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
                 </div>
-              );
-            })}
-            {files.filter(f => !openTabs.includes(f.id)).length > 0 && (
-              <div style={{ display:'flex', alignItems:'center', padding:'0 8px', color:'#ccc', fontSize:11 }}>+{files.filter(f => !openTabs.includes(f.id)).length} more</div>
+                <textarea
+                  value={activeFile.content}
+                  onChange={e => updateContent(activeFile.id, e.target.value)}
+                  spellCheck={false}
+                  style={{
+                    position: 'absolute', inset: 0,
+                    background: 'transparent', border: 'none', outline: 'none',
+                    color: '#abb2bf', fontSize: 13, lineHeight: 1.7,
+                    fontFamily: "'Fira Code','Cascadia Code','Consolas',monospace",
+                    resize: 'none', padding: '14px 16px',
+                    width: '100%', height: '100%',
+                    tabSize: 2,
+                  }}
+                />
+              </div>
+            ) : (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <FiFile size={28} style={{ marginBottom: 12, opacity: 0.4 }}/>
+                  <div style={{ fontSize: 13, opacity: 0.5 }}>Select a file to edit</div>
+                </div>
+              </div>
             )}
           </div>
+        )}
 
-          {!activeFile ? (
-            <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', background:'#F5F4F2', flexDirection:'column', gap:12 }}>
-              <FiCode size={32} style={{ color:'#ddd' }}/>
-              <div style={{ fontSize:13, color:'#bbb' }}>Select a file to edit</div>
-            </div>
-          ) : getFileType(activeFile.name) === 'image' ? (
-            /* Image viewer */
-            <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, background:'#F5F4F2', overflow:'auto' }}>
-              <img src={activeFile.content} alt={activeFile.name} style={{ maxWidth:'100%', maxHeight:'80%', borderRadius:8, boxShadow:'0 4px 20px rgba(0,0,0,0.12)' }}/>
-              <div style={{ fontSize:12, color:'#999' }}>{activeFile.name}</div>
-              <button onClick={()=>downloadFile(activeFile)} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:8, border:`1px solid ${B}44`, cursor:'pointer', background:'transparent', fontSize:12, color:B }}>
-                <FiDownload size={12}/> Download
+        {/* Preview */}
+        {(viewMode === 'split' || viewMode === 'preview') && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+            <div style={{ height: 36, background: '#16161e', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: displayHtml ? '#00C48C' : '#555', boxShadow: displayHtml ? '0 0 6px #00C48C80' : 'none' }}/>
+                <span style={{ fontSize: 11, color: '#555', fontWeight: 600 }}>Live Preview</span>
+              </div>
+              <button onClick={() => setFiles(f => [...f])} title="Refresh preview" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#444', display: 'flex', alignItems: 'center', padding: '4px 8px', borderRadius: 5, transition: 'color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.color = '#888'}
+                onMouseLeave={e => e.currentTarget.style.color = '#444'}>
+                <FiRefreshCw size={12}/>
               </button>
             </div>
-          ) : (
-            /* Code editor + preview */
-            <div style={{ flex:1, display:'flex', overflow:'hidden', flexDirection: viewTab==='split' ? (isMobile?'column':'row') : 'column' }}>
-
-              {/* Code panel */}
-              {(viewTab==='code'||viewTab==='split') && (
-                <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0, minHeight:isMobile?180:undefined }}>
-                  <div style={{ height:32, background:'#161b22', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 12px', flexShrink:0 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <div style={{ display:'flex', gap:4 }}>
-                        <div style={{ width:9, height:9, borderRadius:'50%', background:'#f87171' }}/>
-                        <div style={{ width:9, height:9, borderRadius:'50%', background:'#fbbf24' }}/>
-                        <div style={{ width:9, height:9, borderRadius:'50%', background:'#34d399' }}/>
-                      </div>
-                      <span style={{ fontSize:11, color:'#6b7280', fontFamily:'monospace' }}>{activeFile.name}</span>
-                      <span style={{ fontSize:10, padding:'1px 6px', borderRadius:8, background:`rgba(67,125,253,0.15)`, color:B, border:`1px solid ${B}33` }}>{activeType}</span>
-                    </div>
-                    <div style={{ display:'flex', gap:6 }}>
-                      <span style={{ fontSize:10, color:'#444', fontFamily:'monospace' }}>{activeFile.content.split('\n').length} lines</span>
-                      <CopyBtn text={activeFile.content}/>
-                      <button onClick={()=>downloadFile(activeFile)} style={{ display:'flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:5, fontSize:10, cursor:'pointer', background:'transparent', border:'1px solid #333', color:'#666' }}>
-                        <FiDownload size={9}/> Save
-                      </button>
-                      <button onClick={()=>setEditingCode(e=>!e)} style={{ display:'flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:5, fontSize:10, cursor:'pointer', background:editingCode?'rgba(67,125,253,0.2)':'transparent', border:`1px solid ${editingCode?B+'66':'#333'}`, color:editingCode?B:'#666' }}>
-                        <FiEdit3 size={9}/> {editingCode?'View':'Edit'}
-                      </button>
-                      {activeType==='python' && (
-                        <button onClick={()=>{ setViewTab('preview'); setRunTrigger(k=>k+1); }} style={{ display:'flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:5, fontSize:10, cursor:'pointer', background:'rgba(52,211,153,0.1)', border:'1px solid #34d39944', color:'#34d399' }}>
-                          <FiPlay size={9}/> Run
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {editingCode ? (
-                    <textarea
-                      ref={codeEditRef}
-                      value={activeFile.content}
-                      onChange={e=>updateFileContent(activeFileId, e.target.value)}
-                      spellCheck={false}
-                      style={{ flex:1, background:DARK, color:'#abb2bf', border:'none', outline:'none', padding:'16px 20px', fontFamily:"'Fira Code','Cascadia Code',Consolas,monospace", fontSize:13, lineHeight:1.8, resize:'none', tabSize:2 }}
-                    />
-                  ) : (
-                    <div style={{ flex:1, overflowY:'auto', overflowX:'auto', background:DARK, padding:'16px 20px', fontFamily:"'Fira Code','Cascadia Code',Consolas,monospace", fontSize:13, lineHeight:1.8 }}>
-                      <pre style={{ margin:0, whiteSpace:'pre', color:'#abb2bf' }}>
-                        <code dangerouslySetInnerHTML={{ __html: highlightCode(activeFile.content) }}/>
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {viewTab==='split' && !isMobile && <div style={{ width:1, background:'rgba(255,255,255,0.05)', flexShrink:0 }}/>}
-
-              {/* Preview panel */}
-              {(viewTab==='preview'||viewTab==='split') && (
-                <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0, minHeight:isMobile?220:undefined }}>
-                  <div style={{ height:32, background:'#fff', borderBottom:'1px solid rgba(0,0,0,0.08)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 12px', flexShrink:0 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <div style={{ display:'flex', gap:4 }}>
-                        <div style={{ width:9, height:9, borderRadius:'50%', background:'#f87171' }}/>
-                        <div style={{ width:9, height:9, borderRadius:'50%', background:'#fbbf24' }}/>
-                        <div style={{ width:9, height:9, borderRadius:'50%', background:'#34d399' }}/>
-                      </div>
-                      <span style={{ fontSize:11, color:'#888' }}>{activeType==='python'?'Terminal':'Live Preview'}</span>
-                      {activeType!=='python' && <span style={{ fontSize:10, padding:'1px 6px', borderRadius:8, background:'rgba(0,196,140,0.1)', color:'#00C48C', border:'1px solid rgba(0,196,140,0.2)' }}>live</span>}
-                    </div>
-                  </div>
-                  {activeType==='python'
-                    ? <PythonTerminal code={activeFile.content} runTrigger={runTrigger}/>
-                    : <LivePreview html={previewHtml} viewport={viewport}/>
-                  }
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Context menu ──────────────────────────────────────────────────── */}
-      {contextMenu && (() => {
-        const f = files.find(x => x.id === contextMenu.fileId);
-        if (!f) return null;
-        return (
-          <div style={{ position:'fixed', top:contextMenu.y, left:contextMenu.x, background:'#fff', border:'1px solid rgba(0,0,0,0.1)', borderRadius:10, padding:'4px', boxShadow:'0 8px 32px rgba(0,0,0,0.15)', zIndex:1000, minWidth:150 }}>
-            <CtxItem icon={FiEdit3} label="Rename" onClick={()=>{ setRenamingId(f.id); setRenameVal(f.name); setLeftTab('files'); setContextMenu(null); }}/>
-            <CtxItem icon={FiDownload} label="Download" onClick={()=>downloadFile(f)}/>
-            <CtxItem icon={FiTrash2} label="Delete" danger onClick={()=>deleteFile(f.id)}/>
+            <LivePreview html={displayHtml} viewport={viewport}/>
           </div>
-        );
-      })()}
-
-      <style>{`@keyframes vcS{from{transform:rotate(0)}to{transform:rotate(360deg)}}@keyframes vcP{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>
-    </div>
-  );
-};
-
-// ── Small reusable pieces ─────────────────────────────────────────────────────
-
-const ChatMsg = ({ msg }) => {
-  const isUser = msg.role === 'user';
-  const isErr  = msg.role === 'error';
-  if (isUser) return (
-    <div style={{ display:'flex', justifyContent:'flex-end' }}>
-      <div style={{ maxWidth:'90%', padding:'8px 11px', borderRadius:'12px 12px 4px 12px', background:`linear-gradient(135deg,${B},#2C76FF)`, color:'#fff', fontSize:12, lineHeight:1.6, wordBreak:'break-word' }}>{msg.text}</div>
-    </div>
-  );
-  if (isErr) return (
-    <div style={{ padding:'8px 11px', borderRadius:10, background:'rgba(220,38,38,0.06)', border:'1px solid rgba(220,38,38,0.15)', color:'#dc2626', fontSize:12, lineHeight:1.6 }}>{msg.text}</div>
-  );
-  return (
-    <div style={{ display:'flex', gap:7, alignItems:'flex-start' }}>
-      <div style={{ width:24, height:24, borderRadius:7, background:'rgba(67,125,253,0.1)', border:`1px solid ${B}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:12 }}>
-        {msg.meta?.type==='built'?'🏗️':msg.meta?.type==='updated'?'✏️':'🤖'}
+        )}
       </div>
-      <div style={{ flex:1 }}>
-        {msg.meta?.type==='built' && <span style={{ fontSize:10, padding:'1px 7px', borderRadius:20, background:'rgba(0,196,140,0.1)', color:'#00C48C', border:'1px solid rgba(0,196,140,0.2)', fontWeight:600, display:'inline-block', marginBottom:4 }}>✓ Built</span>}
-        {msg.meta?.type==='updated' && <span style={{ fontSize:10, padding:'1px 7px', borderRadius:20, background:`rgba(67,125,253,0.08)`, color:B, border:`1px solid ${B}22`, fontWeight:600, display:'inline-block', marginBottom:4 }}>↻ Updated</span>}
-        <div style={{ padding:'8px 11px', borderRadius:'4px 12px 12px 12px', background:'#F5F4F2', border:'1px solid rgba(0,0,0,0.07)', color:'#0C0C0C', fontSize:12, lineHeight:1.7, wordBreak:'break-word' }}>{msg.text}</div>
+
+      {/* AI Chat */}
+      <div style={{ background: '#16161e', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+        {/* Chat toggle header */}
+        <button onClick={() => setChatOpen(o => !o)} style={{ width: '100%', height: 32, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', background: 'none', border: 'none', cursor: 'pointer', borderBottom: chatOpen ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <FiZap size={12} style={{ color: B }}/>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#555', letterSpacing: '0.06em', textTransform: 'uppercase' }}>AI Assistant</span>
+            {isWorking && <span style={{ fontSize: 10, color: B, animation: 'atPulse 1s infinite' }}>thinking…</span>}
+          </div>
+          <FiChevronDown size={12} style={{ color: '#444', transform: chatOpen ? 'rotate(0)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}/>
+        </button>
+
+        {chatOpen && (
+          <>
+            {/* Messages */}
+            <div style={{ maxHeight: 140, overflowY: 'auto', padding: '8px 14px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.06) transparent' }}>
+              {messages.length === 0 && !isWorking && (
+                <div style={{ fontSize: 12, color: '#444', textAlign: 'center', paddingTop: 8 }}>
+                  Describe what you want to build or change
+                </div>
+              )}
+              {messages.map(m => (
+                <div key={m.id} style={{ marginBottom: 8, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <div style={{ width: 18, height: 18, borderRadius: 5, background: m.role === 'user' ? 'rgba(255,255,255,0.07)' : m.role === 'error' ? 'rgba(253,91,93,0.15)' : `${B}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                    {m.role === 'user' ? <FiUser size={9} style={{ color: '#777' }}/> : m.role === 'error' ? '⚠' : <FiZap size={9} style={{ color: B }}/>}
+                  </div>
+                  <div style={{ fontSize: 12, color: m.role === 'user' ? '#888' : m.role === 'error' ? '#FD5B5D' : '#c8c8e0', lineHeight: 1.6, flex: 1, wordBreak: 'break-word' }}>
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+              {isWorking && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingBottom: 4 }}>
+                  <div style={{ width: 18, height: 18, borderRadius: 5, background: `${B}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <FiLoader size={9} style={{ color: B, animation: 'atSpin 1s linear infinite' }}/>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {[0, 0.2, 0.4].map((d, i) => <div key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: B, animation: `vcDot 1s ${d}s ease-in-out infinite` }}/>)}
+                  </div>
+                </div>
+              )}
+              <div ref={msgsEndRef}/>
+            </div>
+
+            {/* Input */}
+            <div style={{ padding: '8px 12px 10px', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '8px 10px 8px 12px', transition: 'border-color 0.2s' }}
+                onFocusCapture={e => e.currentTarget.style.borderColor = `${B}60`}
+                onBlurCapture={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'}>
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={e => { setInput(e.target.value); autoResize(); }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                  placeholder="Describe changes or ask AI to build something..."
+                  rows={1}
+                  disabled={isWorking}
+                  style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#c8c8e0', fontSize: 13, resize: 'none', fontFamily: 'inherit', lineHeight: 1.5, maxHeight: 100, minHeight: 20 }}
+                />
+                <button onClick={listening ? stopListening : startListening} style={{ background: 'none', border: 'none', cursor: 'pointer', color: listening ? '#00C48C' : '#444', flexShrink: 0, display: 'flex', alignItems: 'center', padding: '2px 4px', transition: 'color 0.15s', marginLeft: 4 }}>
+                  {listening ? <FiMic size={14}/> : <FiMicOff size={14}/>}
+                </button>
+              </div>
+              <button onClick={handleSend} disabled={!input.trim() || isWorking} style={{ width: 36, height: 36, borderRadius: 9, border: 'none', cursor: input.trim() && !isWorking ? 'pointer' : 'not-allowed', background: input.trim() && !isWorking ? `linear-gradient(135deg,${B},#2C76FF)` : 'rgba(255,255,255,0.05)', color: input.trim() && !isWorking ? '#fff' : '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s', boxShadow: input.trim() && !isWorking ? '0 4px 14px rgba(67,125,253,0.4)' : 'none' }}>
+                <FiSend size={14}/>
+              </button>
+            </div>
+          </>
+        )}
       </div>
-    </div>
-  );
-};
 
-const CopyBtn = ({ text }) => {
-  const [c, setC] = useState(false);
-  return (
-    <button onClick={()=>{ navigator.clipboard.writeText(text).then(()=>{ setC(true); setTimeout(()=>setC(false),1500); }); }}
-      style={{ display:'flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:5, fontSize:10, cursor:'pointer', background:c?'rgba(52,211,153,0.1)':'transparent', border:`1px solid ${c?'#34d39944':'#333'}`, color:c?'#34d399':'#666' }}>
-      {c?<FiCheck size={9}/>:<FiCopy size={9}/>} {c?'Copied!':'Copy'}
-    </button>
-  );
-};
-
-const FileRow = ({ file, active, onOpen, onContextMenu, renamingId, renameVal, onRenameChange, onRenameSubmit, onRenameKey }) => {
-  const [hov, setHov] = useState(false);
-  const isRenaming = renamingId === file.id;
-  return (
-    <div onClick={onOpen} onContextMenu={onContextMenu}
-      onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
-      style={{ display:'flex', alignItems:'center', gap:7, padding:'5px 12px', cursor:'pointer', background:active?'rgba(67,125,253,0.07)':hov?'rgba(0,0,0,0.03)':'transparent', borderLeft:active?`2px solid ${B}`:'2px solid transparent', transition:'all 0.1s', userSelect:'none' }}>
-      <span style={{ fontSize:13, flexShrink:0 }}>{getFileType(file.name)==='image'?'🖼️':getFileIcon(file.name)}</span>
-      {isRenaming ? (
-        <input autoFocus value={renameVal} onChange={e=>onRenameChange(e.target.value)} onBlur={onRenameSubmit} onKeyDown={onRenameKey}
-          style={{ flex:1, fontSize:12, padding:'1px 5px', border:`1px solid ${B}66`, borderRadius:4, outline:'none', fontFamily:'inherit' }}
-          onClick={e=>e.stopPropagation()}/>
-      ) : (
-        <span style={{ fontSize:12, color:active?B:'#444', fontWeight:active?600:400, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>{file.name}</span>
-      )}
-      <span style={{ fontSize:10, color:'#ccc' }}>{(file.content?.length||0)>1000?Math.round(file.content.length/1024)+'kb':''}</span>
-    </div>
-  );
-};
-
-const CtxItem = ({ icon: Icon, label, onClick, danger }) => {
-  const [hov, setHov] = useState(false);
-  return (
-    <div onClick={onClick} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
-      style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 12px', borderRadius:7, cursor:'pointer', background:hov?(danger?'rgba(220,38,38,0.06)':'rgba(67,125,253,0.06)'):'transparent', color:danger?'#dc2626':'#0C0C0C', fontSize:12, transition:'all 0.1s' }}>
-      <Icon size={12}/>{label}
+      <style>{`
+        @keyframes vcDot { 0%,100%{transform:scale(0.5);opacity:0.3} 50%{transform:scale(1.1);opacity:1} }
+        @keyframes atSpin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+        @keyframes atPulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+      `}</style>
     </div>
   );
 };
