@@ -39,6 +39,9 @@ export const api = {
   getCapabilities: () => axiosInstance.get('/capabilities'),
   // Analytics
   getAnalytics: () => axiosInstance.get('/analytics'),
+  // TTS / Voice Cloning
+  ttsConfig: () => axiosInstance.get('/tts/config'),
+  tts: (text, reference_id, model) => axiosInstance.post('/tts', { text, reference_id, model }, { responseType: 'arraybuffer' }),
   // Vibe Coder
   getVibeAgents: () => axiosInstance.get('/vibe/agents'),
   vibeCode: (prompt, agent_id = 'auto') => axiosInstance.post('/vibe/code', { prompt, agent_id }),

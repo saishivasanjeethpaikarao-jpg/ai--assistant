@@ -88,6 +88,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/analytics': self.api_analytics,
             '/api/vibe/agents': self.api_vibe_agents,
             '/api/vibe/detect': self.api_vibe_detect_get,
+            '/api/tts/config': self.api_tts_config,
         }
         handler = routes.get(path)
         if handler:
@@ -115,6 +116,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/vibe/fix': lambda: self.api_vibe_fix(data),
             '/api/vibe/chat': lambda: self.api_vibe_chat(data),
             '/api/vibe/detect': lambda: self.api_vibe_detect(data),
+            '/api/tts': lambda: self.api_tts(data),
         }
         handler = routes.get(path)
         if handler:
@@ -594,6 +596,82 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
 
     def api_vibe_detect_get(self):
         self.send_json({'success': True, 'message': 'POST to /api/vibe/detect with {prompt}'})
+
+    # ── Voice / TTS ──────────────────────────────────────────────────────────
+
+    def send_audio(self, audio_bytes, mime='audio/mpeg'):
+        self.send_response(200)
+        self.send_header('Content-Type', mime)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Content-Length', str(len(audio_bytes)))
+        self.end_headers()
+        self.wfile.write(audio_bytes)
+
+    def api_tts_config(self):
+        from dotenv import load_dotenv
+        from config_paths import get_dotenv_path
+        load_dotenv(get_dotenv_path(), override=True)
+        fish_key = os.getenv('FISH_AUDIO_API_KEY', '').strip()
+        ref_id   = os.getenv('FISH_AUDIO_REFERENCE_ID', '').strip()
+        model    = os.getenv('FISH_AUDIO_MODEL', 's2-pro').strip()
+        provider = os.getenv('PREFERRED_VOICE_PROVIDER', 'fish').strip()
+        self.send_json({
+            'success': True,
+            'fish_available': bool(fish_key and ref_id),
+            'fish_key_set': bool(fish_key),
+            'reference_id': ref_id,
+            'model': model,
+            'provider': provider,
+        })
+
+    def api_tts(self, data):
+        try:
+            from dotenv import load_dotenv
+            from config_paths import get_dotenv_path
+            load_dotenv(get_dotenv_path(), override=True)
+
+            text     = (data.get('text') or '').strip()
+            fish_key = os.getenv('FISH_AUDIO_API_KEY', '').strip()
+            ref_id   = (data.get('reference_id') or os.getenv('FISH_AUDIO_REFERENCE_ID', '')).strip()
+            model    = (data.get('model')        or os.getenv('FISH_AUDIO_MODEL', 's2-pro')).strip()
+
+            if not text:
+                self.send_json({'error': 'No text provided'}, 400)
+                return
+            if not fish_key:
+                self.send_json({'error': 'Fish Audio API key not set'}, 400)
+                return
+            if not ref_id:
+                self.send_json({'error': 'Fish Audio reference_id not set'}, 400)
+                return
+
+            import urllib.request as urlreq
+            payload = json.dumps({
+                'text': text,
+                'reference_id': ref_id,
+                'format': 'mp3',
+                'mp3_bitrate': 128,
+                'latency': 'normal',
+            }).encode('utf-8')
+
+            req = urlreq.Request(
+                'https://api.fish.audio/v1/tts',
+                data=payload,
+                headers={
+                    'Authorization': f'Bearer {fish_key}',
+                    'Content-Type': 'application/json',
+                    'Model': model,
+                },
+                method='POST',
+            )
+            with urlreq.urlopen(req, timeout=30) as resp:
+                audio_bytes = resp.read()
+
+            self.send_audio(audio_bytes, 'audio/mpeg')
+
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            self.send_json({'error': str(e)}, 500)
 
     # ── Memory ───────────────────────────────────────────────────────────────
 

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { FiSend, FiVolume2, FiVolumeX } from 'react-icons/fi';
 import AIVoiceOrb from './AIVoiceOrb';
+import { api } from '../services/api';
 
 const SpeechRecognitionAPI =
   typeof window !== 'undefined' &&
@@ -26,15 +27,42 @@ function useSpeechToText({ onResult, onStateChange }) {
   return { listening, start, stop, supported: !!SpeechRecognitionAPI };
 }
 
-function speakText(text, onStart, onEnd) {
-  if (!window.speechSynthesis) return;
+let _currentAudio = null;
+
+function stopAllSpeech() {
+  window.speechSynthesis?.cancel();
+  if (_currentAudio) {
+    _currentAudio.pause();
+    _currentAudio.src = '';
+    _currentAudio = null;
+  }
+}
+
+async function speakWithFishAudio(text, ttsConfig, onEnd) {
+  try {
+    const arrayBuffer = await api.tts(text, ttsConfig.reference_id, ttsConfig.model);
+    const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+    const url  = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    _currentAudio = audio;
+    audio.onended  = () => { URL.revokeObjectURL(url); _currentAudio = null; onEnd(); };
+    audio.onerror  = () => { URL.revokeObjectURL(url); _currentAudio = null; onEnd(); };
+    await audio.play();
+  } catch (err) {
+    console.warn('[Airis TTS] Fish Audio failed, falling back to browser TTS:', err);
+    speakBrowser(text, onEnd);
+  }
+}
+
+function speakBrowser(text, onEnd) {
+  if (!window.speechSynthesis) { onEnd?.(); return; }
   window.speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(text);
   utt.rate=1.05; utt.pitch=0.95; utt.volume=1;
   const v = window.speechSynthesis.getVoices();
   const pref = v.find(x=>x.name.includes('Google')||x.name.includes('Premium'))||v.find(x=>x.lang==='en-US')||v[0];
   if (pref) utt.voice=pref;
-  utt.onstart=onStart; utt.onend=onEnd; utt.onerror=onEnd;
+  utt.onend=onEnd; utt.onerror=onEnd;
   window.speechSynthesis.speak(utt);
 }
 
@@ -375,6 +403,7 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
   const [input,      setInput]      = useState('');
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [speaking,   setSpeaking]   = useState(false);
+  const [ttsConfig,  setTtsConfig]  = useState(null);
   const textareaRef    = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -384,16 +413,25 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
       onStateChange: useCallback((s) => { onVoiceStateChange?.(s); }, [onVoiceStateChange]),
     });
 
+  useEffect(() => {
+    api.ttsConfig().then(cfg => { if (cfg?.fish_available) setTtsConfig(cfg); }).catch(() => {});
+  }, []);
+
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, isTyping, listening, speaking]);
 
   useEffect(() => {
     if (!ttsEnabled) return;
     const last = messages[messages.length - 1];
     if (last?.role === 'assistant') {
-      const text = typeof last.content === 'string' ? last.content : '';
-      if (text) {
-        setSpeaking(true); onVoiceStateChange?.('speaking');
-        speakText(text, ()=>{}, ()=>{ setSpeaking(false); onVoiceStateChange?.('idle'); });
+      const raw = typeof last.content === 'string' ? last.content : '';
+      const text = raw.replace(/[#*`_~>]/g, '').trim();
+      if (!text) return;
+      setSpeaking(true); onVoiceStateChange?.('speaking');
+      const onDone = () => { setSpeaking(false); onVoiceStateChange?.('idle'); };
+      if (ttsConfig?.fish_available) {
+        speakWithFishAudio(text, ttsConfig, onDone);
+      } else {
+        speakBrowser(text, onDone);
       }
     }
   }, [messages]);
@@ -412,10 +450,10 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
 
   const toggleMic = () => {
     if (listening) stopListening();
-    else { if (speaking) { window.speechSynthesis?.cancel(); setSpeaking(false); } startListening(); }
+    else { if (speaking) { stopAllSpeech(); setSpeaking(false); } startListening(); }
   };
   const toggleTts = () => {
-    if (speaking) { window.speechSynthesis?.cancel(); setSpeaking(false); }
+    if (speaking) { stopAllSpeech(); setSpeaking(false); }
     setTtsEnabled(v => !v);
   };
 
