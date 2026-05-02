@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import ActivityBar          from './components/ActivityBar';
 import Sidebar              from './components/Sidebar';
 import ChatInterface        from './components/ChatInterface';
@@ -8,14 +9,24 @@ import StatusBar            from './components/StatusBar';
 import Settings             from './components/Settings';
 import VibeCoder            from './components/VibeCoder';
 import ConversationHistory  from './components/ConversationHistory';
+import LandingPage          from './pages/LandingPage';
+import LoginPage            from './pages/LoginPage';
 import useStore             from './store/useStore';
 import { api }              from './services/api';
 import { useBreakpoint }    from './hooks/useBreakpoint';
+import { useAuth }          from './contexts/AuthContext';
 
 const SIDEBAR_PANELS = ['chat', 'memory', 'trading', 'reminders', 'skills', 'analytics', 'brain'];
 const VIBE_TRIGGERS  = ['build me', 'build a', 'vibe code', 'vibe coder', 'create a component', 'write a script', 'make me a', 'code me a'];
 
-function App() {
+function ProtectedApp() {
+  const { user, loading } = useAuth();
+  const navigate          = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !user) navigate('/login');
+  }, [user, loading]);
+
   const [activePanel,       setActivePanel]       = useState('chat');
   const [sidebarOpen,       setSidebarOpen]       = useState(false);
   const [commandOpen,       setCommandOpen]       = useState(false);
@@ -106,6 +117,18 @@ function App() {
     } catch (e) { updateTask(idx, { status: 'failed', result: e.message }); }
   };
 
+  if (loading) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F5F4F2', fontFamily: "'DM Sans', sans-serif" }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+        <img src="/airis-sphere.png" alt="Airis" style={{ width: 60, height: 60, objectFit: 'contain', animation: 'float 3s ease-in-out infinite' }} />
+        <span style={{ color: '#aaa', fontSize: 14 }}>Loading Airis…</span>
+        <style>{`@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }`}</style>
+      </div>
+    </div>
+  );
+
+  if (!user) return null;
+
   const isSettings = activePanel === 'settings';
   const isVibe     = activePanel === 'vibe';
   const showSidebar = !isSettings && !isVibe && sidebarOpen && SIDEBAR_PANELS.includes(activePanel);
@@ -117,10 +140,7 @@ function App() {
       height: '100dvh', overflow: 'hidden',
       background: '#f0ecff',
     }}>
-      {/* Main body */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-
-        {/* Left Activity Bar — desktop only */}
         {!isMobile && (
           <ActivityBar
             activePanel={activePanel}
@@ -129,16 +149,12 @@ function App() {
             isMobile={false}
           />
         )}
-
-        {/* Sidebar panel */}
         <Sidebar
           activePanel={activePanel}
           isOpen={showSidebar}
           isMobile={isMobile}
           onClose={() => setSidebarOpen(false)}
         />
-
-        {/* Main content */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
           {isSettings ? (
             <Settings isMobile={isMobile} />
@@ -159,22 +175,16 @@ function App() {
             </>
           )}
         </div>
-
-        {/* Right panel — Conversation History */}
         {showHistory && (
           <ConversationHistory messages={messages} isMobile={isMobile} />
         )}
       </div>
-
-      {/* Status bar */}
       <StatusBar
         voiceState={voiceState}
         aiStatus={isTyping ? 'Processing' : 'Ready'}
         hasProvider={hasProvider}
         isMobile={isMobile}
       />
-
-      {/* Mobile bottom Activity Bar */}
       {isMobile && (
         <ActivityBar
           activePanel={activePanel}
@@ -183,10 +193,18 @@ function App() {
           isMobile={true}
         />
       )}
-
       <CommandPalette isOpen={commandOpen} onClose={() => setCommandOpen(false)} onCommand={handleCommand} />
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/"      element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/app"   element={<ProtectedApp />} />
+      <Route path="*"      element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}

@@ -1,12 +1,14 @@
-# JARVIS AI Assistant
+# Airis AI Assistant
 
 Iron Man–style AI assistant: 12-layer brain, voice in/out, bilingual (English + Telugu), PC control, Indian stock trading, self-improvement, wake-word activation, voice cloning.
 
 ## Architecture
 
-- **Frontend**: React + Vite (`frontend/`) on port 5000 — Cursor IDE 3-column layout, all inline styles
+- **Frontend**: React + Vite (`frontend/`) on port 5000 — inline styles, Spline-inspired light theme
 - **Backend**: Python HTTP server (`backend/dashboard_api.py`) on port 8000
 - Vite proxy: `/api` → `localhost:8000`
+- **Auth**: Firebase Authentication (Google, GitHub, Email/Password) via `frontend/src/firebase.js`
+- **Routing**: React Router v6 — `/` landing, `/login` auth, `/app` protected main app
 
 ## Settings — 9 tabs
 
@@ -47,10 +49,20 @@ Two workflows are configured:
 - `backend/system_coordinator.py` — 12-layer AI system coordinator
 - `backend/autonomous_executor.py` — Orchestrates all AI layers
 
+## Pages & Auth Flow
+
+- `/` → `LandingPage.jsx` — Spline-inspired landing with holographic sphere, hero, features, testimonials, CTA
+- `/login` → `LoginPage.jsx` — Google, GitHub, email/password sign-in + sign-up + password reset
+- `/app` → `ProtectedApp` (in App.jsx) — main chat interface, requires auth
+- `frontend/src/firebase.js` — Firebase app init; uses `GOOGLE_API_KEY` secret via Vite `envPrefix`
+- `frontend/src/contexts/AuthContext.jsx` — auth state, sign-in methods, error handling
+- `frontend/public/airis-sphere.png` — holographic iridescent sphere logo asset
+
 ## Frontend Dependencies
 
 Node.js packages managed in `frontend/package.json`:
-- React 18, React Router, Axios, Zustand, react-icons, framer-motion
+- React 18, React Router v6, Axios, Zustand, react-icons, framer-motion
+- Firebase 10 (auth)
 - Vite 4, @vitejs/plugin-react
 - TailwindCSS v4, @tailwindcss/postcss, autoprefixer
 
