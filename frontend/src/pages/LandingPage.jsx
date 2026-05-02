@@ -359,7 +359,7 @@ export default function LandingPage() {
                   <span style={{ fontSize: 13, fontWeight: 600, color: c || S.dark }}>{v}</span>
                 </div>
               ))}
-              <button style={{ width: '100%', marginTop: 18, padding: '12px', fontSize: 13, fontWeight: 600, color: '#fff', background: '#00C48C', border: 'none', borderRadius: 12, cursor: 'pointer' }}>Open Trading Dashboard →</button>
+              <button onClick={() => navigate('/trading')} style={{ width: '100%', marginTop: 18, padding: '12px', fontSize: 13, fontWeight: 600, color: '#fff', background: '#00C48C', border: 'none', borderRadius: 12, cursor: 'pointer' }}>Open Trading Dashboard →</button>
             </div>
             {!isMobile && (
               <div>

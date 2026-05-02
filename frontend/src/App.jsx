@@ -11,6 +11,7 @@ import VibeCoder            from './components/VibeCoder';
 import CanvasBoard          from './components/CanvasBoard';
 import ConversationHistory  from './components/ConversationHistory';
 import LandingPage          from './pages/LandingPage';
+import TradingPage          from './pages/TradingPage';
 import LoginPage            from './pages/LoginPage';
 import useStore             from './store/useStore';
 import { api }              from './services/api';
@@ -235,10 +236,11 @@ function ProtectedApp() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/"      element={<LandingPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/app"   element={<ProtectedApp />} />
-      <Route path="*"      element={<Navigate to="/" replace />} />
+      <Route path="/"        element={<LandingPage />} />
+      <Route path="/login"   element={<LoginPage />} />
+      <Route path="/app"     element={<ProtectedApp />} />
+      <Route path="/trading" element={<TradingPage />} />
+      <Route path="*"        element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

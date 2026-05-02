@@ -8,7 +8,7 @@ Iron Man–style AI assistant: 12-layer brain, voice in/out, bilingual (English 
 - **Backend**: Python HTTP server (`backend/dashboard_api.py`) on port 8000
 - Vite proxy: `/api` → `localhost:8000`
 - **Auth**: Firebase Authentication (Google, GitHub, Email/Password, Anonymous/Guest) via `frontend/src/firebase.js`
-- **Routing**: React Router v6 — `/` landing, `/login` auth, `/app` protected main app
+- **Routing**: React Router v6 — `/` landing, `/login` auth, `/app` protected main app, `/trading` full trading dashboard
 
 ## Design System
 
@@ -27,7 +27,25 @@ Iron Man–style AI assistant: 12-layer brain, voice in/out, bilingual (English 
 
 AI Engine · Voice & Speech · Language · Wake Word · Voice Clone · System Prompt · Notifications · Appearance · All API Keys
 
-## Trading Panel — Live Yahoo Finance (yfinance 1.3.0)
+## Trading Page (`/trading`) — Full standalone dashboard
+
+**Route**: `/trading` — accessible without auth (open page), navigated from LandingPage "Open Trading Dashboard" button and back-arrow returns to `/app`.
+
+**Layout**: Left sidebar (230px, live market data) + Main area (4 tabs)
+
+**Tabs**:
+1. **AI Assistant** — Chat with Groq-powered trading expert (`/api/trading/chat`), specialized system prompt for Indian market analysis. Sends live market context (indices, movers, portfolio, watchlist) with every message. Quick action chips, stock symbol autocomplete in input.
+2. **Portfolio** — Add positions (symbol, qty, buy price), track real-time P&L, average-down calculation on duplicate adds, total invested/current/P&L summary bar, refresh prices button. Persisted in `localStorage` (`airis_tp_portfolio`).
+3. **Watchlist** — Search and add stocks, live price cards with change%, click to open quote modal, remove button. Auto-refresh every 60s. Persisted in `localStorage` (`airis_tp_watchlist`).
+4. **Market** — All indices grid, sector heatmap (colour-coded by change%), full gainers/losers table.
+
+**Quote Modal** — Click any stock anywhere to open modal: full quote card (price, Δ, O/H/L, 52W, Vol, Mkt Cap), "Add to Watchlist" and "Add to Portfolio" buttons.
+
+**Backend**: `POST /api/trading/chat` — specialized trading expert system prompt, accepts `{message, context}`, uses same Groq/Ollama provider chain as main chat.
+
+**Persistence**: Portfolio and watchlist in localStorage (no backend DB needed).
+
+## Trading Panel (Sidebar) — Live Yahoo Finance (yfinance 1.3.0)
 
 **Backend endpoints** (`/api/market/*`):
 - `GET /api/market/indices` — NIFTY 50, SENSEX, BANK NIFTY, NIFTY IT, MIDCAP 50, FMCG, AUTO, PHARMA

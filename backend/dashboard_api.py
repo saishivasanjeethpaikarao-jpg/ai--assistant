@@ -387,6 +387,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/market/quote':   self.api_market_quote,
             '/api/market/search':  self.api_market_search,
             '/api/market/movers':  self.api_market_movers,
+            '/api/trading/chat':   self.api_trading_chat_get,
         }
         handler = routes.get(path)
         if handler:
@@ -414,6 +415,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/vibe/fix': lambda: self.api_vibe_fix(data),
             '/api/vibe/chat': lambda: self.api_vibe_chat(data),
             '/api/vibe/detect': lambda: self.api_vibe_detect(data),
+            '/api/trading/chat': lambda: self.api_trading_chat(data),
             '/api/tts': lambda: self.api_tts(data),
             '/api/voice/clone': lambda: self.api_voice_clone(data),
         }
@@ -895,6 +897,102 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
 
     def api_vibe_detect_get(self):
         self.send_json({'success': True, 'message': 'POST to /api/vibe/detect with {prompt}'})
+
+    # ── Trading AI ───────────────────────────────────────────────────────────
+
+    TRADING_SYSTEM_PROMPT = """You are an expert Indian stock market trading analyst and AI advisor named Airis Trading. You have deep expertise in:
+
+- NSE and BSE listed stocks, F&O, SME IPOs, and market indices (NIFTY 50, SENSEX, BANK NIFTY, NIFTY IT, MIDCAP 50, FMCG, AUTO, PHARMA)
+- Technical analysis: RSI, MACD, Bollinger Bands, EMA/SMA crossovers, support/resistance levels, candlestick patterns
+- Fundamental analysis: P/E ratio, P/B ratio, EPS growth, revenue trends, ROE, debt-to-equity, promoter holding
+- Market news interpretation: RBI policy, FII/DII flows, global cues (Dow Jones, Nasdaq, SGX Nifty), crude oil impact
+- Sector rotation strategies, momentum investing, value investing, and swing trading
+- Portfolio construction, position sizing, stop-loss placement, and risk management
+- IPO analysis, quarterly results interpretation, and corporate actions (dividends, buybacks, splits)
+
+When answering:
+- Be direct, specific, and actionable — give clear Buy/Sell/Hold/Watch recommendations when asked
+- Always mention key price levels, targets, and stop-losses for trade setups
+- Format responses with clear sections using **bold headers** when covering multiple points
+- Use ₹ for Indian rupees, and standard NSE symbols (RELIANCE, TCS, INFY, etc.)
+- If given live market context (indices, movers, portfolio, watchlist), incorporate that data into your analysis
+- Acknowledge uncertainty where it exists — markets are dynamic
+- Keep responses concise but informative — avoid excessive padding
+
+You are the user's personal trading intelligence system. Help them make informed, data-driven decisions."""
+
+    def api_trading_chat_get(self):
+        self.send_json({'success': True, 'message': 'POST to /api/trading/chat with {message, context}'})
+
+    def api_trading_chat(self, data):
+        try:
+            message = (data.get('message') or '').strip()
+            context = (data.get('context') or '').strip()
+            if not message:
+                self.send_json({'error': 'No message provided'}, 400)
+                return
+
+            user_content = message
+            if context:
+                user_content = f"[Live Market Context: {context}]\n\n{message}"
+
+            reply = None
+            try:
+                from ai_switcher import has_provider_configured, with_fallback, refresh_providers
+                from config_paths import get_dotenv_path
+                from dotenv import load_dotenv
+                load_dotenv(get_dotenv_path(), override=True)
+                refresh_providers()
+
+                if has_provider_configured():
+                    messages_payload = [
+                        {"role": "system", "content": self.TRADING_SYSTEM_PROMPT},
+                        {"role": "user",   "content": user_content},
+                    ]
+
+                    import requests as req_lib
+                    try:
+                        from openai import OpenAI
+                    except ImportError:
+                        OpenAI = None
+
+                    def call_ai(provider, msgs):
+                        pname   = provider.get('name', '').lower()
+                        api_key = provider.get('api_key')
+                        base_url = provider.get('base_url', '')
+                        model   = provider.get('model', '')
+                        if pname == 'ollama':
+                            url = base_url.rstrip('/') + '/v1/chat/completions'
+                            r = req_lib.post(url, json={'model': model, 'messages': msgs}, timeout=60)
+                            r.raise_for_status()
+                            d = r.json()
+                            return d['choices'][0]['message']['content']
+                        if OpenAI is None:
+                            raise RuntimeError('openai package not installed')
+                        client = OpenAI(api_key=api_key, base_url=base_url)
+                        resp = client.chat.completions.create(model=model, messages=msgs)
+                        return resp.choices[0].message.content
+
+                    reply = with_fallback(call_ai, messages_payload)
+
+            except Exception as ai_err:
+                print(f"[Trading AI] Error: {ai_err}")
+                reply = None
+
+            if not reply:
+                reply = (
+                    "⚙️ No AI provider configured.\n\n"
+                    "To activate the Trading AI:\n"
+                    "1. Go back to the main app → click the gear icon → AI Engine tab\n"
+                    "2. Paste your **Groq API key** (free at console.groq.com)\n"
+                    "3. Click Save Settings\n\n"
+                    "Groq is free and takes 30 seconds to set up."
+                )
+
+            self.send_json({'success': True, 'reply': reply})
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            self.send_json({'error': str(e)}, 500)
 
     # ── Voice / TTS ──────────────────────────────────────────────────────────
 
