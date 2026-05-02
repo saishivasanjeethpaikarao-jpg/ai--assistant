@@ -1,6 +1,6 @@
 """
 Voice Personality Configuration
-Settings for premium AI voices like Jarvis/Siri
+Settings for premium AI voices like Airis/Siri
 """
 
 import os
@@ -9,8 +9,8 @@ from core.config import config
 
 # Voice Personality Profiles
 VOICE_PERSONALITIES = {
-    "jarvis": {
-        "name": "Jarvis",
+    "airis": {
+        "name": "Airis",
         "description": "Professional, calm, British-accented AI assistant",
         "traits": {
             "tone": "professional",
@@ -19,7 +19,7 @@ VOICE_PERSONALITIES = {
             "clarity": "high"
         },
         "fish_model": "s2-pro",
-        "elevenlabs_voice": "Jarvis"
+        "elevenlabs_voice": "Airis"
     },
     "siri": {
         "name": "Siri",
@@ -55,7 +55,7 @@ VOICE_PERSONALITIES = {
             "clarity": "custom"
         },
         "fish_model": os.getenv("FISH_AUDIO_MODEL", "s2-pro"),
-        "elevenlabs_voice": os.getenv("ELEVENLABS_VOICE", "Jarvis")
+        "elevenlabs_voice": os.getenv("ELEVENLABS_VOICE", "Airis")
     }
 }
 
@@ -64,7 +64,7 @@ class VoicePersonalityConfig:
     """Manages voice personality settings."""
     
     def __init__(self):
-        self.current_personality = os.getenv("VOICE_PERSONALITY", "jarvis").strip()
+        self.current_personality = os.getenv("VOICE_PERSONALITY", "airis").strip()
         self.provider = os.getenv("PREFERRED_VOICE_PROVIDER", "fish").strip()
         
         # Voice settings
@@ -74,7 +74,7 @@ class VoicePersonalityConfig:
     
     def get_personality(self, personality_name: str) -> Dict[str, Any]:
         """Get personality profile by name."""
-        return VOICE_PERSONALITIES.get(personality_name, VOICE_PERSONALITIES["jarvis"])
+        return VOICE_PERSONALITIES.get(personality_name, VOICE_PERSONALITIES["airis"])
     
     def set_personality(self, personality_name: str) -> bool:
         """Set current personality."""

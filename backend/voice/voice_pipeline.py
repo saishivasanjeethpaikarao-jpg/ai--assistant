@@ -109,9 +109,9 @@ class VoiceInteractiveMode:
     def run(self) -> None:
         """Run interactive voice mode."""
         print("\n" + "=" * 60)
-        print("JARVIS - Voice Mode")
+        print("AIRIS - Voice Mode")
         print("=" * 60)
-        print("Say 'Jarvis' and then your command")
+        print("Say 'Airis' and then your command")
         print("Say 'exit' or 'quit' to stop\n")
         
         # Set error handler for UI feedback

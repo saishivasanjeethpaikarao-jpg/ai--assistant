@@ -57,7 +57,7 @@ const FloatingPanel = ({ children, isExpanded, onToggle, onClose }) => {
       <div className="flex items-center justify-between px-4 py-3 bg-gray-800/50 border-b border-gray-700">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-          <span className="text-sm font-medium text-gray-200">Jarvis AI</span>
+          <span className="text-sm font-medium text-gray-200">Airis AI</span>
         </div>
         <div className="flex items-center gap-1">
           <button

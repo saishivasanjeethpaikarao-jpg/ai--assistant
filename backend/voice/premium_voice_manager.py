@@ -1,6 +1,6 @@
 """
 Premium Voice Manager - Fish Audio & ElevenLabs
-High-quality AI voices like Jarvis/Siri
+High-quality AI voices like Airis/Siri
 """
 
 import os
@@ -25,7 +25,7 @@ class PremiumVoiceManager:
         self.fish_model = os.getenv("FISH_AUDIO_MODEL", "s2-pro").strip()
         
         self.elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY", "").strip()
-        self.elevenlabs_voice = os.getenv("ELEVENLABS_VOICE", "Jarvis").strip()
+        self.elevenlabs_voice = os.getenv("ELEVENLABS_VOICE", "Airis").strip()
         
         self.preferred_provider = os.getenv("PREFERRED_VOICE_PROVIDER", "fish").strip()
         
@@ -189,7 +189,7 @@ class PremiumVoiceManager:
             
             model_id = fish_create_voice_model(
                 api_key=self.fish_api_key,
-                title=f"Jarvis Clone {datetime.now().strftime('%Y%m%d')}",
+                title=f"Airis Clone {datetime.now().strftime('%Y%m%d')}",
                 audio_path=audio_path
             )
             

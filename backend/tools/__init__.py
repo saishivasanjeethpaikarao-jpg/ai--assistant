@@ -1,5 +1,5 @@
 """
-JARVIS Tools Layer — Clean, plugin-style tool execution.
+AIRIS Tools Layer — Clean, plugin-style tool execution.
 Each tool is a module that can be called by the agent.
 """
 

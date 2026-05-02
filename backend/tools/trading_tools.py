@@ -1,6 +1,6 @@
 """
 Trading Tools — Market analysis, recommendations, and execution.
-Integrates with the trading subsystem for JARVIS assistant.
+Integrates with the trading subsystem for AIRIS assistant.
 """
 
 from typing import Dict, Any, Optional
@@ -8,7 +8,7 @@ from . import ToolResult, ToolCategory
 
 
 class TradingTools:
-    """Trading-related tools for JARVIS."""
+    """Trading-related tools for AIRIS."""
     
     def __init__(self):
         self.category = ToolCategory.TRADING

@@ -56,7 +56,7 @@ const StatusBar = ({ voiceState, aiStatus, hasProvider, isMobile }) => {
         <Sep />
         <Item icon={hasProvider ? FiCheckCircle : FiAlertTriangle} label={providerLabel} color={providerColor} />
         <Sep />
-        <Item icon={isProcessing ? FiAlertCircle : FiCpu} label={isProcessing ? 'Processing...' : 'Jarvis AI'} color={isProcessing ? '#d97706' : '#6b7280'} />
+        <Item icon={isProcessing ? FiAlertCircle : FiCpu} label={isProcessing ? 'Processing...' : 'Airis AI'} color={isProcessing ? '#d97706' : '#6b7280'} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
         {isSpeaking && <><Item label="Speaking" color="#7c3aed" /><Sep /></>}

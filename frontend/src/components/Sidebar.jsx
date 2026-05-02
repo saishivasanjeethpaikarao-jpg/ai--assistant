@@ -132,7 +132,7 @@ const MemoryPanel = ({ stats }) => {
       </div>
       <SectionHdr title="Learning" />
       <div style={{ padding:'0 16px 8px' }}>
-        <p style={{ fontSize:'12px', color:'#9ca3af', lineHeight:'1.7' }}>Jarvis learns from every interaction — strategies, preferences and patterns stored automatically.</p>
+        <p style={{ fontSize:'12px', color:'#9ca3af', lineHeight:'1.7' }}>Airis learns from every interaction — strategies, preferences and patterns stored automatically.</p>
       </div>
     </div>
   );

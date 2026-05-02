@@ -1,7 +1,7 @@
 """
 Wake Word Detection Module
 
-Detects "Jarvis" wake word from audio stream.
+Detects "Airis" wake word from audio stream.
 Uses PocketSphinx for lightweight, always-on detection.
 Triggers voice interaction when detected.
 """
@@ -27,7 +27,7 @@ class WakeWordState(Enum):
 @dataclass
 class WakeWordConfig:
     """Wake word configuration"""
-    keyword: str = "jarvis"
+    keyword: str = "airis"
     sensitivity: float = 1.0  # 0.0-1.0, higher = more sensitive
     timeout: int = 5  # seconds before auto-reset
     enable_pocketsphinx: bool = True
@@ -36,7 +36,7 @@ class WakeWordConfig:
 
 class WakeWordDetector:
     """
-    Detects wake word ("Jarvis") from audio stream.
+    Detects wake word ("Airis") from audio stream.
     
     Uses PocketSphinx for lightweight offline detection.
     Falls back to Google speech recognition if configured.
@@ -245,7 +245,7 @@ class BackgroundWakeWordListener:
     
     def __init__(
         self,
-        keyword: str = "jarvis",
+        keyword: str = "airis",
         on_activated: Optional[Callable[[], None]] = None
     ):
         """

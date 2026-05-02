@@ -20,9 +20,9 @@ def bundle_dir() -> str:
 def user_data_dir() -> str:
     if sys.platform == "win32":
         base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
-        d = os.path.join(base, "JarvisAI")
+        d = os.path.join(base, "AirisAI")
     else:
-        d = os.path.join(os.path.expanduser("~"), ".config", "jarvis-ai")
+        d = os.path.join(os.path.expanduser("~"), ".config", "airis-ai")
     os.makedirs(d, exist_ok=True)
     return d
 

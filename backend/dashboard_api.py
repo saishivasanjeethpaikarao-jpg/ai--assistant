@@ -1,5 +1,5 @@
 """
-Dashboard API Server — Jarvis AI Assistant
+Dashboard API Server — Airis AI Assistant
 All endpoints for settings, voice, memory, reminders, system prompt, capabilities.
 """
 
@@ -23,14 +23,14 @@ CAPABILITIES = [
     {"id": "voice-in",     "category": "Voice",        "icon": "🎤", "name": "Voice Input (STT)",       "desc": "Speak commands using microphone — browser or local"},
     {"id": "voice-out",    "category": "Voice",        "icon": "🔊", "name": "Voice Output (TTS)",      "desc": "Premium AI voices via Fish Audio, ElevenLabs, or browser"},
     {"id": "voice-clone",  "category": "Voice",        "icon": "🎭", "name": "Voice Cloning",           "desc": "Clone any voice using Fish Audio API"},
-    {"id": "wake-word",    "category": "Voice",        "icon": "👂", "name": "Wake Word Detection",     "desc": "Say 'Jarvis' or double-clap to activate hands-free"},
+    {"id": "wake-word",    "category": "Voice",        "icon": "👂", "name": "Wake Word Detection",     "desc": "Say 'Airis' or double-clap to activate hands-free"},
     {"id": "open-apps",    "category": "PC Control",   "icon": "🚀", "name": "Launch Applications",     "desc": "Open Chrome, VSCode, Office, Terminal, any app"},
     {"id": "system-ctrl",  "category": "PC Control",   "icon": "⚙️", "name": "System Control",          "desc": "Shutdown, restart, lock, volume — full OS control"},
     {"id": "file-ops",     "category": "PC Control",   "icon": "📁", "name": "File Operations",         "desc": "Create, read, edit, delete files and folders"},
-    {"id": "screen-read",  "category": "PC Control",   "icon": "👁️", "name": "Screen Reading",          "desc": "Jarvis reads your screen and guides you visually"},
+    {"id": "screen-read",  "category": "PC Control",   "icon": "👁️", "name": "Screen Reading",          "desc": "Airis reads your screen and guides you visually"},
     {"id": "coding",       "category": "Coding",       "icon": "💻", "name": "Code Execution",          "desc": "Run Python scripts with [EXECUTE_PYTHON] blocks"},
     {"id": "git",          "category": "Coding",       "icon": "🔀", "name": "Git Automation",          "desc": "Auto-commit, status, branch management"},
-    {"id": "self-improve", "category": "Coding",       "icon": "🧠", "name": "Self-Improvement",        "desc": "Jarvis adds features to itself when you ask"},
+    {"id": "self-improve", "category": "Coding",       "icon": "🧠", "name": "Self-Improvement",        "desc": "Airis adds features to itself when you ask"},
     {"id": "browser",      "category": "Browsing",     "icon": "🌐", "name": "Web Browsing",            "desc": "Google search, open URLs, YouTube, Wikipedia"},
     {"id": "gmail",        "category": "Browsing",     "icon": "📧", "name": "Email & Social",          "desc": "Open Gmail, GitHub, Reddit, Twitter, StackOverflow"},
     {"id": "trading",      "category": "Trading",      "icon": "📈", "name": "Indian Stock Market",     "desc": "NSE/BSE real-time prices, watchlist, portfolio"},
@@ -45,7 +45,7 @@ CAPABILITIES = [
     {"id": "analytics",    "category": "Analytics",    "icon": "📋", "name": "Analytics Dashboard",     "desc": "Productivity metrics, usage stats, trading performance"},
     {"id": "recommender",  "category": "Analytics",    "icon": "✨", "name": "Smart Recommendations",   "desc": "AI-driven tips on productivity, trading, and health"},
     {"id": "tasks",        "category": "Productivity", "icon": "✅", "name": "Task Manager",            "desc": "Create, track and complete tasks with natural language"},
-    {"id": "notes",        "category": "Productivity", "icon": "📝", "name": "Notes",                   "desc": "Quick notes saved and recalled by Jarvis"},
+    {"id": "notes",        "category": "Productivity", "icon": "📝", "name": "Notes",                   "desc": "Quick notes saved and recalled by Airis"},
     {"id": "calendar",     "category": "Productivity", "icon": "📅", "name": "Calendar",                "desc": "Schedule events and get daily briefings"},
     {"id": "alerts",       "category": "Trading",      "icon": "🔔", "name": "Price Alerts",            "desc": "Real-time alerts when stocks hit target prices"},
 ]
@@ -250,7 +250,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             if not reply:
                 reply = (
                     "⚙️ No AI provider is configured yet.\n\n"
-                    "**To activate Jarvis:**\n"
+                    "**To activate Airis:**\n"
                     "1. Click the **gear icon** (bottom-left) → **AI Engine** tab\n"
                     "2. Paste your **Groq API key** (free at console.groq.com)\n"
                     "3. Click **Save Settings**\n\n"
@@ -366,11 +366,11 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
                     'elevenlabs_voice_id': os.getenv('ELEVENLABS_VOICE_ID', ''),
                     'firebase_api_key': self._mask(firebase_key),
                     'firebase_api_key_set': bool(firebase_key),
-                    'voice_personality': os.getenv('VOICE_PERSONALITY', 'jarvis'),
+                    'voice_personality': os.getenv('VOICE_PERSONALITY', 'airis'),
                     'preferred_voice_provider': os.getenv('PREFERRED_VOICE_PROVIDER', 'fish'),
                     'voice_language': os.getenv('VOICE_LANGUAGE', 'en'),
                     'response_language': os.getenv('RESPONSE_LANGUAGE', 'auto'),
-                    'wake_word': os.getenv('WAKE_WORD', 'jarvis'),
+                    'wake_word': os.getenv('WAKE_WORD', 'airis'),
                     'wake_word_sensitivity': os.getenv('WAKE_WORD_SENSITIVITY', '1.0'),
                     'double_clap_enabled': os.getenv('DOUBLE_CLAP_ENABLED', 'true').lower() == 'true',
                     'voice_rate': os.getenv('VOICE_RATE', '150'),
@@ -611,7 +611,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
 
 def start_server(port=8000):
     server = HTTPServer(('0.0.0.0', port), DashboardAPIHandler)
-    print(f"Jarvis Backend API — port {port}")
+    print(f"Airis Backend API — port {port}")
     print("Ready: /api/request  /api/settings  /api/capabilities  /api/system/layers")
     server.serve_forever()
 

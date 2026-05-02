@@ -1,5 +1,5 @@
 """
-Jarvis AI — desktop entry point (no console). Launches the KivyMD shell.
+Airis AI — desktop entry point (no console). Launches the KivyMD shell.
 """
 
 import kivymd.icon_definitions  # noqa: F401 — PyInstaller
@@ -9,6 +9,6 @@ from config_paths import ensure_user_env
 
 if __name__ == "__main__":
     ensure_user_env()
-    from ui.jarvis_app import JarvisApp
+    from ui.airis_app import AirisApp
 
-    JarvisApp().run()
+    AirisApp().run()

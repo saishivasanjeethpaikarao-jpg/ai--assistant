@@ -1,5 +1,5 @@
 """
-JARVIS MODE - Continuous Voice Assistant System
+AIRIS MODE - Continuous Voice Assistant System
 Provides persistent, always-available assistant with context memory and smart routing.
 """
 
@@ -51,7 +51,7 @@ class ConversationContext:
         self.context.clear()
 
 
-class JarvisMode:
+class AirisMode:
     """Continuous voice assistant with context and smart routing."""
     
     def __init__(self, orchestrator: Optional[SmartOrchestrator] = None):
@@ -246,12 +246,12 @@ class JarvisMode:
 
 
 # Singleton instance
-_jarvis_mode: Optional[JarvisMode] = None
+_airis_mode: Optional[AirisMode] = None
 
 
-def get_jarvis_mode() -> JarvisMode:
-    """Get or create JarvisMode instance."""
-    global _jarvis_mode
-    if _jarvis_mode is None:
-        _jarvis_mode = JarvisMode()
-    return _jarvis_mode
+def get_airis_mode() -> AirisMode:
+    """Get or create AirisMode instance."""
+    global _airis_mode
+    if _airis_mode is None:
+        _airis_mode = AirisMode()
+    return _airis_mode

@@ -1,5 +1,5 @@
 """
-Jarvis AI Assistant - Main Application Entry Point (Phase 1)
+Airis AI Assistant - Main Application Entry Point (Phase 1)
 Production-ready command-line interface with proper threading and error handling.
 """
 
@@ -19,7 +19,7 @@ from core.message_queue import CommandPriority
 def setup_application() -> None:
     """Initialize application and register command handlers."""
     logger.info("=" * 60)
-    logger.info("JARVIS AI Assistant Starting...")
+    logger.info("AIRIS AI Assistant Starting...")
     logger.info("=" * 60)
     
     # Register default handlers
@@ -177,7 +177,7 @@ def _register_action_commands() -> None:
 def chat_loop() -> None:
     """Main interactive chat loop."""
     print("\n" + "=" * 60)
-    print("JARVIS AI Assistant - Interactive Mode")
+    print("AIRIS AI Assistant - Interactive Mode")
     print("=" * 60)
     print("Type 'help' for available commands")
     print("Type 'exit' to quit\n")
@@ -188,7 +188,7 @@ def chat_loop() -> None:
             return
         
         response = command_engine.execute(cmd)
-        print(f"Jarvis: {response}\n")
+        print(f"Airis: {response}\n")
     
     # Start command processor
     message_queue.start_processor(lambda cmd: command_engine.execute(cmd.text, cmd.context))
@@ -208,12 +208,12 @@ def chat_loop() -> None:
                 continue
             
             if user_input.lower() in ["exit", "quit", "bye"]:
-                print("Jarvis: Goodbye!")
+                print("Airis: Goodbye!")
                 break
             
             # Execute directly for now (Phase 1)
             response = command_engine.execute(user_input)
-            print(f"Jarvis: {response}\n")
+            print(f"Airis: {response}\n")
     
     finally:
         message_queue.stop_processor()
@@ -232,7 +232,7 @@ def main():
         print(f"Fatal error: {e}", file=sys.stderr)
         sys.exit(1)
     finally:
-        logger.info("Jarvis AI Assistant Shutting Down")
+        logger.info("Airis AI Assistant Shutting Down")
         print("\nShutdown complete.")
 
 

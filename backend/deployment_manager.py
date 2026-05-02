@@ -168,8 +168,8 @@ class PyInstallerBuilder:
             # Build PyInstaller command
             cmd = [
                 "pyinstaller",
-                "--name", "Jarvis-AI",
-                "--icon", "assets/jarvis_icon.ico" if os.path.exists("assets/jarvis_icon.ico") else None,
+                "--name", "Airis-AI",
+                "--icon", "assets/airis_icon.ico" if os.path.exists("assets/airis_icon.ico") else None,
                 "--distpath", self.dist_dir,
                 "--buildpath", self.build_dir,
             ]
@@ -195,7 +195,7 @@ class PyInstallerBuilder:
             result = subprocess.run(cmd, capture_output=True, text=True)
             
             if result.returncode == 0:
-                exe_path = os.path.join(self.dist_dir, "Jarvis-AI.exe")
+                exe_path = os.path.join(self.dist_dir, "Airis-AI.exe")
                 if os.path.exists(exe_path):
                     logger.info(f"Windows EXE built: {exe_path}")
                     return True, exe_path
@@ -268,7 +268,7 @@ class ReleaseManager:
             os.makedirs(RELEASE_DIR, exist_ok=True)
             
             # Copy executable to release directory
-            release_name = f"Jarvis-AI-{release.version.full_version()}-{release.platform.value}.exe"
+            release_name = f"Airis-AI-{release.version.full_version()}-{release.platform.value}.exe"
             release_path = os.path.join(RELEASE_DIR, release_name)
             
             shutil.copy(release.executable_path, release_path)
@@ -362,7 +362,7 @@ class AutoUpdater:
     def download_update(self, version: Version, platform: Platform) -> Tuple[bool, str]:
         """Download update"""
         try:
-            download_url = f"{self.update_server_url}/releases/Jarvis-AI-{version.full_version()}-{platform.value}.exe"
+            download_url = f"{self.update_server_url}/releases/Airis-AI-{version.full_version()}-{platform.value}.exe"
             
             logger.info(f"Downloading update from {download_url}")
             
@@ -384,7 +384,7 @@ class AutoUpdater:
             logger.info(f"Installing update from {update_path}")
             
             # Backup current version
-            current_exe = os.path.join(os.path.dirname(__file__), "Jarvis-AI.exe")
+            current_exe = os.path.join(os.path.dirname(__file__), "Airis-AI.exe")
             backup_path = f"{current_exe}.backup"
             
             if os.path.exists(current_exe):
@@ -432,10 +432,10 @@ class MSIXPackager:
             # Create MSIX manifest
             manifest = '''<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10">
-  <Identity Name="JarvisAI" Publisher="CN=JarvisAI" Version="1.0.0.0" />
+  <Identity Name="AirisAI" Publisher="CN=AirisAI" Version="1.0.0.0" />
   <Properties>
-    <DisplayName>Jarvis AI</DisplayName>
-    <PublisherDisplayName>Jarvis AI Team</PublisherDisplayName>
+    <DisplayName>Airis AI</DisplayName>
+    <PublisherDisplayName>Airis AI Team</PublisherDisplayName>
   </Properties>
   <Applications>
     <Application StartPage="app.exe" />
@@ -447,12 +447,12 @@ class MSIXPackager:
                 f.write(manifest)
             
             # Run MakeAppx to create MSIX
-            cmd = [makappx_path, "pack", "/d", output_dir, "/p", f"{output_dir}/JarvisAI.msix"]
+            cmd = [makappx_path, "pack", "/d", output_dir, "/p", f"{output_dir}/AirisAI.msix"]
             result = subprocess.run(cmd, capture_output=True, text=True)
             
             if result.returncode == 0:
                 logger.info("MSIX package created successfully")
-                return True, f"{output_dir}/JarvisAI.msix"
+                return True, f"{output_dir}/AirisAI.msix"
             else:
                 logger.error(f"MSIX creation failed: {result.stderr}")
                 return False, result.stderr

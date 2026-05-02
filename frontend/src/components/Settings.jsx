@@ -143,7 +143,7 @@ const AiTab = ({ s, set, status, providers }) => {
                      : <FiAlertTriangle size={14} style={{ color: '#ef4444', marginTop: '1px', flexShrink: 0 }} />}
         <div>
           <div style={{ fontSize: '12px', color: hasProvider ? '#10b981' : '#ef4444', fontWeight: '600' }}>
-            {hasProvider ? 'AI provider active — Jarvis is ready' : 'No AI provider configured'}
+            {hasProvider ? 'AI provider active — Airis is ready' : 'No AI provider configured'}
           </div>
           <div style={{ fontSize: '11px', color: '#4a4a4a', marginTop: '3px' }}>
             {hasProvider
@@ -181,7 +181,7 @@ const AiTab = ({ s, set, status, providers }) => {
 
 const VoiceTab = ({ s, set, status }) => (
   <div>
-    <SecHdr label="Voice Output Provider" desc="Choose how Jarvis speaks back to you." />
+    <SecHdr label="Voice Output Provider" desc="Choose how Airis speaks back to you." />
     <Field label="Preferred TTS Provider">
       <Select value={s.preferred_voice_provider} onChange={v => set('preferred_voice_provider', v)} options={[
         { value: 'fish',    label: '🎭 Fish Audio (premium AI voice clone)' },
@@ -191,13 +191,13 @@ const VoiceTab = ({ s, set, status }) => (
     </Field>
     <Field label="Voice Personality">
       <Select value={s.voice_personality} onChange={v => set('voice_personality', v)} options={[
-        { value: 'jarvis',    label: 'Jarvis — Professional, British-style AI (Iron Man)' },
+        { value: 'airis',    label: 'Airis — Professional, British-style AI (Iron Man)' },
         { value: 'siri',     label: 'Siri — Friendly, American-style assistant' },
         { value: 'assistant',label: 'Assistant — Neutral, clear, efficient' },
         { value: 'custom',   label: 'Custom — Use your cloned voice (Fish Audio)' },
       ]} />
     </Field>
-    <Field label="Voice Priority Order" hint="Comma-separated. Jarvis tries each in order until one works.">
+    <Field label="Voice Priority Order" hint="Comma-separated. Airis tries each in order until one works.">
       <TextInput value={s.voice_priority} onChange={v => set('voice_priority', v)} placeholder="fish,eleven,browser" mono />
     </Field>
 
@@ -225,7 +225,7 @@ const VoiceTab = ({ s, set, status }) => (
     </Field>
 
     <Divider />
-    <SecHdr label="Voice Tuning" desc="Fine-tune how Jarvis speaks." />
+    <SecHdr label="Voice Tuning" desc="Fine-tune how Airis speaks." />
     <Slider label="Speech Rate" value={parseFloat(s.voice_rate || 150)} onChange={v => set('voice_rate', String(v))} min={80} max={250} step={10} format={v => `${v} wpm`} />
     <Slider label="Volume" value={parseFloat(s.voice_volume || 0.9)} onChange={v => set('voice_volume', String(v))} min={0} max={1} step={0.05} format={v => `${Math.round(v * 100)}%`} />
     <Slider label="Pitch" value={parseFloat(s.voice_pitch || 1.0)} onChange={v => set('voice_pitch', String(v))} min={0.5} max={2.0} step={0.05} format={v => `${v}×`} />
@@ -234,7 +234,7 @@ const VoiceTab = ({ s, set, status }) => (
 
 const LanguageTab = ({ s, set, prefs, setPref }) => (
   <div>
-    <SecHdr label="Response Language" desc="What language should Jarvis respond in?" />
+    <SecHdr label="Response Language" desc="What language should Airis respond in?" />
     <Field label="Response Language">
       <Select value={s.response_language} onChange={v => set('response_language', v)} options={[
         { value: 'auto',  label: '🌐 Auto-detect (matches your input language)' },
@@ -249,13 +249,13 @@ const LanguageTab = ({ s, set, prefs, setPref }) => (
     <div style={{ padding: '10px 12px', backgroundColor: '#0a1a0a', border: '1px solid #10b98122', borderRadius: '4px', marginBottom: '14px' }}>
       <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '500', marginBottom: '4px' }}>Bilingual by default</div>
       <div style={{ fontSize: '11px', color: '#4a4a4a', lineHeight: '1.6' }}>
-        Jarvis automatically detects whether you speak English or Telugu and replies in the same language.
+        Airis automatically detects whether you speak English or Telugu and replies in the same language.
         Select "Auto-detect" to keep this behaviour, or force a specific language above.
       </div>
     </div>
 
     <Divider />
-    <SecHdr label="Voice Input Language" desc="Language Jarvis listens for via microphone." />
+    <SecHdr label="Voice Input Language" desc="Language Airis listens for via microphone." />
     <Field label="Speech Recognition Language">
       <Select value={s.voice_language} onChange={v => set('voice_language', v)} options={[
         { value: 'en',    label: '🇬🇧 English (en-US)' },
@@ -282,9 +282,9 @@ const LanguageTab = ({ s, set, prefs, setPref }) => (
 
 const WakeWordTab = ({ s, set }) => (
   <div>
-    <SecHdr label="Wake Word" desc="Say the wake word to activate Jarvis hands-free — no clicking needed." />
-    <Field label="Wake Word / Keyword" hint='Default is "Jarvis". You can change it to any word.'>
-      <TextInput value={s.wake_word} onChange={v => set('wake_word', v)} placeholder="jarvis" mono />
+    <SecHdr label="Wake Word" desc="Say the wake word to activate Airis hands-free — no clicking needed." />
+    <Field label="Wake Word / Keyword" hint='Default is "Airis". You can change it to any word.'>
+      <TextInput value={s.wake_word} onChange={v => set('wake_word', v)} placeholder="airis" mono />
     </Field>
     <Field label="Sensitivity" hint="Higher = detects from farther away but more false positives.">
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -298,7 +298,7 @@ const WakeWordTab = ({ s, set }) => (
     </Field>
 
     <Divider />
-    <SecHdr label="Double Clap" desc='Clap twice to activate Jarvis — no need to say the wake word.' />
+    <SecHdr label="Double Clap" desc='Clap twice to activate Airis — no need to say the wake word.' />
     <Toggle value={s.double_clap_enabled} onChange={v => set('double_clap_enabled', v)}
       label="Enable double-clap detection"
       sublabel="Works via microphone — detects two sharp claps within 0.8 seconds" />
@@ -309,7 +309,7 @@ const WakeWordTab = ({ s, set }) => (
       <div style={{ fontSize: '11px', color: '#4a4a4a', lineHeight: '1.6' }}>
         Wake word and double-clap activation require the desktop Python app to be running in the background.
         The web interface uses the browser microphone button instead.
-        Start <code style={{ fontFamily: 'Geist Mono, monospace', color: '#8b8b8b' }}>python backend/jarvis_mode.py</code> for always-on background mode.
+        Start <code style={{ fontFamily: 'Geist Mono, monospace', color: '#8b8b8b' }}>python backend/airis_mode.py</code> for always-on background mode.
       </div>
     </div>
   </div>
@@ -356,7 +356,7 @@ const CloneTab = ({ status }) => {
       </div>
 
       <Field label="Voice Model Name">
-        <TextInput value={name} onChange={setName} placeholder="My Jarvis Voice" />
+        <TextInput value={name} onChange={setName} placeholder="My Airis Voice" />
       </Field>
       <Field label="Audio Sample" hint="WAV or MP3 — 10 to 60 seconds, clear speech, minimal background noise">
         <input type="file" accept="audio/*" onChange={e => setFile(e.target.files?.[0])}
@@ -373,9 +373,9 @@ const CloneTab = ({ status }) => {
 
 const PromptTab = ({ prompt, setPrompt, saving, onSave }) => (
   <div>
-    <SecHdr label="System Prompt" desc="Customize Jarvis's core personality, rules and capabilities." />
+    <SecHdr label="System Prompt" desc="Customize Airis's core personality, rules and capabilities." />
     <div style={{ padding: '10px 12px', backgroundColor: '#0a0d1a', border: '1px solid #1e3a5a', borderRadius: '4px', marginBottom: '14px', fontSize: '11px', color: '#4a4a4a', lineHeight: '1.6' }}>
-      The system prompt defines how Jarvis thinks and behaves. The default includes the 12-layer brain rules, bilingual support, safety filters, and Jarvis personality. Only change this if you know what you're doing.
+      The system prompt defines how Airis thinks and behaves. The default includes the 12-layer brain rules, bilingual support, safety filters, and Airis personality. Only change this if you know what you're doing.
     </div>
     <textarea
       value={prompt}
@@ -399,16 +399,16 @@ const PromptTab = ({ prompt, setPrompt, saving, onSave }) => (
 
 const NotifsTab = ({ prefs, setPref }) => (
   <div>
-    <SecHdr label="Notifications" desc="Control how and when Jarvis notifies you." />
+    <SecHdr label="Notifications" desc="Control how and when Airis notifies you." />
     <Toggle value={prefs.notifications_reminders} onChange={v => setPref('notifications_reminders', v)}
       label="Reminder notifications" sublabel="Show desktop notifications when reminders are due" />
     <Toggle value={prefs.notifications_sound} onChange={v => setPref('notifications_sound', v)}
-      label="Sound notifications" sublabel="Play a chime when Jarvis completes a task" />
+      label="Sound notifications" sublabel="Play a chime when Airis completes a task" />
     <Divider />
-    <SecHdr label="Jarvis Background Mode" desc="Keep Jarvis running silently in the background." />
+    <SecHdr label="Airis Background Mode" desc="Keep Airis running silently in the background." />
     <div style={{ padding: '10px 12px', backgroundColor: '#0a0d1a', border: '1px solid #1e3a5a', borderRadius: '4px', fontSize: '11px', color: '#4a4a4a', lineHeight: '1.6' }}>
       Background mode requires running the desktop Python script.<br />
-      <code style={{ fontFamily: 'Geist Mono, monospace', color: '#8b8b8b' }}>python backend/jarvis_mode.py</code><br /><br />
+      <code style={{ fontFamily: 'Geist Mono, monospace', color: '#8b8b8b' }}>python backend/airis_mode.py</code><br /><br />
       This enables: wake word detection, double-clap, background reminders, and live voice responses without the browser being open.
     </div>
   </div>
@@ -416,7 +416,7 @@ const NotifsTab = ({ prefs, setPref }) => (
 
 const AppearanceTab = ({ prefs, setPref }) => (
   <div>
-    <SecHdr label="Theme" desc="Visual style of the Jarvis interface." />
+    <SecHdr label="Theme" desc="Visual style of the Airis interface." />
     <Field label="Color Theme">
       <Select value={prefs.appearance || 'dark'} onChange={v => setPref('appearance', v)} options={[
         { value: 'dark',  label: '⬛ Dark (default — like VS Code)' },
@@ -483,9 +483,9 @@ const Settings = () => {
     fish_audio_api_key: '', fish_audio_reference_id: '', fish_audio_model: 's2-pro',
     elevenlabs_api_key: '', elevenlabs_voice_id: '',
     firebase_api_key: '',
-    voice_personality: 'jarvis', preferred_voice_provider: 'fish',
+    voice_personality: 'airis', preferred_voice_provider: 'fish',
     voice_language: 'en', response_language: 'auto',
-    wake_word: 'jarvis', wake_word_sensitivity: '1.0', double_clap_enabled: true,
+    wake_word: 'airis', wake_word_sensitivity: '1.0', double_clap_enabled: true,
     voice_rate: '150', voice_volume: '0.9', voice_pitch: '1.0',
     voice_priority: 'fish,eleven,browser',
     ollama_enabled: true,

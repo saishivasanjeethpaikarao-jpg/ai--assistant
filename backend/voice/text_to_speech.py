@@ -129,7 +129,7 @@ class TextToSpeech:
         
         try:
             logger.debug(f"Speaking with ElevenLabs: {text[:50]}")
-            audio = self.elevenlabs_client.generate(text=text, voice="Jarvis")
+            audio = self.elevenlabs_client.generate(text=text, voice="Airis")
             el_play(audio)
             logger.debug("ElevenLabs speech completed")
             return True

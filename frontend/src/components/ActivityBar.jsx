@@ -3,7 +3,7 @@ import {
   FiMessageSquare, FiDatabase, FiTrendingUp, FiBell,
   FiCommand, FiSettings, FiZap, FiBarChart2, FiCpu, FiCode,
 } from 'react-icons/fi';
-import JarvisLogo from './JarvisLogo';
+import AirisLogo from './AirisLogo';
 
 const ITEMS = {
   chat:      { icon: FiMessageSquare, label:'Chat',      g1:'#7c3aed', g2:'#a855f7' },
@@ -158,7 +158,7 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
           marginBottom:'4px',
           background:'linear-gradient(180deg,rgba(124,58,237,0.08),transparent)',
         }}>
-          <JarvisLogo size={34} animate={false}/>
+          <AirisLogo size={34} animate={false}/>
         </div>
         {TOP.map(id => <IconBtn key={id} id={id} active={activePanel===id} onClick={handleClick}/>)}
       </div>

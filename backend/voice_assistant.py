@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-🤖 JARVIS VOICE ASSISTANT — Complete Voice-First AI Agent
+🤖 AIRIS VOICE ASSISTANT — Complete Voice-First AI Agent
 Listens for voice commands, processes through 12-layer AI system, responds with natural speech.
 """
 
@@ -46,7 +46,7 @@ class VoiceAssistantState(Enum):
 class VoiceAssistant:
     """Complete voice-first AI assistant using 12-layer system."""
     
-    def __init__(self, name: str = "JARVIS", debug: bool = False):
+    def __init__(self, name: str = "AIRIS", debug: bool = False):
         """
         Initialize voice assistant.
         
@@ -308,7 +308,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="JARVIS Voice Assistant with 12-Layer AI System"
+        description="AIRIS Voice Assistant with 12-Layer AI System"
     )
     parser.add_argument(
         "--mode",
@@ -323,8 +323,8 @@ def main():
     )
     parser.add_argument(
         "--name",
-        default="JARVIS",
-        help="Assistant name (default: JARVIS)"
+        default="AIRIS",
+        help="Assistant name (default: AIRIS)"
     )
     
     args = parser.parse_args()

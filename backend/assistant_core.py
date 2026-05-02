@@ -1040,17 +1040,17 @@ def detect_double_clap(max_wait_seconds: float = 5.0) -> bool:
 
 
 def voice_loop():
-    """Enhanced voice loop with Jarvis Mode integration."""
+    """Enhanced voice loop with Airis Mode integration."""
     if sr is None or pyaudio is None:
         return
     
-    # Import JarvisMode
+    # Import AirisMode
     try:
-        from jarvis_mode import get_jarvis_mode
-        jarvis = get_jarvis_mode()
-        jarvis_mode_available = True
+        from airis_mode import get_airis_mode
+        airis = get_airis_mode()
+        airis_mode_available = True
     except ImportError:
-        jarvis_mode_available = False
+        airis_mode_available = False
     
     while True:
         activated = detect_double_clap()
@@ -1070,9 +1070,9 @@ def voice_loop():
         
         # Check for conversation mode trigger
         if "conversation" in wake_normalized or "continuous" in wake_normalized:
-            if jarvis_mode_available:
+            if airis_mode_available:
                 speak("Starting conversation mode. Say exit to stop.")
-                jarvis.start_conversation()
+                airis.start_conversation()
             else:
                 speak("Conversation mode not available.")
         else:

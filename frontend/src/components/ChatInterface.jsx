@@ -3,7 +3,7 @@ import {
   FiSend, FiMic, FiMicOff, FiVolume2, FiVolumeX,
   FiMessageSquare, FiCode, FiTrendingUp, FiCpu, FiZap,
 } from 'react-icons/fi';
-import JarvisLogo from './JarvisLogo';
+import AirisLogo from './AirisLogo';
 
 const SpeechRecognitionAPI =
   typeof window !== 'undefined' &&
@@ -45,7 +45,7 @@ function speakText(text, onStart, onEnd) {
 
 const FEATURES = [
   { Icon: FiMessageSquare, label:'Smart Chat',      sub:'Natural conversation',  color:'#7c3aed', g1:'#7c3aed', g2:'#a855f7' },
-  { Icon: FiMic,           label:'Voice Assistant', sub:'Speak to Jarvis',       color:'#2563eb', g1:'#2563eb', g2:'#38bdf8' },
+  { Icon: FiMic,           label:'Voice Assistant', sub:'Speak to Airis',       color:'#2563eb', g1:'#2563eb', g2:'#38bdf8' },
   { Icon: FiCode,          label:'Code Generator',  sub:'6 specialist agents',   color:'#059669', g1:'#059669', g2:'#34d399' },
   { Icon: FiTrendingUp,    label:'Market Analysis', sub:'NSE/BSE intelligence',  color:'#d97706', g1:'#d97706', g2:'#fbbf24' },
   { Icon: FiCpu,           label:'AI Brain',        sub:'12-layer pipeline',     color:'#be185d', g1:'#be185d', g2:'#f472b6' },
@@ -119,7 +119,7 @@ const EmptyState = ({ onMicClick, micSupported, onFeatureClick, isMobile }) => (
         animation:'ciPulse 3s ease-in-out infinite 0.5s',
       }}/>
       <div style={{ animation:'ciFloat 4s ease-in-out infinite', position:'relative' }}>
-        <JarvisLogo size={88} animate={false}/>
+        <AirisLogo size={88} animate={false}/>
       </div>
     </div>
 
@@ -136,7 +136,7 @@ const EmptyState = ({ onMicClick, micSupported, onFeatureClick, isMobile }) => (
       WebkitTextFillColor:'transparent',
       backgroundClip:'text',
     }}>
-      Jarvis AI: Your Digital Co-Pilot
+      Airis AI: Your Digital Co-Pilot
     </h2>
 
     <p style={{
@@ -232,7 +232,7 @@ const MessageBubble = ({ msg, isMobile }) => {
           letterSpacing:'0.06em', textTransform:'uppercase',
           color: isUser ? '#a78bfa' : '#7c3aed',
         }}>
-          {isUser ? 'You' : 'Jarvis'}
+          {isUser ? 'You' : 'Airis'}
         </div>
         <div style={{
           fontSize: isMobile ? '14px' : '13px', color:'#374151',
@@ -344,7 +344,7 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
   const handleFeatureClick = (label) => {
     const prompts = {
       'Smart Chat':      'Hello! What can you help me with today?',
-      'Voice Assistant': 'How do I use voice commands with Jarvis?',
+      'Voice Assistant': 'How do I use voice commands with Airis?',
       'Code Generator':  'Build me a simple React button component',
       'Market Analysis': 'Analyze the NIFTY 50 trend for today',
       'AI Brain':        'Tell me about your 12-layer AI architecture',
@@ -473,7 +473,7 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
         </div>
         {!isMobile && (
           <div style={{ marginTop:'8px', fontSize:'11px', color:'#c4b5fd', textAlign:'center', letterSpacing:'0.01em' }}>
-            Jarvis can make mistakes. Verify important information.
+            Airis can make mistakes. Verify important information.
           </div>
         )}
       </div>
