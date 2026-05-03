@@ -3,7 +3,6 @@ google-genai
 google-generativeai
 groq
 speechrecognition
-pyaudio
 python-dotenv
 requests
 beautifulsoup4
