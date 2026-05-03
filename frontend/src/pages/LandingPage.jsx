@@ -52,7 +52,6 @@ export default function LandingPage() {
 
   const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => { if (user) navigate('/app'); }, [user]);
   useEffect(() => { if (!isMobile) setMenuOpen(false); }, [isMobile]);
 
   const cols = (d, t, m) => `repeat(${isMobile ? m : isTablet ? t : d}, 1fr)`;
