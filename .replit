@@ -66,3 +66,7 @@ externalPort = 3000
 deploymentTarget = "autoscale"
 run = ["bash", "-c", "cd backend && python3 dashboard_api.py & cd frontend && npm run preview -- --host 0.0.0.0 --port 5000"]
 build = ["bash", "-c", "pip install -r backend/requirements.txt && cd frontend && npm install && npm run build"]
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 120000
