@@ -532,143 +532,40 @@ const AIAssistant = ({ portfolio, watchlist, indices, movers, isMobile, onAddToW
 const CHART_COLORS = ['#437DFD','#00C48C','#FF8C42','#7B61FF','#FD5B5D','#00B8D9','#F7C948','#E040FB'];
 
 const PortfolioChart = ({ portfolio, prices, isMobile }) => {
-  const [period,      setPeriod]      = useState('30d');
-  const [histData,    setHistData]    = useState({});
-  const [loading,     setLoading]     = useState(false);
-  const [showStacked, setShowStacked] = useState(false);
-  const fetchRef = useRef(0);
-
-  const symbols = useMemo(() => portfolio.map(p => normSym(p.symbol)), [portfolio]);
-
-  useEffect(() => {
-    if (!portfolio.length) return;
-    const token = ++fetchRef.current;
-    setLoading(true);
-    Promise.allSettled(
-      portfolio.map(p =>
-        api.getStockHistory(normSym(p.symbol), period)
-          .then(r => ({ symbol: normSym(p.symbol), data: r.data || [] }))
-          .catch(() => ({ symbol: normSym(p.symbol), data: [] }))
-      )
-    ).then(results => {
-      if (token !== fetchRef.current) return;
-      const map = {};
-      results.forEach(r => { if (r.status === 'fulfilled') map[r.value.symbol] = r.value.data; });
-      setHistData(map);
-      setLoading(false);
+  const points = useMemo(() => {
+    return portfolio.map((p, idx) => {
+      const px = prices[p.symbol]?.price ?? p.buyPrice;
+      const pnl = (px - p.buyPrice) * p.qty;
+      return { label: normSym(p.symbol), value: Math.max(0, Math.abs(pnl)), color: CHART_COLORS[idx % CHART_COLORS.length] };
     });
-  }, [portfolio, period]);
-
-  const chartData = useMemo(() => {
-    if (!portfolio.length) return [];
-    const dateSet = new Set();
-    Object.values(histData).forEach(arr => arr.forEach(d => dateSet.add(d.date)));
-    if (!dateSet.size) return [];
-    const indexed = {};
-    portfolio.forEach(p => {
-      const sym = normSym(p.symbol);
-      indexed[sym] = {};
-      (histData[sym] || []).forEach(d => { indexed[sym][d.date] = d.price; });
-    });
-    const dates = [...dateSet].sort();
-    return dates.map(date => {
-      const row = { date: date.slice(5) };
-      let total = 0;
-      portfolio.forEach(p => {
-        const sym = normSym(p.symbol);
-        const px = indexed[sym][date] ?? (prices[sym]?.price ?? p.buyPrice);
-        const addedDate = p.addedAt ? p.addedAt.slice(0, 10) : '2000-01-01';
-        const val = date >= addedDate ? p.qty * px : 0;
-        row[sym] = parseFloat(val.toFixed(2));
-        total += val;
-      });
-      row.total = parseFloat(total.toFixed(2));
-      return row;
-    });
-  }, [histData, portfolio, prices]);
-
-  const totalInvested = useMemo(
-    () => portfolio.reduce((s, p) => s + p.qty * p.buyPrice, 0),
-    [portfolio]
-  );
+  }, [portfolio, prices]);
 
   if (!portfolio.length) return null;
 
-  const firstVal  = chartData[0]?.total ?? totalInvested;
-  const lastVal   = chartData[chartData.length - 1]?.total ?? totalInvested;
-  const gain      = lastVal - firstVal;
-  const gainPct   = firstVal > 0 ? (gain / firstVal) * 100 : 0;
-  const isUp      = gain >= 0;
-  const lineColor = isUp ? GR : RD;
-
-  const fmtY = (v) => {
-    if (v >= 1e7) return `₹${(v/1e7).toFixed(1)}Cr`;
-    if (v >= 1e5) return `₹${(v/1e5).toFixed(1)}L`;
-    if (v >= 1e3) return `₹${(v/1e3).toFixed(0)}K`;
-    return `₹${v}`;
-  };
+  const invested = portfolio.reduce((s, p) => s + p.qty * p.buyPrice, 0);
+  const current = portfolio.reduce((s, p) => {
+    const px = prices[p.symbol]?.price ?? p.buyPrice;
+    return s + p.qty * px;
+  }, 0);
+  const pnl = current - invested;
+  const pct = invested > 0 ? (pnl / invested) * 100 : 0;
 
   return (
     <div style={{ padding: isMobile ? '14px 14px 4px' : '16px 22px 4px', flexShrink: 0, background: BG }}>
       <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 16, padding: isMobile ? '14px 12px' : '18px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-
-        {/* Header row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Portfolio Performance</div>
-            {chartData.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: DK, letterSpacing: '-0.02em' }}>{fmtY(lastVal)}</span>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: isUp ? GR : RD }}>
-                  {pctSign(gain)}₹{fmt(Math.abs(gain))} ({pctSign(gainPct)}{gainPct.toFixed(2)}%)
-                </span>
-              </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Period toggle */}
-            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.04)', borderRadius: 9, padding: 2, gap: 2 }}>
-              {['7d','30d','90d'].map(p => (
-                <button key={p} onClick={() => setPeriod(p)}
-                  style={{ padding: '5px 10px', fontSize: 11.5, fontWeight: 600, borderRadius: 7, border: 'none', cursor: 'pointer', fontFamily: FONT, transition: 'all 0.15s',
-                    background: period === p ? '#fff' : 'transparent',
-                    color: period === p ? BL : '#888',
-                    boxShadow: period === p ? '0 1px 4px rgba(0,0,0,0.12)' : 'none',
-                  }}>
-                  {p}
-                </button>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <span style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: DK, letterSpacing: '-0.02em' }}>{`₹${fmt(current)}`}</span>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: pctColor(pnl) }}>
+                {pctSign(pnl)}₹{fmt(Math.abs(pnl))} ({pctSign(pct)}{pct.toFixed(2)}%)
+              </span>
             </div>
-            {/* Stacked toggle */}
-            {portfolio.length > 1 && (
-              <button onClick={() => setShowStacked(s => !s)}
-                style={{ padding: '5px 10px', fontSize: 11, fontWeight: 600, borderRadius: 8, border: `1px solid ${showStacked ? BL : BORDER}`, cursor: 'pointer', fontFamily: FONT,
-                  background: showStacked ? `${BL}10` : '#fff', color: showStacked ? BL : '#888', transition: 'all 0.15s' }}>
-                ⬛ Breakdown
-              </button>
-            )}
           </div>
+          <div style={{ fontSize: 11.5, color: '#888', fontWeight: 600 }}>Tap settings below to switch tabs</div>
         </div>
-
-        {/* Chart */}
-        {loading ? (
-          <div style={{ height: isMobile ? 140 : 180, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-            <Spinner size={18} /> <span style={{ fontSize: 13, color: '#bbb' }}>Loading chart…</span>
-          </div>
-        ) : chartData.length < 2 ? (
-          <div style={{ height: isMobile ? 100 : 130, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: 13, color: '#ccc' }}>Not enough data for this period</span>
-          </div>
-        ) : (
-          <MiniChart
-            compact={isMobile}
-            color={showStacked && portfolio.length > 1 ? CHART_COLORS[0] : lineColor}
-            data={(showStacked && portfolio.length > 1
-              ? chartData.map(d => ({ label: d.date, value: d.total }))
-              : chartData.map(d => ({ label: d.date, value: d.total })
-              )).slice(-Math.min(chartData.length, isMobile ? 6 : 10))}
-          />
-        )}
+        <MiniChart compact={isMobile} color={pnl >= 0 ? GR : RD} data={points.length ? points : [{ label: '—', value: 0, color: GR }]} />
       </div>
     </div>
   );
