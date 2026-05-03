@@ -9,10 +9,10 @@ edition = "2021"
 rust-version = "1.57"
 
 [build-dependencies]
-tauri-build = { version = "1.6", features = [] }
+tauri-build = { version = "1.5", features = [] }
 
 [dependencies]
-tauri = { version = "1.6", features = [
+tauri = { version = "1.5", features = [
   "shell-open",
   "window-close",
   "window-hide",
