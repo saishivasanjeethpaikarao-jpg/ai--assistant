@@ -120,6 +120,33 @@ const Tag = ({ children, color = BL, onClick }) => (
   <span onClick={onClick} style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 700, color, background: color + '14', border: `1px solid ${color}30`, borderRadius: 6, padding: '2px 7px', cursor: onClick ? 'pointer' : 'default', userSelect: 'none' }}>{children}</span>
 );
 
+// ── Alert Toast Overlay ─────────────────────────────────────────────────────────
+const AlertToastOverlay = ({ toasts, onDismiss }) => {
+  if (!toasts.length) return null;
+  return (
+    <div style={{ position: 'fixed', top: 66, right: 14, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 10, pointerEvents: 'none' }}>
+      {toasts.map(t => (
+        <div key={t.id} style={{ background: '#fff', border: `1.5px solid ${GR}55`, borderRadius: 14, padding: '12px 14px 12px 16px', boxShadow: '0 6px 28px rgba(0,0,0,0.14)', pointerEvents: 'all', minWidth: 260, maxWidth: 320, animation: 'tpSlideIn 0.3s cubic-bezier(0.16,1,0.3,1)', fontFamily: FONT }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <span style={{ fontSize: 22, lineHeight: 1.1, flexShrink: 0 }}>🎯</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: DK }}>{t.symbol} Alert Triggered!</div>
+              <div style={{ fontSize: 12, color: '#666', marginTop: 3 }}>
+                {t.dir === 'above' ? 'Rose above' : 'Fell below'} ₹{fmt(t.target)}
+                <span style={{ color: GR, fontWeight: 600 }}> · Now ₹{fmt(t.current)}</span>
+              </div>
+            </div>
+            <button onClick={() => onDismiss(t.id)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: 17, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}
+              onMouseEnter={e => e.currentTarget.style.color = '#999'}
+              onMouseLeave={e => e.currentTarget.style.color = '#ccc'}>×</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 // ── IndexChip ──────────────────────────────────────────────────────────────────
 const IndexChip = ({ idx }) => {
   if (!idx) return <div style={{ background: 'rgba(0,0,0,0.04)', borderRadius: 8, padding: '6px 8px', minHeight: 52, animation: 'tpPulse 1.5s infinite' }} />;
@@ -923,17 +950,12 @@ const MarketTab = ({ indices, movers, onQuote, isMobile }) => {
 };
 
 // ── Alerts Tab ─────────────────────────────────────────────────────────────────
-const AlertsTab = ({ isMobile, onQuote }) => {
-  const [alerts,  setAlerts]  = useState(() => loadLS(LS_ALERTS, []));
-  const [sym,     setSym]     = useState('');
-  const [price,   setPrice]   = useState('');
-  const [dir,     setDir]     = useState('above');
-  const [symSug,  setSymSug]  = useState([]);
-  const [prices,  setPrices]  = useState({});
-  const [loading, setLoading] = useState(false);
-  const debRef                = useRef(null);
-
-  useEffect(() => { saveLS(LS_ALERTS, alerts); }, [alerts]);
+const AlertsTab = ({ isMobile, onQuote, alerts, setAlerts, alertPrices, alertLoading, notifGranted, requestNotifPermission, resetAlert }) => {
+  const [sym,    setSym]    = useState('');
+  const [price,  setPrice]  = useState('');
+  const [dir,    setDir]    = useState('above');
+  const [symSug, setSymSug] = useState([]);
+  const debRef              = useRef(null);
 
   useEffect(() => {
     clearTimeout(debRef.current);
@@ -944,37 +966,35 @@ const AlertsTab = ({ isMobile, onQuote }) => {
     }, 280);
   }, [sym]);
 
-  useEffect(() => {
-    if (!alerts.length) return;
-    const fetchAll = async () => {
-      setLoading(true);
-      const res = {};
-      await Promise.allSettled(alerts.map(async a => {
-        try { const r = await api.getMarketQuote(a.symbol); if (r.success) res[a.symbol] = r.quote; } catch {}
-      }));
-      setPrices(res); setLoading(false);
-    };
-    fetchAll();
-    const t = setInterval(fetchAll, 60000);
-    return () => clearInterval(t);
-  }, [alerts]);
-
   const addAlert = () => {
     const s = normSym(sym.trim());
     const p = parseFloat(price);
     if (!s || !p || p <= 0) return;
-    setAlerts(prev => [...prev, { id: uid(), symbol: s, price: p, dir, triggered: false, createdAt: new Date().toISOString() }]);
+    setAlerts(prev => [...prev, { id: uid(), symbol: s, price: p, dir, triggered: false, triggeredAt: null, createdAt: new Date().toISOString() }]);
     setSym(''); setPrice(''); setDir('above'); setSymSug([]);
   };
 
-  const triggered = (a) => {
-    const q = prices[a.symbol];
+  const liveTriggered = (a) => {
+    if (a.triggered) return true;
+    const q = alertPrices[a.symbol];
     if (!q) return false;
     return a.dir === 'above' ? q.price >= a.price : q.price <= a.price;
   };
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: BG }}>
+      {/* Notification permission banner */}
+      {!notifGranted && (
+        <div style={{ padding: '10px 22px', background: `${OR}12`, borderBottom: `1px solid ${OR}30`, display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <span style={{ fontSize: 16 }}>🔔</span>
+          <span style={{ fontSize: 12, color: '#7a4a00', flex: 1 }}>Enable browser notifications to get alerts even when this tab isn't active.</span>
+          <button onClick={requestNotifPermission}
+            style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, background: OR, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: FONT, flexShrink: 0 }}>
+            Enable
+          </button>
+        </div>
+      )}
+
       {/* Add alert form */}
       <div style={{ padding: isMobile ? '14px 14px' : '16px 22px', borderBottom: `1px solid ${BORDER}`, background: '#fff', flexShrink: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: DK, marginBottom: 10 }}>Set Price Alert</div>
@@ -1031,28 +1051,37 @@ const AlertsTab = ({ isMobile, onQuote }) => {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {alerts.map(a => {
-              const q   = prices[a.symbol];
-              const hit = triggered(a);
+              const q   = alertPrices[a.symbol];
+              const hit = liveTriggered(a);
               return (
                 <div key={a.id} style={{ background: '#fff', border: `1px solid ${hit ? `${GR}40` : BORDER}`, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: hit ? `0 0 0 2px ${GR}20` : 'none', transition: 'all 0.3s' }}>
                   <div style={{ width: 40, height: 40, borderRadius: 12, background: hit ? `${GR}15` : `${OR}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
                     {hit ? '✅' : '🔔'}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
                       <span onClick={() => onQuote(a.symbol)} style={{ fontSize: 14, fontWeight: 700, color: DK, cursor: 'pointer' }}>{a.symbol}</span>
                       <Tag color={a.dir === 'above' ? GR : RD}>{a.dir === 'above' ? '↑ Above' : '↓ Below'} ₹{fmt(a.price)}</Tag>
                       {hit && <Tag color={GR}>🎯 TRIGGERED</Tag>}
                     </div>
                     <div style={{ fontSize: 12, color: '#888' }}>
-                      Current: {q ? <strong style={{ color: hit ? GR : DK }}>₹{fmt(q.price)}</strong> : loading ? <Spinner size={10}/> : '—'}
+                      Current: {q ? <strong style={{ color: hit ? GR : DK }}>₹{fmt(q.price)}</strong> : alertLoading ? <Spinner size={10}/> : '—'}
                       {q && <span style={{ color: pctColor(q.change_pct), marginLeft: 6 }}>{pctSign(q.change_pct)}{q.change_pct?.toFixed(2)}%</span>}
                     </div>
                   </div>
-                  <button onClick={() => setAlerts(p => p.filter(x => x.id !== a.id))}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ddd', fontSize: 18, padding: '2px 6px', transition: 'color 0.15s', flexShrink: 0 }}
-                    onMouseEnter={e => e.currentTarget.style.color = RD}
-                    onMouseLeave={e => e.currentTarget.style.color = '#ddd'}>×</button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    {hit && (
+                      <button onClick={() => resetAlert(a.id)}
+                        title="Re-set alert (watch for next trigger)"
+                        style={{ padding: '5px 10px', fontSize: 11, fontWeight: 600, background: `${BL}12`, color: BL, border: `1px solid ${BL}30`, borderRadius: 8, cursor: 'pointer', fontFamily: FONT }}>
+                        Re-set
+                      </button>
+                    )}
+                    <button onClick={() => setAlerts(p => p.filter(x => x.id !== a.id))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ddd', fontSize: 18, padding: '2px 6px', transition: 'color 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.color = RD}
+                      onMouseLeave={e => e.currentTarget.style.color = '#ddd'}>×</button>
+                  </div>
                 </div>
               );
             })}
@@ -1086,6 +1115,99 @@ export default function TradingPage() {
   const [quoteLoad,     setQuoteLoad]     = useState(false);
   const [portfolio,     setPortfolio]     = useState(() => loadLS(LS_PORTFOLIO, []));
   const [watchlist,     setWatchlist]     = useState(() => loadLS(LS_WATCHLIST, []));
+
+  // ── Alert state (lifted here so polling persists across tab switches) ──────
+  const [alerts,        setAlerts]        = useState(() => loadLS(LS_ALERTS, []));
+  const [alertPrices,   setAlertPrices]   = useState({});
+  const [alertLoading,  setAlertLoading]  = useState(false);
+  const [toasts,        setToasts]        = useState([]);
+  const [notifGranted,  setNotifGranted]  = useState(() => typeof Notification !== 'undefined' && Notification.permission === 'granted');
+  const alertsRef   = useRef(alerts);
+  const notifiedIds = useRef(new Set(alerts.filter(a => a.triggered).map(a => a.id)));
+  const toastTimers = useRef([]);
+
+  // Single persistence path — no duplicate saveLS inside updaters
+  useEffect(() => { saveLS(LS_ALERTS, alerts); }, [alerts]);
+  // Keep ref in sync for use inside async polling callbacks
+  useEffect(() => { alertsRef.current = alerts; }, [alerts]);
+  // Prune notifiedIds when alerts are removed
+  useEffect(() => {
+    const live = new Set(alerts.map(a => a.id));
+    notifiedIds.current.forEach(id => { if (!live.has(id)) notifiedIds.current.delete(id); });
+  }, [alerts]);
+  // Clean up toast timers on unmount
+  useEffect(() => () => { toastTimers.current.forEach(clearTimeout); }, []);
+
+  const requestNotifPermission = async () => {
+    if (typeof Notification === 'undefined') return;
+    const perm = await Notification.requestPermission();
+    setNotifGranted(perm === 'granted');
+  };
+
+  const resetAlert = (id) => {
+    notifiedIds.current.delete(id);
+    setAlerts(prev => prev.map(a => a.id === id ? { ...a, triggered: false, triggeredAt: null } : a));
+  };
+
+  const dismissToast = (id) => setToasts(t => t.filter(x => x.id !== id));
+
+  const addToast = (payload) => {
+    const toastId = uid();
+    setToasts(t => [...t, { id: toastId, ...payload }]);
+    const timer = setTimeout(() => setToasts(t => t.filter(x => x.id !== toastId)), 7000);
+    toastTimers.current.push(timer);
+  };
+
+  // Background polling — runs regardless of which tab is active
+  const symbolsKey = alerts.map(a => a.id).join(',');
+  useEffect(() => {
+    if (!alerts.length) return;
+    const poll = async () => {
+      const current = alertsRef.current;
+      if (!current.length) return;
+      setAlertLoading(true);
+      const res = {};
+      await Promise.allSettled(
+        [...new Set(current.map(a => a.symbol))].map(async sym => {
+          try { const r = await api.getMarketQuote(sym); if (r.success) res[sym] = r.quote; } catch {}
+        })
+      );
+      setAlertPrices(res);
+      setAlertLoading(false);
+
+      const newlyTriggered = [];
+      current.forEach(a => {
+        if (notifiedIds.current.has(a.id) || a.triggered) return;
+        const q = res[a.symbol];
+        if (!q) return;
+        const hit = a.dir === 'above' ? q.price >= a.price : q.price <= a.price;
+        if (hit) newlyTriggered.push({ ...a, q });
+      });
+
+      if (newlyTriggered.length) {
+        newlyTriggered.forEach(item => {
+          notifiedIds.current.add(item.id);
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            try {
+              new Notification(`🎯 ${item.symbol} Alert Triggered`, {
+                body: `${item.symbol} ${item.dir === 'above' ? 'rose above' : 'fell below'} ₹${fmt(item.price)}. Now: ₹${fmt(item.q.price)}`,
+                tag: item.id,
+              });
+            } catch {}
+          }
+          addToast({ symbol: item.symbol, dir: item.dir, target: item.price, current: item.q.price });
+        });
+        setAlerts(prev => {
+          const ids = new Set(newlyTriggered.map(x => x.id));
+          return prev.map(a => ids.has(a.id) ? { ...a, triggered: true, triggeredAt: new Date().toISOString() } : a);
+        });
+      }
+    };
+    poll();
+    const t = setInterval(poll, 60000);
+    return () => clearInterval(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbolsKey]);
   const [pfPrefill,     setPfPrefill]     = useState(null);   // pre-fill portfolio from quote
 
   // Listen for cross-component events
@@ -1246,7 +1368,13 @@ export default function TradingPage() {
               <MarketTab indices={indices} movers={movers} onQuote={openQuote} isMobile={isMobile} />
             )}
             {activeTab === 'alerts' && (
-              <AlertsTab isMobile={isMobile} onQuote={openQuote} />
+              <AlertsTab
+                isMobile={isMobile} onQuote={openQuote}
+                alerts={alerts} setAlerts={setAlerts}
+                alertPrices={alertPrices} alertLoading={alertLoading}
+                notifGranted={notifGranted} requestNotifPermission={requestNotifPermission}
+                resetAlert={resetAlert}
+              />
             )}
           </div>
         </div>
@@ -1260,15 +1388,18 @@ export default function TradingPage() {
         onAddPortfolio={addToPortfolioFromQuote}
       />
 
+      <AlertToastOverlay toasts={toasts} onDismiss={dismissToast} />
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 2px; }
-        @keyframes tpSpin   { to { transform: rotate(360deg); } }
-        @keyframes tpPulse  { 0%,100%{opacity:1} 50%{opacity:0.4} }
-        @keyframes tpDot    { 0%,100%{transform:scale(0.65);opacity:0.4} 50%{transform:scale(1.2);opacity:1} }
+        @keyframes tpSpin    { to { transform: rotate(360deg); } }
+        @keyframes tpPulse   { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes tpDot     { 0%,100%{transform:scale(0.65);opacity:0.4} 50%{transform:scale(1.2);opacity:1} }
+        @keyframes tpSlideIn { from { opacity:0; transform:translateX(24px); } to { opacity:1; transform:translateX(0); } }
       `}</style>
     </div>
   );
