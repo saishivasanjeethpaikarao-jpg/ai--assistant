@@ -344,7 +344,7 @@ const TradingPanel = () => {
             <div style={{ fontSize: 13, fontWeight: 700, color: '#0C0C0C' }}>Live markets, watchlist, movers</div>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={() => window.location.assign('/trading')} style={{ padding: '7px 10px', borderRadius: 999, border: 'none', background: B, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Open</button>
+            <button onClick={() => window.dispatchEvent(new CustomEvent('airis_go_trading'))} style={{ padding: '7px 10px', borderRadius: 999, border: 'none', background: B, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Open</button>
           </div>
         </div>
       </div>
@@ -353,7 +353,7 @@ const TradingPanel = () => {
           <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 10 }}>Quick Actions</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={() => window.location.assign('/trading')} style={{ padding: '8px 12px', borderRadius: 12, border: 'none', background: 'rgba(67,125,253,0.08)', color: B, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Open Full Dashboard</button>
+              <button onClick={() => window.dispatchEvent(new CustomEvent('airis_go_trading'))} style={{ padding: '8px 12px', borderRadius: 12, border: 'none', background: 'rgba(67,125,253,0.08)', color: B, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Open Full Dashboard</button>
               <button onClick={() => window.dispatchEvent(new CustomEvent('airis_go_trading'))} style={{ padding: '8px 12px', borderRadius: 12, border: 'none', background: 'rgba(123,97,255,0.10)', color: '#7B61FF', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Trading Shortcut</button>
             </div>
           </div>
