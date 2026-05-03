@@ -18,16 +18,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 try:
     import speech_recognition as sr
 except ImportError:
-    print("ERROR: speech_recognition not installed")
-    print("Install with: pip install SpeechRecognition pydub PyAudio pyttsx3")
-    sys.exit(1)
+    sr = None
 
 try:
     import pyttsx3
 except ImportError:
-    print("ERROR: pyttsx3 not installed")
-    print("Install with: pip install pyttsx3")
-    sys.exit(1)
+    pyttsx3 = None
 
 # AI System imports
 from backend.system_coordinator import process_user_request
@@ -61,13 +57,15 @@ class VoiceAssistant:
         self.listen_thread: Optional[threading.Thread] = None
         
         # Initialize speech recognition
-        self.recognizer = sr.Recognizer()
-        self.recognizer.energy_threshold = 4000
+        self.recognizer = sr.Recognizer() if sr else None
+        if self.recognizer:
+            self.recognizer.energy_threshold = 4000
         
         # Initialize text-to-speech
-        self.tts_engine = pyttsx3.init()
-        self.tts_engine.setProperty('rate', 150)  # Speed
-        self.tts_engine.setProperty('volume', 0.9)  # Volume
+        self.tts_engine = pyttsx3.init() if pyttsx3 else None
+        if self.tts_engine:
+            self.tts_engine.setProperty('rate', 150)
+            self.tts_engine.setProperty('volume', 0.9)
         
         # Callbacks
         self.on_state_change: Optional[Callable] = None
@@ -77,8 +75,8 @@ class VoiceAssistant:
         
         if self.debug:
             print(f"[{self.name}] Initializing voice assistant...")
-            print(f"  - Speech recognition: OK")
-            print(f"  - Text-to-speech: OK")
+            print(f"  - Speech recognition: {'OK' if sr else 'Unavailable'}")
+            print(f"  - Text-to-speech: {'OK' if pyttsx3 else 'Unavailable'}")
             print(f"  - 12-layer AI system: Loading...")
     
     def set_state(self, new_state: VoiceAssistantState):
