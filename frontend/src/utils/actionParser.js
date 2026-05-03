@@ -28,6 +28,35 @@ export function executeActions(actions, ctx) {
           if (param) navigate(param);
           break;
 
+        case 'browse':
+        case 'search': {
+          const q = (param || '').trim();
+          if (q) window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank', 'noopener,noreferrer');
+          break;
+        }
+
+        case 'open_url': {
+          const url = (param || '').trim();
+          if (url) window.open(url.startsWith('http') ? url : `https://${url}`, '_blank', 'noopener,noreferrer');
+          break;
+        }
+
+        case 'open_app': {
+          const app = (param || '').trim().toLowerCase();
+          if (!app) break;
+          const map = {
+            chrome: 'https://www.google.com/chrome/',
+            'google chrome': 'https://www.google.com/chrome/',
+            vscode: 'https://code.visualstudio.com/',
+            'vs code': 'https://code.visualstudio.com/',
+            'visual studio code': 'https://code.visualstudio.com/',
+            explorer: 'file:///home',
+          };
+          const target = map[app];
+          if (target) window.open(target, '_blank', 'noopener,noreferrer');
+          break;
+        }
+
         case 'open_panel': {
           const FULL_PANELS = ['settings', 'vibe', 'canvas'];
           setActivePanel(param);
