@@ -1035,12 +1035,7 @@ const AlertsTab = ({ isMobile, onQuote, alerts, setAlerts, alertPrices, alertLoa
     setSym(''); setPrice(''); setDir('above'); setSymSug([]);
   };
 
-  const liveTriggered = (a) => {
-    if (a.triggered) return true;
-    const q = alertPrices[a.symbol];
-    if (!q) return false;
-    return a.dir === 'above' ? q.price >= a.price : q.price <= a.price;
-  };
+  const liveTriggered = (a) => !!a.triggered;
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: BG }}>
@@ -1126,7 +1121,7 @@ const AlertsTab = ({ isMobile, onQuote, alerts, setAlerts, alertPrices, alertLoa
                       {hit && <Tag color={GR}>🎯 TRIGGERED</Tag>}
                     </div>
                     <div style={{ fontSize: 12, color: '#888' }}>
-                      Current: {q ? <strong style={{ color: hit ? GR : DK }}>₹{fmt(q.price)}</strong> : alertLoading ? <Spinner size={10}/> : '—'}
+                      Current: {q ? <strong style={{ color: hit ? GR : DK }}>₹{fmt(q.price)}</strong> : '—'}
                       {q && <span style={{ color: pctColor(q.change_pct), marginLeft: 6 }}>{pctSign(q.change_pct)}{q.change_pct?.toFixed(2)}%</span>}
                     </div>
                   </div>
