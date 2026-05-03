@@ -1,10 +1,8 @@
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, GithubAuthProvider } from 'firebase/auth';
 
-const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
-
 const firebaseConfig = {
-  apiKey: apiKey || 'GOOGLE_API_KEYFIREABSE',
+  apiKey: 'AIzaSyCuZbO2DDSbnO_9hIIAFP0A8o0Wi2FzUhg',
   authDomain: 'studio-1742912828-cb958.firebaseapp.com',
   projectId: 'studio-1742912828-cb958',
   storageBucket: 'studio-1742912828-cb958.firebasestorage.app',
