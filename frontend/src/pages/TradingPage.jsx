@@ -31,13 +31,68 @@ const pctColor = (v) => v > 0 ? GR : v < 0 ? RD : '#888';
 const pctSign  = (v) => v > 0 ? '+' : '';
 const normSym  = (s) => (s || '').replace('.NS','').replace('.BO','').trim().toUpperCase();
 
-const LS_PORTFOLIO = 'airis_tp_portfolio';
-const LS_WATCHLIST = 'airis_tp_watchlist';
-const LS_CHAT      = 'airis_tp_chat';
-const LS_ALERTS    = 'airis_tp_alerts';
+const LS_PORTFOLIO   = 'airis_tp_portfolio';
+const LS_WATCHLIST   = 'airis_tp_watchlist';
+const LS_CHAT        = 'airis_tp_chat';
+const LS_ALERTS      = 'airis_tp_alerts';
+const LS_PREFERENCES = 'airis_tp_prefs';
 
 const loadLS = (key, def) => { try { return JSON.parse(localStorage.getItem(key)) ?? def; } catch { return def; } };
 const saveLS = (key, v)   => { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} };
+
+// ── Preference detection ────────────────────────────────────────────────────────
+// Use full sector phrases with word-boundary-safe matching to avoid false positives
+// Each entry: [sectorName, testFn] where testFn returns true if the text mentions that sector.
+// IT uses two separate regexes (one case-sensitive for "IT" abbreviation, one /i for full phrases)
+// to avoid matching the pronoun "it".
+const SECTOR_PATTERNS = [
+  ['pharma',          (t) => /\bpharma(?:ceutical)?s?\b/i.test(t)],
+  ['IT',              (t) => /\bIT\b/.test(t) || /\b(?:information technology|it sector)\b/i.test(t)],
+  ['tech',            /\btech(?:nology|nologies)?\b/i],
+  ['banking',         /\bbanking\b/i],
+  ['finance',         /\bfinance\b|\bfinancial\b/i],
+  ['energy',          /\benergy\b/i],
+  ['auto',            /\bauto(?:mobile|motive)?\b/i],
+  ['FMCG',            /\bFMCG\b/i],
+  ['infra',           /\binfra(?:structure)?\b/i],
+  ['real estate',     /\breal estate\b|\brealty\b/i],
+  ['metals',          /\bmetal(?:s)?\b/i],
+  ['cement',          /\bcement\b/i],
+  ['telecom',         /\btelecom(?:munications?)?\b/i],
+  ['insurance',       /\binsurance\b/i],
+  ['healthcare',      /\bhealthcare\b/i],
+  ['chemicals',       /\bchemical(?:s)?\b/i],
+  ['defence',         /\bdefence\b|\bdefense\b/i],
+  ['PSU',             /\bPSU\b|\bpublic sector\b/i],
+  ['midcap',          /\bmidcap\b|\bmid-cap\b|\bmid cap\b/i],
+  ['smallcap',        /\bsmallcap\b|\bsmall-cap\b|\bsmall cap\b/i],
+  ['largecap',        /\blargecap\b|\blarge-cap\b|\blarge cap\b/i],
+];
+const STYLE_WORDS  = { 'long-term': [/\blong[- ]term\b/i], 'short-term': [/\bshort[- ]term\b/i], 'swing': [/\bswing\b/i], 'intraday': [/\bintraday\b|\bday trad(?:er|ing)\b/i], 'positional': [/\bpositional\b/i] };
+const RISK_WORDS   = { 'low': [/\blow risk\b|\bconservative\b|\bcapital preservation\b/i], 'moderate': [/\bmoderate\b|\bbalanced\b|\bmedium risk\b/i], 'high': [/\bhigh risk\b|\baggressive\b|\brisk[- ]taker\b/i] };
+
+function detectPreferences(text) {
+  const updates = {};
+
+  // Detect investment style
+  for (const [style, regexes] of Object.entries(STYLE_WORDS)) {
+    if (regexes.some(r => r.test(text))) { updates.style = style; break; }
+  }
+
+  // Detect risk appetite
+  for (const [risk, regexes] of Object.entries(RISK_WORDS)) {
+    if (regexes.some(r => r.test(text))) { updates.riskAppetite = risk; break; }
+  }
+
+  // Detect preferred sectors using word-boundary-safe patterns
+  const foundSectors = SECTOR_PATTERNS.filter(([, test]) => typeof test === 'function' ? test(text) : test.test(text)).map(([name]) => name);
+  if (foundSectors.length > 0) updates.sectors = foundSectors;
+
+  // Only save if the message is a clear preference statement
+  const isPrefStatement = /\b(i(?:'m| am| prefer| like| invest| focus| trade| want|'ve been)|my (style|approach|strategy|risk|portfolio|preference|focus|goal))\b/i.test(text);
+
+  return Object.keys(updates).length > 0 && isPrefStatement ? updates : null;
+}
 
 // Known NSE tickers for highlighting in AI responses
 const NSE_TICKERS = new Set([
@@ -349,18 +404,37 @@ const QUICK_PROMPTS = [
 const AIAssistant = ({ portfolio, watchlist, indices, movers, isMobile, onAddToWatchlist, onAddToPortfolio, onSwitchTab, onRemoveFromWatchlist }) => {
   const [messages, setMessages] = useState(() => loadLS(LS_CHAT, [{
     role: 'assistant', id: uid(),
-    text: "Hello! I'm your **AI Trading Expert** — specialized in Indian markets (NSE/BSE).\n\nI analyze stocks using **RSI, MACD, Bollinger Bands**, fundamentals (P/E, ROE, EPS), sector trends, FII/DII flows, and market news to give you **actionable trading insights**.\n\n**You can also give me commands:**\n- *Add RELIANCE to watchlist*\n- *Bought 50 TCS at 3400*\n- *Remove INFY from watchlist*\n- *Show my portfolio*\n\nOr just ask me for stock picks, portfolio review, or trading strategies!",
+    text: "Hello! I'm your **AI Trading Expert** — specialized in Indian markets (NSE/BSE).\n\nI analyze stocks using **RSI, MACD, Bollinger Bands**, fundamentals (P/E, ROE, EPS), sector trends, FII/DII flows, and market news to give you **actionable trading insights**.\n\n**You can also give me commands:**\n- *Add RELIANCE to watchlist*\n- *Bought 50 TCS at 3400*\n- *Remove INFY from watchlist*\n- *Show my portfolio*\n\nOr just ask me for stock picks, portfolio review, or trading strategies!\n\n*Tip: Tell me your investing style — e.g. \"I'm a long-term investor focused on pharma and IT\" — and I'll remember it for future sessions.*",
   }]));
   const [input,     setInput]     = useState('');
   const [busy,      setBusy]      = useState(false);
   const [search,    setSearch]    = useState('');
   const [searchRes, setSearchRes] = useState([]);
-  const msgsEnd  = useRef(null);
-  const inputRef = useRef(null);
-  const debRef   = useRef(null);
+  const [prefs,     setPrefs]     = useState(() => loadLS(LS_PREFERENCES, {}));
+  const [showPrefsPanel, setShowPrefsPanel] = useState(false);
+  const msgsEnd          = useRef(null);
+  const inputRef         = useRef(null);
+  const debRef           = useRef(null);
+  const sessionGreetedRef = useRef(false);
 
   useEffect(() => { saveLS(LS_CHAT, messages.slice(-80)); }, [messages]);
   useEffect(() => { msgsEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, busy]);
+
+  // Show personalized session-start greeting if preferences exist (once per browser session)
+  useEffect(() => {
+    if (sessionGreetedRef.current) return;
+    sessionGreetedRef.current = true;
+    const stored = loadLS(LS_PREFERENCES, {});
+    if (!stored || !Object.keys(stored).length) return;
+    const parts = [];
+    if (stored.style)        parts.push(`**${stored.style}** investor`);
+    if (stored.riskAppetite) parts.push(`**${stored.riskAppetite}** risk appetite`);
+    if (stored.sectors?.length) parts.push(`interest in **${stored.sectors.join(', ')}**`);
+    if (stored.notes)        parts.push(stored.notes);
+    if (!parts.length) return;
+    const greetMsg = `👋 Welcome back! I remember your profile: ${parts.join(' · ')}.\n\nAll my analysis this session will be tailored to your style. Just ask away!`;
+    setMessages(prev => [...prev, { role: 'assistant', id: uid(), text: greetMsg, isAction: true }]);
+  }, []);
 
   useEffect(() => {
     clearTimeout(debRef.current);
@@ -386,6 +460,37 @@ const AIAssistant = ({ portfolio, watchlist, indices, movers, isMobile, onAddToW
     if (watchlist.length) parts.push(`User watchlist: ${watchlist.map(w=>normSym(w.symbol)).join(', ')}`);
     if (portfolio.length) parts.push(`User portfolio: ${portfolio.map(p=>`${normSym(p.symbol)} (${p.qty} shares @ ₹${p.buyPrice})`).join(', ')}`);
     return parts.join('. ');
+  };
+
+  const buildPrefsContext = () => {
+    const stored = loadLS(LS_PREFERENCES, {});
+    if (!stored || !Object.keys(stored).length) return '';
+    const parts = [];
+    if (stored.style)           parts.push(`Investment style: ${stored.style}`);
+    if (stored.riskAppetite)    parts.push(`Risk appetite: ${stored.riskAppetite}`);
+    if (stored.sectors?.length) parts.push(`Preferred sectors: ${stored.sectors.join(', ')}`);
+    if (stored.notes)           parts.push(`Additional preferences: ${stored.notes}`);
+    return parts.join('. ');
+  };
+
+  const updatePrefs = (updates) => {
+    setPrefs(prev => {
+      const merged = {
+        ...prev,
+        ...updates,
+        sectors: updates.sectors
+          ? [...new Set([...(prev.sectors || []), ...updates.sectors])]
+          : prev.sectors,
+        updatedAt: new Date().toISOString(),
+      };
+      saveLS(LS_PREFERENCES, merged);
+      return merged;
+    });
+  };
+
+  const clearPrefs = () => {
+    saveLS(LS_PREFERENCES, {});
+    setPrefs({});
   };
 
   const addMsg = (m) => setMessages(p => [...p, m]);
@@ -427,11 +532,25 @@ const AIAssistant = ({ portfolio, watchlist, indices, movers, isMobile, onAddToW
       return;
     }
 
+    // Detect and save user preferences from the message
+    const detectedPrefs = detectPreferences(msg);
+    if (detectedPrefs) {
+      updatePrefs(detectedPrefs);
+      const prefParts = [];
+      if (detectedPrefs.style)        prefParts.push(`investment style: **${detectedPrefs.style}**`);
+      if (detectedPrefs.riskAppetite) prefParts.push(`risk appetite: **${detectedPrefs.riskAppetite}**`);
+      if (detectedPrefs.sectors?.length) prefParts.push(`sectors: **${detectedPrefs.sectors.join(', ')}**`);
+      if (prefParts.length) {
+        addMsg({ role: 'assistant', id: uid(), text: `✅ Got it! I've saved your profile — ${prefParts.join(', ')}. I'll use this to personalise every answer for you, now and in future sessions.`, isAction: true });
+      }
+    }
+
     // Send to AI
     setBusy(true);
     try {
-      const ctx = buildContext();
-      const r = await api.tradingChat(msg, ctx);
+      const ctx   = buildContext();
+      const pCtx  = buildPrefsContext();
+      const r = await api.tradingChat(msg, ctx, pCtx);
       addMsg({ role: 'assistant', id: uid(), text: r.reply || r.message || 'No response.' });
     } catch {
       addMsg({ role: 'error', id: uid(), text: '⚠️ Could not reach the AI. Go to the main app → ⚙️ Settings → AI Engine and add your Groq API key (free at console.groq.com).' });
@@ -483,9 +602,35 @@ const AIAssistant = ({ portfolio, watchlist, indices, movers, isMobile, onAddToW
         ))}
       </div>
 
+      {/* Preferences bar */}
+      {showPrefsPanel && (
+        <div style={{ padding: '10px 22px', borderTop: `1px solid ${BORDER}`, background: `${BL}06`, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: BL }}>🧠 Your Trading Profile (saved locally)</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={clearPrefs} style={{ fontSize: 10.5, color: RD, background: `${RD}12`, border: `1px solid ${RD}30`, borderRadius: 8, padding: '3px 9px', cursor: 'pointer', fontFamily: FONT }}>Clear</button>
+              <button onClick={() => setShowPrefsPanel(false)} style={{ fontSize: 10.5, color: '#888', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: FONT }}>✕ Close</button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {prefs.style        && <span style={{ fontSize: 11, background: `${BL}12`, color: BL, borderRadius: 8, padding: '3px 9px', fontWeight: 600 }}>📈 {prefs.style}</span>}
+            {prefs.riskAppetite && <span style={{ fontSize: 11, background: `${OR}12`, color: OR, borderRadius: 8, padding: '3px 9px', fontWeight: 600 }}>⚖️ {prefs.riskAppetite} risk</span>}
+            {prefs.sectors?.map(s => <span key={s} style={{ fontSize: 11, background: `${GR}12`, color: GR, borderRadius: 8, padding: '3px 9px', fontWeight: 600 }}>🏭 {s}</span>)}
+            {!prefs.style && !prefs.riskAppetite && !prefs.sectors?.length && (
+              <span style={{ fontSize: 11, color: '#bbb' }}>No preferences saved yet. Tell me about your investing style!</span>
+            )}
+          </div>
+          {prefs.updatedAt && <div style={{ fontSize: 9.5, color: '#ccc', marginTop: 6 }}>Last updated: {new Date(prefs.updatedAt).toLocaleString()}</div>}
+        </div>
+      )}
+
       {/* Command hint */}
-      <div style={{ padding: '4px 22px 0', fontSize: 10.5, color: '#ccc', flexShrink: 0, background: '#fafafa', lineHeight: 1.4 }}>
-        Try: <em>"Add RELIANCE to watchlist"</em> · <em>"Bought 50 TCS at 3400"</em> · <em>"Show portfolio"</em>
+      <div style={{ padding: '4px 22px 0', fontSize: 10.5, color: '#ccc', flexShrink: 0, background: '#fafafa', lineHeight: 1.4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>Try: <em>"Add RELIANCE to watchlist"</em> · <em>"Bought 50 TCS at 3400"</em> · <em>"I'm a long-term pharma investor"</em></span>
+        <button onClick={() => setShowPrefsPanel(p => !p)} title="View/edit your trading profile"
+          style={{ fontSize: 10.5, color: Object.keys(prefs).length > 0 ? BL : '#bbb', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: FONT, padding: '0 2px', flexShrink: 0 }}>
+          🧠 {Object.keys(prefs).filter(k => k !== 'updatedAt').length > 0 ? 'Profile saved' : 'My profile'}
+        </button>
       </div>
 
       {/* Input */}

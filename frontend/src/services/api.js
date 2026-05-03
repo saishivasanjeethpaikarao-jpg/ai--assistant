@@ -50,7 +50,7 @@ export const api = {
   getMarketMovers: () => axiosInstance.get('/market/movers'),
   getStockHistory: (symbol, period) => axiosInstance.get(`/market/history?symbol=${encodeURIComponent(symbol)}&period=${encodeURIComponent(period)}`),
   // Trading AI
-  tradingChat: (message, context = '') => axiosInstance.post('/trading/chat', { message, context }),
+  tradingChat: (message, context = '', preferences = '') => axiosInstance.post('/trading/chat', { message, context, preferences }),
   // Vibe Coder
   getVibeAgents: () => axiosInstance.get('/vibe/agents'),
   vibeCode: (prompt, agent_id = 'auto') => axiosInstance.post('/vibe/code', { prompt, agent_id }),

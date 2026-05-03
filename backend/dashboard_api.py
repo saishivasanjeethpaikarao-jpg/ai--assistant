@@ -951,8 +951,9 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
 
     def api_trading_chat(self, data):
         try:
-            message = (data.get('message') or '').strip()
-            context = (data.get('context') or '').strip()
+            message     = (data.get('message')     or '').strip()
+            context     = (data.get('context')     or '').strip()
+            preferences = (data.get('preferences') or '').strip()
             if not message:
                 self.send_json({'error': 'No message provided'}, 400)
                 return
@@ -960,6 +961,17 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
             user_content = message
             if context:
                 user_content = f"[Live Market Context: {context}]\n\n{message}"
+
+            # Build personalised system prompt section if user preferences exist
+            system_prompt = self.TRADING_SYSTEM_PROMPT
+            if preferences:
+                pref_section = (
+                    "\n\n## User Trading Profile (remembered across sessions)\n"
+                    f"{preferences}\n\n"
+                    "**Always tailor your analysis, stock picks, and risk levels to this profile. "
+                    "Prioritise the user's preferred sectors and match recommendations to their stated investment style and risk appetite.**"
+                )
+                system_prompt = self.TRADING_SYSTEM_PROMPT + pref_section
 
             reply = None
             try:
@@ -971,7 +983,7 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
 
                 if has_provider_configured():
                     messages_payload = [
-                        {"role": "system", "content": self.TRADING_SYSTEM_PROMPT},
+                        {"role": "system", "content": system_prompt},
                         {"role": "user",   "content": user_content},
                     ]
 
