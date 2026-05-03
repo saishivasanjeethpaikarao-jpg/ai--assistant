@@ -150,14 +150,6 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
     else onPanelChange(id);
   };
 
-  const handleAvatarClick = async () => {
-    if (user?.isAnonymous) {
-      navigate('/login');
-    } else {
-      setMenuOpen(v => !v);
-    }
-  };
-
   const handleLogout = async () => {
     setMenuOpen(false);
     await logout();
@@ -172,11 +164,6 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
     return () => window.removeEventListener('mousedown', onDown);
   }, []);
 
-  const initials = getInitials(user);
-  const avatarTitle = user?.isAnonymous
-    ? 'Guest — click to sign in'
-    : `${user?.displayName || user?.email || ''} — click to sign out`;
-
   if (isMobile) {
     return (
       <div style={{
@@ -187,10 +174,31 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
         userSelect: 'none',
         paddingBottom: 'env(safe-area-inset-bottom)',
         backdropFilter: 'blur(20px)',
+        position: 'relative',
       }}>
         {MOBILE_NAV.map(id => (
           <MobileTabBtn key={id} id={id} active={activePanel === id} onClick={handleClick}/>
         ))}
+        {user && (
+          <button
+            onClick={() => navigate('/app')}
+            style={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              border: 'none',
+              background: '#fff',
+              color: '#437DFD',
+              borderRadius: 999,
+              padding: '7px 10px',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Trading
+          </button>
+        )}
       </div>
     );
   }
@@ -236,30 +244,27 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
         {BOTTOM.map(id => <IconBtn key={id} id={id} active={activePanel === id} onClick={handleClick}/>)}
         <div ref={menuRef} style={{ position: 'relative', marginTop: '8px' }}>
           <div
-            onClick={handleAvatarClick}
-            title={avatarTitle}
+            onClick={() => setMenuOpen(v => !v)}
+            title={user ? `${user.displayName || user.email || 'Account'}` : 'Account'}
             style={{
               width: '30px', height: '30px', borderRadius: '50%',
-              background: user?.isAnonymous ? 'rgba(0,0,0,0.07)' : 'linear-gradient(135deg,#437DFD,#2C76FF)',
+              background: 'linear-gradient(135deg,#437DFD,#2C76FF)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer',
               border: '1.5px solid rgba(0,0,0,0.1)',
               fontSize: '11px', fontWeight: '700',
-              color: user?.isAnonymous ? '#888' : '#fff',
+              color: '#fff',
               letterSpacing: '-0.01em', overflow: 'hidden',
               transition: 'opacity 0.15s',
             }}
             onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
             onMouseLeave={e => e.currentTarget.style.opacity = '1'}
           >
-            {user?.photoURL
-              ? <img src={user.photoURL} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
-              : initials
-            }
+            {user?.photoURL ? <img src={user.photoURL} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/> : getInitials(user)}
           </div>
-          {menuOpen && !user?.isAnonymous && (
+          {menuOpen && user && (
             <div style={{ position: 'absolute', right: '42px', bottom: '-4px', width: '180px', background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '14px', boxShadow: '0 16px 32px rgba(0,0,0,0.12)', padding: '8px', zIndex: 50 }}>
-              <button onClick={() => { setMenuOpen(false); navigate('/login'); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: 'none', background: 'transparent', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px', color: '#222', textAlign: 'left' }}>
+              <button onClick={() => { setMenuOpen(false); navigate('/app'); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: 'none', background: 'transparent', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px', color: '#222', textAlign: 'left' }}>
                 <FiUser size={14} />
                 Profile / account
               </button>

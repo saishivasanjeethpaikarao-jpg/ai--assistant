@@ -49,20 +49,6 @@ function GuestBanner() {
   );
 }
 
-function AuthQuickAccess() {
-  const navigate = useNavigate();
-  return (
-    <div style={{ position: 'fixed', top: 14, right: 14, zIndex: 220, display: 'flex', gap: 8 }}>
-      <button onClick={() => navigate('/login')} style={{ fontSize: 12.5, fontWeight: 600, color: '#0C0C0C', background: 'rgba(255,255,255,0.9)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 999, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit', backdropFilter: 'blur(12px)' }}>
-        Sign in
-      </button>
-      <button onClick={() => navigate('/login?signup=1')} style={{ fontSize: 12.5, fontWeight: 600, color: '#fff', background: '#437DFD', border: 'none', borderRadius: 999, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 8px 18px rgba(67,125,253,0.22)' }}>
-        Sign up
-      </button>
-    </div>
-  );
-}
-
 function ProtectedApp() {
   const { user, loading } = useAuth();
   const navigate          = useNavigate();
@@ -198,7 +184,6 @@ function ProtectedApp() {
       background: '#F5F4F2',
     }}>
       {isGuest && <GuestBanner />}
-      {!user && <AuthQuickAccess />}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {!isMobile && (
           <ActivityBar
