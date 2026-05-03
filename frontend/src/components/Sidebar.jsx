@@ -548,7 +548,7 @@ const TradingPanel = () => {
       )}
 
       {/* Tab bar */}
-      <div style={{ display:'flex', gap:'4px', padding:'4px 12px 6px', flexShrink:0 }}>
+      <div style={{ display:'flex', gap:'4px', padding:'4px 12px 6px', flexShrink:0, overflowX:'auto' }}>
         {[['watchlist','Watchlist'],['gainers','Gainers'],['losers','Losers'],['indices','All Indices']].map(([k,label])=>(
           <button key={k} onClick={()=>setTab(k)} style={{
             flex:1, padding:'4px 2px', borderRadius:'20px', fontSize:'10px', fontWeight:'600', cursor:'pointer', border:'none',
@@ -560,7 +560,7 @@ const TradingPanel = () => {
       </div>
 
       {/* Tab content */}
-      <div style={{ flex:1, overflowY:'auto' }}
+      <div style={{ flex:1, overflowY:'auto', minHeight:0 }}
         onClick={()=>{ if(showSearch && !search) setShowSearch(false); }}>
 
         {/* ─── Watchlist ─── */}

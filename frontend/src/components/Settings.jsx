@@ -617,7 +617,7 @@ const AllKeysTab = ({ s, set, status }) => {
 
 // ── Main Settings Component ──────────────────────────────────────────────
 
-const Settings = () => {
+const Settings = ({ isMobile = false }) => {
   const [tab, setTab] = useState('ai');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -708,29 +708,41 @@ const Settings = () => {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#F5F4F2', overflow: 'hidden' }}>
       {/* Tab bar */}
-      <div style={{ height: '44px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'stretch', flexShrink: 0, boxShadow: '0 1px 0 rgba(67,125,253,0.05)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: `2px solid ${B}`, background: '#fff', fontSize: '13px', fontWeight: '700', color: B, gap: '8px', letterSpacing: '-0.01em' }}>
+      <div style={{ height: isMobile ? '52px' : '44px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'stretch', flexShrink: 0, boxShadow: '0 1px 0 rgba(67,125,253,0.05)', overflowX: isMobile ? 'auto' : 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: isMobile ? '0 14px' : '0 20px', borderBottom: `2px solid ${B}`, background: '#fff', fontSize: '13px', fontWeight: '700', color: B, gap: '8px', letterSpacing: '-0.01em', whiteSpace: 'nowrap', flexShrink: 0 }}>
           <FiSliders size={14} style={{ color: B }} />
           <span>Settings</span>
         </div>
       </div>
 
       {/* Body: left nav + content */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', overflow: 'hidden', minHeight: 0 }}>
         {/* Left nav */}
-        <div style={{ width: '190px', flexShrink: 0, background: '#fff', borderRight: '1px solid rgba(0,0,0,0.07)', overflowY: 'auto', padding: '10px 8px' }}>
+        <div style={{
+          width: isMobile ? '100%' : '190px',
+          flexShrink: 0,
+          background: '#fff',
+          borderRight: isMobile ? 'none' : '1px solid rgba(0,0,0,0.07)',
+          borderBottom: isMobile ? '1px solid rgba(0,0,0,0.07)' : 'none',
+          overflowX: isMobile ? 'auto' : 'hidden',
+          overflowY: 'auto',
+          padding: isMobile ? '8px 10px' : '10px 8px'
+        }}>
           {TABS.map(t => {
             const Icon = t.icon;
             const active = tab === t.id;
             return (
               <button key={t.id} onClick={() => setTab(t.id)}
                 style={{
-                  width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '9px',
+                  width: isMobile ? 'auto' : '100%',
+                  padding: isMobile ? '7px 10px' : '8px 12px',
+                  display: 'flex', alignItems: 'center', gap: '9px',
                   background: active ? `rgba(67,125,253,0.08)` : 'transparent',
                   border: 'none', borderRadius: '9px',
                   borderLeft: `3px solid ${active ? B : 'transparent'}`,
                   color: active ? B : '#888', fontSize: '12px', fontWeight: active ? '700' : '500',
                   cursor: 'pointer', textAlign: 'left', transition: 'all 0.12s', marginBottom: '2px',
+                  flexShrink: 0,
                 }}
                 onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; e.currentTarget.style.color = '#555'; } }}
                 onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#888'; } }}
@@ -743,8 +755,8 @@ const Settings = () => {
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', background: '#F5F4F2' }}>
-          <div style={{ maxWidth: '560px', background: '#fff', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.07)', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '12px' : '24px 28px', background: '#F5F4F2', minHeight: 0 }}>
+          <div style={{ maxWidth: '560px', background: '#fff', borderRadius: isMobile ? '14px' : '16px', border: '1px solid rgba(0,0,0,0.07)', padding: isMobile ? '16px' : '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
             {tab === 'ai'        && <AiTab s={s} set={set} status={status} providers={providers} />}
             {tab === 'voice'     && <VoiceTab s={s} set={set} status={status} />}
             {tab === 'language'  && <LanguageTab s={s} set={set} prefs={prefs} setPref={setPref} />}

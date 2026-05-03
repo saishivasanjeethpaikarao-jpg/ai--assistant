@@ -505,14 +505,14 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
         boxShadow:'0 1px 0 rgba(67,125,253,0.05)',
       }}>
         <div style={{
-          display:'flex', alignItems:'center', padding:'0 20px',
+          display:'flex', alignItems:'center', padding:isMobile ? '0 14px' : '0 20px',
           borderBottom:'2px solid #437DFD',
           gap:'8px', fontSize:'13px', fontWeight:'700', color:'#437DFD', letterSpacing:'-0.01em',
         }}>
           <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'linear-gradient(135deg,#437DFD,#FD5B5D)', boxShadow:'0 0 6px rgba(67,125,253,0.6)' }}/>
           <span>chat</span>
         </div>
-        <div style={{ display:'flex', alignItems:'center', paddingRight:'16px', gap:'8px' }}>
+        <div style={{ display:'flex', alignItems:'center', paddingRight:isMobile ? '10px' : '16px', gap:'8px' }}>
           <button onClick={toggleTts}
             style={{
               display:'flex', alignItems:'center', gap:'6px',
@@ -551,7 +551,7 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
       </div>
 
       {/* Input */}
-      <div style={{ background:'#fff', borderTop:'1px solid rgba(0,0,0,0.08)', padding: isMobile?'10px 12px 12px':'12px 18px 14px', flexShrink:0 }}>
+      <div style={{ background:'#fff', borderTop:'1px solid rgba(0,0,0,0.08)', padding: isMobile?'8px 10px 10px':'12px 18px 14px', flexShrink:0 }}>
 
         {/* Attached file chips */}
         {attachedFiles.length > 0 && (
