@@ -388,7 +388,9 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/market/search':  self.api_market_search,
             '/api/market/movers':  self.api_market_movers,
             '/api/market/history': self.api_market_history,
-            '/api/trading/chat':   self.api_trading_chat_get,
+            '/api/trading/chat':       self.api_trading_chat_get,
+            '/api/trading/portfolio':  self.api_trading_portfolio_get,
+            '/api/trading/watchlist':  self.api_trading_watchlist_get,
         }
         handler = routes.get(path)
         if handler:
@@ -416,8 +418,10 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/vibe/fix': lambda: self.api_vibe_fix(data),
             '/api/vibe/chat': lambda: self.api_vibe_chat(data),
             '/api/vibe/detect': lambda: self.api_vibe_detect(data),
-            '/api/trading/chat': lambda: self.api_trading_chat(data),
-            '/mobile/chat':      lambda: self.api_mobile_chat(data),
+            '/api/trading/chat':      lambda: self.api_trading_chat(data),
+            '/api/trading/portfolio': lambda: self.api_trading_portfolio_save(data),
+            '/api/trading/watchlist': lambda: self.api_trading_watchlist_save(data),
+            '/mobile/chat':           lambda: self.api_mobile_chat(data),
             '/api/tts': lambda: self.api_tts(data),
             '/api/voice/clone': lambda: self.api_voice_clone(data),
             '/api/vision/chat': lambda: self.api_vision_chat(data),
@@ -997,6 +1001,132 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
 
 ## Personality
 You are confident, direct, and data-driven — like a sharp fund manager who explains things clearly. You never give vague non-answers. Every response should leave the user with clear, actionable next steps."""
+
+    # ── Trading data persistence (portfolio & watchlist) ─────────────────────
+
+    TRADING_DATA_FILE = os.path.join(BASE_DIR, 'trading_data.json')
+    _trading_lock = None
+
+    @classmethod
+    def _get_lock(cls):
+        import threading
+        if cls._trading_lock is None:
+            cls._trading_lock = threading.RLock()
+        return cls._trading_lock
+
+    @classmethod
+    def _load_trading_data(cls):
+        try:
+            if os.path.exists(cls.TRADING_DATA_FILE):
+                with open(cls.TRADING_DATA_FILE, 'r') as f:
+                    return json.load(f)
+        except Exception:
+            pass
+        return {}
+
+    @classmethod
+    def _save_trading_data(cls, data):
+        with cls._get_lock():
+            with open(cls.TRADING_DATA_FILE, 'w') as f:
+                json.dump(data, f, default=str)
+
+    class _AuthError(Exception):
+        pass
+
+    def _extract_user_id(self, data=None):
+        """Resolve the caller's user ID.
+
+        - If an Authorization: Bearer <token> header is present the token is
+          verified with Firebase. A valid token returns the Firebase UID.
+          An *invalid* token raises _AuthError so callers can return 401 —
+          no silent downgrade to 'guest'.
+        - If no Authorization header is present the request is treated as an
+          unauthenticated guest session and 'guest' is returned unconditionally
+          (any caller-supplied user_id is ignored to prevent UID spoofing).
+        """
+        auth = self.headers.get('Authorization', '')
+        if auth.startswith('Bearer '):
+            token = auth[7:].strip()
+            if token:
+                try:
+                    from firebase_auth import get_user_info
+                    info = get_user_info(token)
+                    uid = info.get('localId') or info.get('uid') or ''
+                    if uid:
+                        return uid
+                except Exception:
+                    pass
+                raise DashboardAPIHandler._AuthError('Invalid or expired token')
+
+        return 'guest'
+
+    def api_trading_portfolio_get(self):
+        try:
+            user_id = self._extract_user_id()
+        except DashboardAPIHandler._AuthError:
+            self.send_json({'error': 'Unauthorized'}, 401)
+            return
+        try:
+            store = self._load_trading_data()
+            portfolio = store.get(user_id, {}).get('portfolio', [])
+            self.send_json({'success': True, 'portfolio': portfolio})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
+
+    def api_trading_portfolio_save(self, data):
+        try:
+            user_id = self._extract_user_id(data)
+        except DashboardAPIHandler._AuthError:
+            self.send_json({'error': 'Unauthorized'}, 401)
+            return
+        try:
+            portfolio = data.get('portfolio', [])
+            if not isinstance(portfolio, list):
+                self.send_json({'error': 'portfolio must be a list'}, 400)
+                return
+            with self._get_lock():
+                store = self._load_trading_data()
+                if user_id not in store:
+                    store[user_id] = {}
+                store[user_id]['portfolio'] = portfolio
+                self._save_trading_data(store)
+            self.send_json({'success': True})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
+
+    def api_trading_watchlist_get(self):
+        try:
+            user_id = self._extract_user_id()
+        except DashboardAPIHandler._AuthError:
+            self.send_json({'error': 'Unauthorized'}, 401)
+            return
+        try:
+            store = self._load_trading_data()
+            watchlist = store.get(user_id, {}).get('watchlist', [])
+            self.send_json({'success': True, 'watchlist': watchlist})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
+
+    def api_trading_watchlist_save(self, data):
+        try:
+            user_id = self._extract_user_id(data)
+        except DashboardAPIHandler._AuthError:
+            self.send_json({'error': 'Unauthorized'}, 401)
+            return
+        try:
+            watchlist = data.get('watchlist', [])
+            if not isinstance(watchlist, list):
+                self.send_json({'error': 'watchlist must be a list'}, 400)
+                return
+            with self._get_lock():
+                store = self._load_trading_data()
+                if user_id not in store:
+                    store[user_id] = {}
+                store[user_id]['watchlist'] = watchlist
+                self._save_trading_data(store)
+            self.send_json({'success': True})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
 
     def api_trading_chat_get(self):
         self.send_json({'success': True, 'message': 'POST to /api/trading/chat with {message, context}'})

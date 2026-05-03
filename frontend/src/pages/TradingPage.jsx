@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 const MiniChart = ({ data, color, compact }) => {
   const max = Math.max(1, ...data.map(d => d.value || 0));
   return (
@@ -1307,6 +1308,7 @@ export default function TradingPage() {
   const navigate = useNavigate();
   const w        = useWindowWidth();
   const isMobile = w < 768;
+  const { user }  = useAuth() || {};
 
   const [activeTab,     setActiveTab]     = useState('ai');
   const [indices,       setIndices]       = useState([]);
@@ -1316,6 +1318,114 @@ export default function TradingPage() {
   const [quoteLoad,     setQuoteLoad]     = useState(false);
   const [portfolio,     setPortfolio]     = useState(() => loadLS(LS_PORTFOLIO, []));
   const [watchlist,     setWatchlist]     = useState(() => loadLS(LS_WATCHLIST, []));
+
+  // Only sync to the cloud when the user is properly authenticated (has a UID
+  // and is not anonymous). Guest / unauthenticated sessions use localStorage only.
+  const isAuthenticated = !!(user && !user.isAnonymous && user.uid);
+
+  // hydratedForRef tracks which userId's cloud data has been loaded.
+  // Save effects check this ref so they never fire before the initial cloud
+  // load completes, preventing stale local data from overwriting cloud data.
+  const hydratedForRef = useRef(null);
+
+  // ── Cloud sync: load from backend when an authenticated user is detected ────
+  useEffect(() => {
+    if (!isAuthenticated) {
+      // Guest / anonymous — mark immediately hydrated (localStorage is source of truth)
+      hydratedForRef.current = 'local';
+      return;
+    }
+
+    let cancelled = false;
+    hydratedForRef.current = null; // block saves while loading
+
+    const load = async () => {
+      try {
+        const token = await user.getIdToken().catch(() => null);
+        if (!token) { if (!cancelled) hydratedForRef.current = user.uid; return; }
+
+        const [pfRes, wlRes] = await Promise.allSettled([
+          api.getPortfolio(user.uid, token),
+          api.getWatchlist(user.uid, token),
+        ]);
+        if (cancelled) return;
+
+        // Migration key: marks that local data has been pushed to the cloud
+        // for this UID at least once. After migration, an empty server
+        // response means the user intentionally cleared their data.
+        const migrationKey = `airis_tp_migrated_${user.uid}`;
+        const alreadyMigrated = loadLS(migrationKey, false);
+
+        if (pfRes.status === 'fulfilled' && pfRes.value?.success) {
+          const cloud = pfRes.value.portfolio || [];
+          if (cloud.length > 0) {
+            setPortfolio(cloud);
+            saveLS(LS_PORTFOLIO, cloud);
+            saveLS(migrationKey, true);
+          } else if (!alreadyMigrated) {
+            const local = loadLS(LS_PORTFOLIO, []);
+            if (local.length > 0) api.savePortfolio(local, user.uid, token).catch(() => {});
+            saveLS(migrationKey, true);
+          } else {
+            setPortfolio([]);
+            saveLS(LS_PORTFOLIO, []);
+          }
+        }
+
+        if (wlRes.status === 'fulfilled' && wlRes.value?.success) {
+          const cloud = wlRes.value.watchlist || [];
+          if (cloud.length > 0) {
+            setWatchlist(cloud);
+            saveLS(LS_WATCHLIST, cloud);
+          } else if (!alreadyMigrated) {
+            const local = loadLS(LS_WATCHLIST, []);
+            if (local.length > 0) api.saveWatchlist(local, user.uid, token).catch(() => {});
+          } else {
+            setWatchlist([]);
+            saveLS(LS_WATCHLIST, []);
+          }
+        }
+      } catch {}
+
+      if (!cancelled) hydratedForRef.current = user.uid;
+    };
+
+    load();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user?.uid]);
+
+  // ── Cloud sync: persist portfolio to backend on every change ────────────────
+  // Skipped entirely for guests. Guard prevents saves before hydration.
+  const portfolioSaveRef = useRef(null);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (hydratedForRef.current !== user?.uid) return;
+    clearTimeout(portfolioSaveRef.current);
+    portfolioSaveRef.current = setTimeout(async () => {
+      try {
+        const token = await user.getIdToken().catch(() => null);
+        if (token) api.savePortfolio(portfolio, user.uid, token).catch(() => {});
+      } catch {}
+    }, 600);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [portfolio]);
+
+  // ── Cloud sync: persist watchlist to backend on every change ────────────────
+  // Skipped entirely for guests. Guard prevents saves before hydration.
+  const watchlistSaveRef = useRef(null);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (hydratedForRef.current !== user?.uid) return;
+    clearTimeout(watchlistSaveRef.current);
+    watchlistSaveRef.current = setTimeout(async () => {
+      try {
+        const token = await user.getIdToken().catch(() => null);
+        if (token) api.saveWatchlist(watchlist, user.uid, token).catch(() => {});
+      } catch {}
+    }, 600);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchlist]);
 
   // ── Alert state (lifted here so polling persists across tab switches) ──────
   const [alerts,        setAlerts]        = useState(() => loadLS(LS_ALERTS, []));

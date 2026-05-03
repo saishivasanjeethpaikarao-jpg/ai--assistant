@@ -45,7 +45,7 @@ AI Engine · Voice & Speech · Language · Wake Word · Voice Clone · System Pr
 
 **Backend**: `POST /api/trading/chat` — specialized trading expert system prompt, accepts `{message, context}`, uses same Groq/Ollama provider chain as main chat.
 
-**Persistence**: Portfolio and watchlist in localStorage (no backend DB needed).
+**Persistence**: Portfolio and watchlist saved to the backend (`backend/trading_data.json`) on every change, with localStorage as cache/fallback. If the user is signed in (Firebase Auth), data is keyed by their UID; guests use `"guest"` as the key.
 
 ## Trading Panel (Sidebar) — Live Yahoo Finance (yfinance 1.3.0)
 

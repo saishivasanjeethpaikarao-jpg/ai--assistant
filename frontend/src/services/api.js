@@ -51,6 +51,11 @@ export const api = {
   getStockHistory: (symbol, period) => axiosInstance.get(`/market/history?symbol=${encodeURIComponent(symbol)}&period=${encodeURIComponent(period)}`),
   // Trading AI
   tradingChat: (message, context = '', preferences = '') => axiosInstance.post('/trading/chat', { message, context, preferences }),
+  // Trading persistence
+  getPortfolio:  (userId = 'guest', token = null) => axiosInstance.get(`/trading/portfolio?user_id=${encodeURIComponent(userId)}`, token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+  savePortfolio: (portfolio, userId = 'guest', token = null) => axiosInstance.post('/trading/portfolio', { portfolio, user_id: userId }, token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+  getWatchlist:  (userId = 'guest', token = null) => axiosInstance.get(`/trading/watchlist?user_id=${encodeURIComponent(userId)}`, token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+  saveWatchlist: (watchlist, userId = 'guest', token = null) => axiosInstance.post('/trading/watchlist', { watchlist, user_id: userId }, token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
   // Vibe Coder
   getVibeAgents: () => axiosInstance.get('/vibe/agents'),
   vibeCode: (prompt, agent_id = 'auto') => axiosInstance.post('/vibe/code', { prompt, agent_id }),
