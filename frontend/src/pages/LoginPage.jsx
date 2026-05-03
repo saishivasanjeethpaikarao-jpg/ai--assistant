@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [showPass, setShowPass]   = useState(false);
 
   useEffect(() => { if (user) navigate('/app'); }, [user]);
+  useEffect(() => { setMode(isSignup ? 'signup' : 'signin'); }, [isSignup]);
   useEffect(() => { clearError(); setSuccess(''); }, [mode]);
 
   const handle = (fn, label) => async () => {
