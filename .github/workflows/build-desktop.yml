@@ -1,0 +1,101 @@
+name: Build Desktop App
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-tauri:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            label: linux
+          - platform: windows-latest
+            label: windows
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './frontend/src-tauri -> target'
+
+      - name: Install system dependencies (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            imagemagick
+
+      - name: Install ImageMagick (Windows)
+        if: matrix.platform == 'windows-latest'
+        run: choco install imagemagick -y
+
+      - name: Create icon directory (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          mkdir -p frontend/src-tauri/icons
+          convert frontend/public/airis-sphere.png -resize 32x32   frontend/src-tauri/icons/32x32.png
+          convert frontend/public/airis-sphere.png -resize 128x128  frontend/src-tauri/icons/128x128.png
+          convert frontend/public/airis-sphere.png -resize 256x256  frontend/src-tauri/icons/128x128@2x.png
+          convert frontend/public/airis-sphere.png -define icon:auto-resize=256,128,64,48,32,16 frontend/src-tauri/icons/icon.ico
+
+      - name: Create icon directory (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path frontend/src-tauri/icons
+          $magick = "magick"
+          & $magick frontend/public/airis-sphere.png -resize 32x32   frontend/src-tauri/icons/32x32.png
+          & $magick frontend/public/airis-sphere.png -resize 128x128  frontend/src-tauri/icons/128x128.png
+          & $magick frontend/public/airis-sphere.png -resize 256x256  frontend/src-tauri/icons/128x128@2x.png
+          & $magick frontend/public/airis-sphere.png -define icon:auto-resize=256,128,64,48,32,16 frontend/src-tauri/icons/icon.ico
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+        with:
+          projectPath: frontend
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Airis ${{ github.ref_name }}'
+          releaseBody: |
+            ## Airis Desktop App
+
+            Download the installer for your platform below.
+
+            - **Windows**: `Airis_*_x64_en-US.msi`
+            - **Linux (Debian/Ubuntu)**: `airis_*_amd64.deb`
+            - **Linux (AppImage)**: `airis_*_amd64.AppImage`
+          releaseDraft: false
+          prerelease: false

@@ -1,0 +1,62 @@
+name: Build Mobile APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Expo & EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install mobile app dependencies
+        run: cd mobile-app && npm install
+
+      - name: Build APK with EAS
+        run: cd mobile-app && eas build --platform android --profile preview --non-interactive --output ../airis.apk
+
+      - name: Rename APK for release
+        run: mv airis.apk airis-android.apk
+
+      - name: Get tag name
+        id: tag
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Upload APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.TAG }}
+          name: 'Airis ${{ steps.tag.outputs.TAG }}'
+          body: |
+            ## Airis Mobile App (Android APK)
+
+            Download `airis-android.apk` below.
+
+            **Install steps:**
+            1. Download `airis-android.apk` to your Android phone
+            2. Open the file — tap "Install anyway" if prompted
+            3. Open Airis and start chatting
+          draft: false
+          prerelease: false
+          files: airis-android.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,12 +1,22 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
+const REPO = 'saishivasanjeethpaikarao-jpg/ai--assistant';
+const RELEASES = `https://github.com/${REPO}/releases/latest/download`;
+
+const DOWNLOADS = {
+  windows: `${RELEASES}/Airis_2.0.0_x64_en-US.msi`,
+  linux:   `${RELEASES}/airis_2.0.0_amd64.deb`,
+  apk:     `${RELEASES}/airis-android.apk`,
+};
+
 const S = {
-  blue: '#437DFD',
+  blue:  '#437DFD',
   coral: '#FD5B5D',
-  dark: '#0C0C0C',
+  green: '#00C48C',
+  dark:  '#0C0C0C',
   muted: '#777',
-  bg: '#F5F4F2',
+  bg:    '#F5F4F2',
 };
 
 function useWindowSize() {
@@ -19,7 +29,36 @@ function useWindowSize() {
   return w;
 }
 
-function PlatformCard({ icon, title, subtitle, badge, steps, cta, ctaAction, accent, isMobile }) {
+function DownloadButton({ label, href, accent, icon }) {
+  return (
+    <a
+      href={href}
+      download
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        fontSize: 13.5,
+        fontWeight: 600,
+        color: '#fff',
+        background: accent,
+        border: 'none',
+        borderRadius: 100,
+        padding: '10px 22px',
+        cursor: 'pointer',
+        textDecoration: 'none',
+        flex: 1,
+        minWidth: 0,
+      }}
+    >
+      <span style={{ fontSize: 15 }}>{icon}</span>
+      {label}
+    </a>
+  );
+}
+
+function PlatformCard({ icon, title, subtitle, badge, steps, accent, isMobile, children }) {
   return (
     <div style={{
       background: '#fff',
@@ -55,12 +94,7 @@ function PlatformCard({ icon, title, subtitle, badge, steps, cta, ctaAction, acc
         ))}
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', position: 'relative', zIndex: 1, marginTop: 4 }}>
-        <button
-          onClick={ctaAction}
-          style={{ fontSize: 14, fontWeight: 600, color: '#fff', background: accent, border: 'none', borderRadius: 100, padding: '10px 24px', cursor: 'pointer', flex: 1 }}
-        >
-          {cta}
-        </button>
+        {children}
       </div>
     </div>
   );
@@ -70,13 +104,10 @@ export default function DownloadPage() {
   const navigate = useNavigate();
   const w = useWindowSize();
   const isMobile = w < 640;
-  const isTablet = w >= 640 && w < 1024;
-
-  const cols = isMobile ? 1 : isTablet ? 1 : 3;
+  const cols = isMobile ? 1 : 2;
 
   return (
     <div style={{ minHeight: '100vh', background: S.bg, fontFamily: "'DM Sans', sans-serif", color: S.dark }}>
-      {/* Nav */}
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '16px 20px' : '20px 48px', borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'rgba(245,244,242,0.9)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 100 }}>
         <button onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
           <img src="/airis-sphere.png" alt="Airis" style={{ width: 30, height: 30, objectFit: 'contain' }} />
@@ -88,55 +119,66 @@ export default function DownloadPage() {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 1140, margin: '0 auto', padding: isMobile ? '48px 20px 80px' : '72px 48px 100px' }}>
-        {/* Hero */}
+      <div style={{ maxWidth: 960, margin: '0 auto', padding: isMobile ? '48px 20px 80px' : '72px 48px 100px' }}>
         <div style={{ textAlign: 'center', marginBottom: isMobile ? 48 : 72 }}>
           <div style={{ display: 'inline-block', background: 'rgba(67,125,253,0.08)', border: '1px solid rgba(67,125,253,0.2)', borderRadius: 100, padding: '4px 14px', fontSize: 12, fontWeight: 600, color: S.blue, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 20 }}>
-            Available everywhere
+            Direct Downloads
           </div>
-          <h1 style={{ fontSize: 'clamp(32px,5vw,58px)', fontWeight: 300, letterSpacing: '-0.03em', margin: '0 0 16px', lineHeight: 1.1 }}>
-            Pick your Airis app
+          <h1 style={{ fontSize: 'clamp(32px,5vw,56px)', fontWeight: 300, letterSpacing: '-0.03em', margin: '0 0 16px', lineHeight: 1.1 }}>
+            Download Airis
           </h1>
           <p style={{ fontSize: isMobile ? 15 : 17, color: S.muted, maxWidth: 500, margin: '0 auto', lineHeight: 1.6 }}>
-            Choose the desktop installer or the mobile app file. Nothing else.
+            Install the native app on your device. One click — real file download.
           </p>
         </div>
 
-        {/* Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 24 }}>
           <PlatformCard
             icon="🖥️"
             title="Desktop App"
-            badge="Installer"
-            subtitle="Install Airis on Windows, Mac, or Linux."
-            accent="#00C48C"
+            badge="Native"
+            subtitle="Windows installer and Linux package. Runs natively on your computer."
+            accent={S.green}
             isMobile={isMobile}
             steps={[
-              'Download the desktop installer file',
-              'Run it on your computer',
-              'Open Airis from your desktop or Start Menu',
+              'Click a download button below for your OS',
+              'Run the installer (Windows: .msi, Linux: .deb)',
+              'Open Airis from your desktop or app menu',
             ]}
-            cta="Open desktop app"
-            ctaAction={() => navigate('/app')}
-          />
+          >
+            <DownloadButton label="Windows .msi" href={DOWNLOADS.windows} accent={S.green} icon="🪟" />
+            <DownloadButton label="Linux .deb"   href={DOWNLOADS.linux}   accent="#555"   icon="🐧" />
+          </PlatformCard>
 
           <PlatformCard
             icon="📱"
-            title="Mobile App"
+            title="Android App"
             badge="APK"
-            subtitle="Install Airis on your phone."
+            subtitle="Direct APK for Android phones and tablets. No Play Store needed."
             accent={S.coral}
             isMobile={isMobile}
             steps={[
-              'Download the mobile app file',
-              'Install it on your phone',
+              'Download the APK file to your phone',
+              'Open it — tap "Install anyway" if prompted',
               'Open Airis and start chatting',
             ]}
-            cta="Open mobile app"
-            ctaAction={() => navigate('/app')}
-          />
+          >
+            <DownloadButton label="Download APK" href={DOWNLOADS.apk} accent={S.coral} icon="📲" />
+          </PlatformCard>
         </div>
 
+        <div style={{ marginTop: 40, padding: '20px 28px', background: 'rgba(67,125,253,0.06)', border: '1px solid rgba(67,125,253,0.15)', borderRadius: 16, display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <span style={{ fontSize: 22, flexShrink: 0 }}>💡</span>
+          <div>
+            <p style={{ fontSize: 13.5, fontWeight: 600, color: S.dark, marginBottom: 4 }}>Prefer the browser?</p>
+            <p style={{ fontSize: 13, color: S.muted, lineHeight: 1.6 }}>
+              You can also use Airis directly in your browser —{' '}
+              <button onClick={() => navigate('/app')} style={{ color: S.blue, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0, fontSize: 13 }}>
+                open the web app →
+              </button>
+            </p>
+          </div>
+        </div>
       </div>
 
       <style>{`
