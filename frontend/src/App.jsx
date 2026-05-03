@@ -152,10 +152,10 @@ function ProtectedApp() {
 
   const handleCommand = async (commandId) => {
     const MAP = {
-      'open-chrome':     'Open Chrome browser',
-      'open-vscode':     'Open VS Code',
+      'open-chrome':     'Browse chrome',
+      'open-vscode':     'Browse vscode',
       'search-nifty':    'Search NIFTY 50 trend analysis',
-      'check-emails':    'Open Gmail and check emails',
+      'check-emails':    'Open Gmail in browser and check emails',
       'analyze-trading': 'Analyze trading setup for today',
       'system-status':   'Show full system status',
     };
