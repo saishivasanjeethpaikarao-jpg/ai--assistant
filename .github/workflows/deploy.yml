@@ -36,6 +36,7 @@ jobs:
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_BASE_PATH: /ai--assistant/
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
       - name: Add 404 fallback for React Router
         run: cp frontend/dist/index.html frontend/dist/404.html
