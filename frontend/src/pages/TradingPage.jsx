@@ -16,7 +16,7 @@ const MiniChart = ({ data, color, compact }) => {
 };
 
 // ── Design Tokens ──────────────────────────────────────────────────────────────
-const BL     = '#437DFD';
+const BL     = '#7B61FF';
 const GR     = '#00C48C';
 const RD     = '#FD5B5D';
 const OR     = '#FF8C42';
@@ -653,11 +653,11 @@ const PortfolioTab = ({ portfolio, setPortfolio, onQuote, isMobile, prefill, cle
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexShrink: 0 }}>
           <button onClick={refreshPrices} disabled={loading}
-            style={{ fontSize: 12, padding: '7px 13px', borderRadius: 10, border: `1px solid ${BORDER}`, background: '#fff', cursor: 'pointer', color: '#555', fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 5 }}>
+            style={{ fontSize: 12, padding: '7px 13px', borderRadius: 10, border: `1px solid ${BL}24`, background: `${BL}10`, cursor: 'pointer', color: BL, fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 5 }}>
             {loading ? <Spinner size={11}/> : '↻'} Refresh
           </button>
           <button onClick={() => setShowAdd(s => !s)}
-            style={{ fontSize: 12, fontWeight: 600, padding: '7px 16px', borderRadius: 10, border: 'none', background: GR, color: '#fff', cursor: 'pointer', fontFamily: FONT }}>
+            style={{ fontSize: 12, fontWeight: 600, padding: '7px 16px', borderRadius: 10, border: 'none', background: BL, color: '#fff', cursor: 'pointer', fontFamily: FONT }}>
             + Add Stock
           </button>
         </div>
