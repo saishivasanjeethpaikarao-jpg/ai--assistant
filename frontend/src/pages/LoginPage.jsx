@@ -68,6 +68,9 @@ export default function LoginPage() {
       <button onClick={() => navigate('/')} style={{ position: 'fixed', top: 24, left: 24, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#777', background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 100, padding: '7px 16px', cursor: 'pointer', fontFamily: 'inherit', backdropFilter: 'blur(8px)', zIndex: 10 }}>
         ← Back
       </button>
+      <button onClick={() => navigate('/app')} style={{ position: 'fixed', top: 24, right: 24, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#fff', background: '#0C0C0C', border: 'none', borderRadius: 100, padding: '7px 16px', cursor: 'pointer', fontFamily: 'inherit', backdropFilter: 'blur(8px)', zIndex: 10 }}>
+        Open app
+      </button>
 
       {/* Card */}
       <div style={{ width: '100%', maxWidth: 420, background: 'rgba(255,255,255,0.82)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 24, padding: '40px 36px', backdropFilter: 'blur(20px)', boxShadow: '0 8px 40px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.9) inset' }}>

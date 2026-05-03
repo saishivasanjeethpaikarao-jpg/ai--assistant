@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   FiMessageSquare, FiDatabase, FiTrendingUp, FiBell,
-  FiCommand, FiSettings, FiZap, FiBarChart2, FiCpu, FiCode, FiEdit3,
+  FiCommand, FiSettings, FiZap, FiBarChart2, FiCpu, FiCode, FiEdit3, FiLogOut, FiUser,
 } from 'react-icons/fi';
 
 const ITEMS = {
@@ -142,6 +142,8 @@ const MobileTabBtn = ({ id, active, onClick }) => {
 const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
 
   const handleClick = (id) => {
     if (id === 'command') onCommandOpen?.();
@@ -152,10 +154,23 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
     if (user?.isAnonymous) {
       navigate('/login');
     } else {
-      await logout();
-      navigate('/');
+      setMenuOpen(v => !v);
     }
   };
+
+  const handleLogout = async () => {
+    setMenuOpen(false);
+    await logout();
+    navigate('/');
+  };
+
+  useEffect(() => {
+    const onDown = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, []);
 
   const initials = getInitials(user);
   const avatarTitle = user?.isAnonymous
@@ -219,29 +234,41 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
       {/* Bottom items */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: '10px', flexShrink: 0 }}>
         {BOTTOM.map(id => <IconBtn key={id} id={id} active={activePanel === id} onClick={handleClick}/>)}
-        <div
-          onClick={handleAvatarClick}
-          title={avatarTitle}
-          style={{
-            width: '30px', height: '30px', borderRadius: '50%', marginTop: '8px',
-            background: user?.isAnonymous
-              ? 'rgba(0,0,0,0.07)'
-              : 'linear-gradient(135deg,#437DFD,#2C76FF)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer',
-            border: '1.5px solid rgba(0,0,0,0.1)',
-            fontSize: '11px', fontWeight: '700',
-            color: user?.isAnonymous ? '#888' : '#fff',
-            letterSpacing: '-0.01em', overflow: 'hidden',
-            transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-        >
-          {user?.photoURL
-            ? <img src={user.photoURL} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
-            : initials
-          }
+        <div ref={menuRef} style={{ position: 'relative', marginTop: '8px' }}>
+          <div
+            onClick={handleAvatarClick}
+            title={avatarTitle}
+            style={{
+              width: '30px', height: '30px', borderRadius: '50%',
+              background: user?.isAnonymous ? 'rgba(0,0,0,0.07)' : 'linear-gradient(135deg,#437DFD,#2C76FF)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+              border: '1.5px solid rgba(0,0,0,0.1)',
+              fontSize: '11px', fontWeight: '700',
+              color: user?.isAnonymous ? '#888' : '#fff',
+              letterSpacing: '-0.01em', overflow: 'hidden',
+              transition: 'opacity 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+          >
+            {user?.photoURL
+              ? <img src={user.photoURL} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+              : initials
+            }
+          </div>
+          {menuOpen && !user?.isAnonymous && (
+            <div style={{ position: 'absolute', right: '42px', bottom: '-4px', width: '180px', background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '14px', boxShadow: '0 16px 32px rgba(0,0,0,0.12)', padding: '8px', zIndex: 50 }}>
+              <button onClick={() => { setMenuOpen(false); navigate('/login'); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: 'none', background: 'transparent', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px', color: '#222', textAlign: 'left' }}>
+                <FiUser size={14} />
+                Profile / account
+              </button>
+              <button onClick={handleLogout} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: 'none', background: 'transparent', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px', color: '#C0392B', textAlign: 'left' }}>
+                <FiLogOut size={14} />
+                Log out
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
