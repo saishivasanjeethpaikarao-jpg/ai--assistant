@@ -191,11 +191,12 @@ function ProtectedApp() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: '100dvh', overflow: 'hidden',
+      height: '100dvh',
+      overflow: 'hidden',
       background: '#F5F4F2',
     }}>
       {isGuest && <GuestBanner />}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {!isMobile && (
           <ActivityBar
             activePanel={activePanel}
@@ -210,7 +211,7 @@ function ProtectedApp() {
           isMobile={isMobile}
           onClose={() => setSidebarOpen(false)}
         />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, minHeight: 0 }}>
           {isSettings ? (
             <Settings isMobile={isMobile} />
           ) : isCanvas ? (

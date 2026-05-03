@@ -78,7 +78,7 @@ const ChatPanel = ({ history }) => {
   const items = history.length > 0 ? history.slice(-8).reverse() : [];
   const filtered = items.filter(i => !search || i.input?.toLowerCase().includes(search.toLowerCase()));
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
       <div style={{ padding:'10px 12px 6px', flexShrink:0 }}>
         <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'#fff', border:`1px solid ${BORDER}`, borderRadius:'10px', padding:'8px 12px' }}>
           <FiSearch size={13} style={{ color:'#bbb', flexShrink:0 }}/>
@@ -96,7 +96,7 @@ const ChatPanel = ({ history }) => {
           }}>{f.charAt(0).toUpperCase()+f.slice(1)}</button>
         ))}
       </div>
-      <div style={{ flex:1, overflowY:'auto' }}>
+      <div style={{ flex:1, overflowY:'auto', minHeight:0 }}>
         <SectionHdr title={`Recent (${filtered.length})`} />
         {filtered.length === 0
           ? <p style={{ padding:'16px', fontSize:'12px', color:'#bbb', textAlign:'center' }}>Start chatting to see history here</p>
@@ -121,7 +121,7 @@ const MemoryPanel = ({ stats }) => {
     { label:'Failures analysed',  value: stats?.total_failures??'—' },
   ];
   return (
-    <div style={{ flex:1, overflowY:'auto' }}>
+    <div style={{ flex:1, overflowY:'auto', minHeight:0 }}>
       <SectionHdr title="Adaptive Memory" />
       <div style={{ padding:'8px 16px 4px' }}>
         {items.map(it=>(
@@ -150,9 +150,9 @@ const RemindersPanel = ({ reminders, onRefresh }) => {
     setAdding(false);
   };
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
       <SectionHdr title={`Upcoming (${reminders.length})`} onRefresh={onRefresh} />
-      <div style={{ flex:1, overflowY:'auto' }}>
+      <div style={{ flex:1, overflowY:'auto', minHeight:0 }}>
         {reminders.length===0
           ? <p style={{ padding:'16px', fontSize:'12px', color:'#bbb', textAlign:'center' }}>No reminders yet</p>
           : reminders.map((r,i)=><Row key={i} primary={r.text||r.title||JSON.stringify(r)} secondary={r.when||r.time||''} dot dotColor={r.completed?'#00C48C':B} avatar="⏰"/>)
@@ -689,7 +689,7 @@ const TradingPanel = () => {
 const SkillsPanel = ({ caps }) => {
   const categories = [...new Set(caps.map(c=>c.category))];
   return (
-    <div style={{ flex:1, overflowY:'auto' }}>
+    <div style={{ flex:1, overflowY:'auto', minHeight:0 }}>
       {categories.map(cat=>(
         <div key={cat}>
           <SectionHdr title={cat}/>
@@ -717,7 +717,7 @@ const AnalyticsPanel = ({ data }) => {
     { label:'Session messages',    value: data?.history_count??0 },
   ];
   return (
-    <div style={{ flex:1, overflowY:'auto' }}>
+    <div style={{ flex:1, overflowY:'auto', minHeight:0 }}>
       <SectionHdr title="This Session" onRefresh={()=>{}}/>
       <div style={{ padding:'8px 16px 4px' }}>
         {metrics.map(m=>(
@@ -748,7 +748,7 @@ const AnalyticsPanel = ({ data }) => {
 };
 
 const BrainPanel = ({ layers }) => (
-  <div style={{ flex:1, overflowY:'auto' }}>
+  <div style={{ flex:1, overflowY:'auto', minHeight:0 }}>
     <SectionHdr title="12-Layer AI Pipeline"/>
     {(layers.length ? layers : Array.from({length:12},(_,i)=>({n:i+1,name:`Layer ${i+1}`,desc:''}))).map(l=>(
       <div key={l.n} style={{ padding:'8px 16px', borderBottom:`1px solid ${BORDER}`, display:'flex', gap:'10px', alignItems:'flex-start' }}>
@@ -844,7 +844,7 @@ const Sidebar = ({ activePanel, isOpen, isMobile, onClose }) => {
   }
 
   return (
-    <div style={{ width:'240px', flexShrink:0, background:'#F8F7F5', borderRight:`1px solid ${BORDER}`, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+    <div style={{ width:'240px', flexShrink:0, background:'#F8F7F5', borderRight:`1px solid ${BORDER}`, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
       {panelContent}
     </div>
   );

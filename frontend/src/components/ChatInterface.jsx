@@ -495,7 +495,7 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
   const currentVoiceState = listening ? 'listening' : speaking ? 'speaking' : 'idle';
 
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0, background:'#fff' }}>
+    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0, minHeight:0, background:'#fff' }}>
 
       {/* Tab bar */}
       <div style={{
@@ -529,7 +529,7 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
       </div>
 
       {/* Messages */}
-      <div style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', background:'#fff' }}>
+      <div style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', background:'#fff', minHeight:0 }}>
         {messages.length===0 && !isTyping && !listening
           ? <EmptyState
               onMicClick={toggleMic}
