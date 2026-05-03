@@ -179,26 +179,6 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
         {MOBILE_NAV.map(id => (
           <MobileTabBtn key={id} id={id} active={activePanel === id} onClick={handleClick}/>
         ))}
-        {user && (
-          <button
-            onClick={() => navigate('/app')}
-            style={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              border: 'none',
-              background: '#fff',
-              color: '#437DFD',
-              borderRadius: 999,
-              padding: '7px 10px',
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            Trading
-          </button>
-        )}
       </div>
     );
   }
