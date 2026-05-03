@@ -387,6 +387,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/market/quote':   self.api_market_quote,
             '/api/market/search':  self.api_market_search,
             '/api/market/movers':  self.api_market_movers,
+            '/api/market/history': self.api_market_history,
             '/api/trading/chat':   self.api_trading_chat_get,
         }
         handler = routes.get(path)
@@ -1266,6 +1267,41 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
                 return {'gainers': gainers, 'losers': losers}
             data = _cached('movers', fetch)
             self.send_json({'success': True, **data, 'timestamp': datetime.now().isoformat()})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
+
+    def api_market_history(self):
+        try:
+            qs  = parse_qs(urlparse(self.path).query)
+            raw = (qs.get('symbol', [''])[0] or '').strip().upper()
+            period = (qs.get('period', ['30d'])[0] or '30d').strip()
+            if not raw:
+                self.send_json({'error': 'symbol required'}, 400)
+                return
+            yf_sym = raw
+            if raw in NSE_STOCKS:
+                _, yf_sym = NSE_STOCKS[raw]
+            elif not raw.endswith('.NS') and not raw.endswith('.BO') and not raw.startswith('^'):
+                yf_sym = raw + '.NS'
+            valid_periods = {'7d', '30d', '90d'}
+            if period not in valid_periods:
+                period = '30d'
+            def fetch():
+                import yfinance as yf
+                t = yf.Ticker(yf_sym)
+                yf_period = '1mo' if period == '30d' else ('3mo' if period == '90d' else '7d')
+                hist = t.history(period=yf_period, interval='1d')
+                if hist.empty:
+                    return []
+                rows = []
+                for dt, row in hist.iterrows():
+                    rows.append({
+                        'date': dt.strftime('%Y-%m-%d'),
+                        'price': round(float(row['Close']), 2),
+                    })
+                return rows
+            data = _cached(f'history_{yf_sym}_{period}', fetch)
+            self.send_json({'success': True, 'symbol': raw, 'period': period, 'data': data})
         except Exception as e:
             self.send_json({'success': False, 'error': str(e)}, 500)
 

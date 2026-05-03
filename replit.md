@@ -35,7 +35,7 @@ AI Engine · Voice & Speech · Language · Wake Word · Voice Clone · System Pr
 
 **Tabs**:
 1. **AI Assistant** — Chat with Groq-powered trading expert (`/api/trading/chat`), specialized system prompt for Indian market analysis. Sends live market context (indices, movers, portfolio, watchlist) with every message. Quick action chips, stock symbol autocomplete in input.
-2. **Portfolio** — Add positions (symbol, qty, buy price), track real-time P&L, average-down calculation on duplicate adds, total invested/current/P&L summary bar, refresh prices button. Persisted in `localStorage` (`airis_tp_portfolio`).
+2. **Portfolio** — Add positions (symbol, qty, buy price), track real-time P&L, average-down calculation on duplicate adds, total invested/current/P&L summary bar, refresh prices button. Persisted in `localStorage` (`airis_tp_portfolio`). Includes a **PortfolioChart** (recharts AreaChart) showing portfolio value over 7d/30d/90d with per-stock stacked breakdown toggle.
 3. **Watchlist** — Search and add stocks, live price cards with change%, click to open quote modal, remove button. Auto-refresh every 60s. Persisted in `localStorage` (`airis_tp_watchlist`).
 4. **Market** — All indices grid, sector heatmap (colour-coded by change%), full gainers/losers table.
 

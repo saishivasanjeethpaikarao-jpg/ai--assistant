@@ -48,6 +48,7 @@ export const api = {
   getMarketQuote: (symbol) => axiosInstance.get(`/market/quote?symbol=${encodeURIComponent(symbol)}`),
   searchStocks: (q) => axiosInstance.get(`/market/search?q=${encodeURIComponent(q)}`),
   getMarketMovers: () => axiosInstance.get('/market/movers'),
+  getStockHistory: (symbol, period) => axiosInstance.get(`/market/history?symbol=${encodeURIComponent(symbol)}&period=${encodeURIComponent(period)}`),
   // Trading AI
   tradingChat: (message, context = '') => axiosInstance.post('/trading/chat', { message, context }),
   // Vibe Coder
