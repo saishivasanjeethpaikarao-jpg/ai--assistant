@@ -420,6 +420,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/mobile/chat':      lambda: self.api_mobile_chat(data),
             '/api/tts': lambda: self.api_tts(data),
             '/api/voice/clone': lambda: self.api_voice_clone(data),
+            '/api/vision/chat': lambda: self.api_vision_chat(data),
         }
         handler = routes.get(path)
         if handler:
@@ -1367,6 +1368,90 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
             self.send_json({'success': True, 'symbol': raw, 'period': period, 'data': data})
         except Exception as e:
             self.send_json({'success': False, 'error': str(e)}, 500)
+
+    # ── Vision / Screen Analysis ─────────────────────────────────────────────
+
+    def api_vision_chat(self, data):
+        try:
+            import requests as req_lib
+            from dotenv import load_dotenv
+            from config_paths import get_dotenv_path
+
+            load_dotenv(get_dotenv_path(), override=True)
+
+            message   = (data.get('message') or 'What do you see on my screen?').strip()
+            image_b64 = (data.get('image_b64') or '').strip()
+
+            if not image_b64:
+                self.send_json({'error': 'No image data provided'}, 400)
+                return
+
+            groq_key = os.getenv('GROQ_API_KEY', '').strip()
+            if not groq_key:
+                try:
+                    from ai_switcher import refresh_providers
+                    refresh_providers()
+                except Exception:
+                    pass
+                groq_key = os.getenv('GROQ_API_KEY', '').strip()
+
+            if not groq_key:
+                self.send_json({
+                    'error': 'Groq API key not configured. Please add your GROQ_API_KEY in Settings → AI Engine.'
+                }, 400)
+                return
+
+            if not image_b64.startswith('data:'):
+                image_b64 = f'data:image/jpeg;base64,{image_b64}'
+
+            payload = {
+                'model': 'llama-3.2-11b-vision-preview',
+                'messages': [
+                    {
+                        'role': 'system',
+                        'content': (
+                            'You are Airis, a visual AI assistant like JARVIS. '
+                            'The user has shared their screen with you. '
+                            'Describe what you see clearly and helpfully. '
+                            'If you spot errors, issues, or UI elements, describe them in detail. '
+                            'Provide actionable guidance when asked.'
+                        ),
+                    },
+                    {
+                        'role': 'user',
+                        'content': [
+                            {
+                                'type': 'image_url',
+                                'image_url': {'url': image_b64},
+                            },
+                            {
+                                'type': 'text',
+                                'text': message,
+                            },
+                        ],
+                    },
+                ],
+                'max_tokens': 1024,
+                'temperature': 0.4,
+            }
+
+            resp = req_lib.post(
+                'https://api.groq.com/openai/v1/chat/completions',
+                headers={
+                    'Authorization': f'Bearer {groq_key}',
+                    'Content-Type': 'application/json',
+                },
+                json=payload,
+                timeout=30,
+            )
+            resp.raise_for_status()
+            result = resp.json()
+            reply = result['choices'][0]['message']['content']
+            self.send_json({'success': True, 'reply': reply})
+
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            self.send_json({'error': str(e)}, 500)
 
     def log_message(self, format, *args):
         pass

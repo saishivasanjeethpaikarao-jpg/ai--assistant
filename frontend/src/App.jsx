@@ -102,6 +102,21 @@ function ProtectedApp() {
     else { setActivePanel(panel); if (SIDEBAR_PANELS.includes(panel)) setSidebarOpen(true); }
   };
 
+  const handleVisionMessage = async (text, imageBase64) => {
+    addMessage({ role: 'user', content: text });
+    setTyping(true);
+    try {
+      const result = await api.visionChat(text, imageBase64);
+      const reply = result?.reply || 'I could not analyze the screen.';
+      addMessage({ role: 'assistant', content: reply });
+    } catch (error) {
+      const msg = error?.response?.data?.error || error?.message || 'Vision API error';
+      addMessage({ role: 'assistant', content: `[Screen vision error: ${msg}]` });
+    } finally {
+      setTyping(false);
+    }
+  };
+
   const handleSendMessage = async (text) => {
     const lc = text.toLowerCase();
     if (VIBE_TRIGGERS.some(t => lc.startsWith(t) || lc.includes(t))) {
@@ -225,6 +240,7 @@ function ProtectedApp() {
               <ChatInterface
                 messages={messages}
                 onSendMessage={handleSendMessage}
+                onVisionSend={handleVisionMessage}
                 isTyping={isTyping}
                 voiceState={voiceState}
                 onVoiceStateChange={setVoiceState}

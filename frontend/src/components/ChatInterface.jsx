@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { FiSend, FiVolume2, FiVolumeX, FiPaperclip, FiX, FiImage, FiFileText } from 'react-icons/fi';
+import { FiSend, FiVolume2, FiVolumeX, FiPaperclip, FiX, FiImage, FiFileText, FiMonitor } from 'react-icons/fi';
 import AIVoiceOrb from './AIVoiceOrb';
 import { api } from '../services/api';
 
@@ -380,15 +380,18 @@ const SpeakingIndicator = ({ isMobile }) => (
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceStateChange, isMobile }) => {
+const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceState, onVoiceStateChange, isMobile }) => {
   const [input,          setInput]          = useState('');
   const [ttsEnabled,     setTtsEnabled]     = useState(true);
   const [speaking,       setSpeaking]       = useState(false);
   const [ttsConfig,      setTtsConfig]      = useState(null);
   const [attachedFiles,  setAttachedFiles]  = useState([]);
+  const [screenSharing,  setScreenSharing]  = useState(false);
+  const [screenCapture,  setScreenCapture]  = useState(null);
   const textareaRef    = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef   = useRef(null);
+  const screenStreamRef = useRef(null);
 
   const { listening, start: startListening, stop: stopListening, supported: micSupported } =
     useSpeechToText({
@@ -450,7 +453,17 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
 
   const handleSend = () => {
     const text = input.trim();
-    if (!text && attachedFiles.length === 0) return;
+    if (!text && attachedFiles.length === 0 && !screenCapture) return;
+
+    if (screenCapture) {
+      const userMessage = text || 'What do you see on my screen?';
+      setInput('');
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+      setScreenCapture(null);
+      onVisionSend?.(userMessage, screenCapture);
+      return;
+    }
+
     let message = text;
     if (attachedFiles.length > 0) {
       const ctx = attachedFiles.map(f => {
@@ -477,6 +490,66 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
     setTtsEnabled(v => !v);
   };
 
+  const stopScreenShare = useCallback(() => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(t => t.stop());
+      screenStreamRef.current = null;
+    }
+    setScreenSharing(false);
+    setScreenCapture(null);
+  }, []);
+
+  const captureScreenshot = useCallback((stream) => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.muted = true;
+      video.srcObject = stream;
+      video.onloadeddata = () => {
+        video.play().then(() => {
+          requestAnimationFrame(() => {
+            const canvas = document.createElement('canvas');
+            canvas.width  = video.videoWidth  || 1280;
+            canvas.height = video.videoHeight || 720;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            video.pause();
+            video.srcObject = null;
+            resolve(dataUrl);
+          });
+        }).catch(reject);
+      };
+      video.onerror = reject;
+    });
+  }, []);
+
+  const handleScreenShare = useCallback(async () => {
+    if (screenSharing) {
+      stopScreenShare();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { mediaSource: 'screen', width: { max: 1920 }, height: { max: 1080 } },
+        audio: false,
+      });
+      screenStreamRef.current = stream;
+      stream.getVideoTracks()[0].onended = stopScreenShare;
+      setScreenSharing(true);
+      const snapshot = await captureScreenshot(stream);
+      stream.getTracks().forEach(t => t.stop());
+      screenStreamRef.current = null;
+      setScreenSharing(false);
+      setScreenCapture(snapshot);
+    } catch (err) {
+      if (err.name !== 'NotAllowedError') {
+        console.error('[Screen Share]', err);
+      }
+      stopScreenShare();
+    }
+  }, [screenSharing, stopScreenShare, captureScreenshot]);
+
+  useEffect(() => () => stopScreenShare(), []);
+
   const handleFeatureClick = (label) => {
     const prompts = {
       'Smart Chat':'Hello! What can you help me with today?',
@@ -491,7 +564,7 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
   };
 
   const btnSize = isMobile ? 44 : 38;
-  const hasContent = (input.trim() || attachedFiles.length > 0) && !listening;
+  const hasContent = (input.trim() || attachedFiles.length > 0 || screenCapture) && !listening;
   const currentVoiceState = listening ? 'listening' : speaking ? 'speaking' : 'idle';
 
   return (
@@ -575,6 +648,32 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
           </div>
         )}
 
+        {/* Screen capture preview chip */}
+        {screenCapture && (
+          <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px', flexWrap:'wrap' }}>
+            <div style={{
+              display:'inline-flex', alignItems:'center', gap:'6px',
+              padding:'4px 10px 4px 8px', borderRadius:'99px',
+              background:'rgba(67,125,253,0.07)', border:'1px solid rgba(67,125,253,0.25)',
+              fontSize:'11px', color:'#437DFD', fontWeight:'600',
+            }}>
+              <FiMonitor size={11}/>
+              <span>Screen captured — ready to send</span>
+              <button onClick={() => setScreenCapture(null)}
+                style={{ background:'none', border:'none', cursor:'pointer', color:'#437DFD', padding:'0', lineHeight:0, opacity:0.6, flexShrink:0 }}>
+                <FiX size={11}/>
+              </button>
+            </div>
+            <img
+              src={screenCapture}
+              alt="Screen capture preview"
+              style={{ height:'48px', borderRadius:'8px', border:'1px solid rgba(67,125,253,0.2)', objectFit:'cover', cursor:'pointer' }}
+              title="Click to dismiss"
+              onClick={() => setScreenCapture(null)}
+            />
+          </div>
+        )}
+
         {/* Hidden file input */}
         <input
           ref={fileInputRef}
@@ -624,6 +723,24 @@ const ChatInterface = ({ messages, onSendMessage, isTyping, voiceState, onVoiceS
               onMouseEnter={e => { e.currentTarget.style.background='rgba(67,125,253,0.08)'; e.currentTarget.style.color='#437DFD'; }}
               onMouseLeave={e => { if(!attachedFiles.length){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='rgba(67,125,253,0.4)'; } }}>
               <FiPaperclip size={15}/>
+            </button>
+            {/* Share Screen */}
+            <button
+              onClick={handleScreenShare}
+              title={screenSharing ? 'Stop sharing screen' : 'Share screen — let Airis see'}
+              style={{
+                width:`${btnSize}px`, height:`${btnSize}px`,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                borderRadius:'11px',
+                background: screenSharing ? 'rgba(67,125,253,0.12)' : screenCapture ? 'rgba(0,196,140,0.12)' : 'transparent',
+                border:`1.5px solid ${screenSharing ? 'rgba(67,125,253,0.4)' : screenCapture ? 'rgba(0,196,140,0.4)' : 'rgba(67,125,253,0.15)'}`,
+                color: screenSharing ? '#437DFD' : screenCapture ? '#00C48C' : 'rgba(67,125,253,0.4)',
+                cursor:'pointer', transition:'all 0.15s', flexShrink:0,
+                animation: screenSharing ? 'ciPulse 1.5s ease-in-out infinite' : 'none',
+              }}
+              onMouseEnter={e => { if(!screenSharing && !screenCapture){ e.currentTarget.style.background='rgba(67,125,253,0.08)'; e.currentTarget.style.color='#437DFD'; } }}
+              onMouseLeave={e => { if(!screenSharing && !screenCapture){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='rgba(67,125,253,0.4)'; } }}>
+              <FiMonitor size={15}/>
             </button>
             {micSupported && (
               <button onClick={toggleMic}

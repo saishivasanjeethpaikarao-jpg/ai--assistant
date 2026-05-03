@@ -58,6 +58,8 @@ export const api = {
   vibeFix: (code, error) => axiosInstance.post('/vibe/fix', { code, error }),
   vibeChat: (message, code_context) => axiosInstance.post('/vibe/chat', { message, code_context }),
   vibeDetect: (prompt) => axiosInstance.post('/vibe/detect', { prompt }),
+  // Vision / Screen Analysis
+  visionChat: (message, image_b64) => axiosInstance.post('/vision/chat', { message, image_b64 }),
 };
 
 export default api;
