@@ -1,26 +1,18 @@
-import { initializeApp } from 'firebase/app';
-import {
-  getAuth,
-  GoogleAuthProvider,
-  GithubAuthProvider,
-} from 'firebase/auth';
+import { initializeApp, getApp, getApps } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, GithubAuthProvider } from 'firebase/auth';
 
 const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
 
-if (!apiKey) {
-  console.error('[Airis] Firebase apiKey is missing. Set the VITE_FIREBASE_API_KEY secret in Replit.');
-}
-
 const firebaseConfig = {
-  apiKey,
+  apiKey: apiKey || 'GOOGLE_API_KEYFIREABSE',
   authDomain: 'studio-1742912828-cb958.firebaseapp.com',
   projectId: 'studio-1742912828-cb958',
   storageBucket: 'studio-1742912828-cb958.firebasestorage.app',
   messagingSenderId: '698656713592',
-  appId: '1:698656713592:web:38f8a4c13c2ccbf5def68d',
+  appId: '1:698656713592:web:2754c56495afde5ddef68d',
 };
 
-const app = initializeApp(firebaseConfig);
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const githubProvider = new GithubAuthProvider();
