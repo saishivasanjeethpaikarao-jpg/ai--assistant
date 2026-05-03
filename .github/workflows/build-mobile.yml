@@ -32,7 +32,7 @@ jobs:
         run: cd mobile-app && npm install
 
       - name: Build APK with EAS
-        run: cd mobile-app && eas build --platform android --profile preview --non-interactive --output ../airis.apk
+        run: cd mobile-app && eas build --platform android --profile preview --non-interactive
 
       - name: Rename APK for release
         run: mv airis.apk airis-android.apk
