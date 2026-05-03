@@ -139,6 +139,17 @@ function ProtectedApp() {
     } finally { setTyping(false); }
   };
 
+  const handleNewChat = () => {
+    window.localStorage.removeItem('airis_chat_messages');
+    window.location.reload();
+  };
+
+  const handleOpenConversation = (convo) => {
+    const seed = convo?.preview ? convo.preview : 'Resume this conversation.';
+    addMessage({ role: 'user', content: `Open chat: ${convo?.title || 'Conversation'}` });
+    addMessage({ role: 'assistant', content: seed });
+  };
+
   const handleCommand = async (commandId) => {
     const MAP = {
       'open-chrome':     'Open Chrome browser',
@@ -222,7 +233,7 @@ function ProtectedApp() {
           )}
         </div>
         {showHistory && (
-          <ConversationHistory messages={messages} isMobile={isMobile} />
+          <ConversationHistory messages={messages} isMobile={isMobile} onNewChat={handleNewChat} onOpenConversation={handleOpenConversation} />
         )}
       </div>
       <StatusBar

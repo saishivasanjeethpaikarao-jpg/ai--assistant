@@ -17,7 +17,7 @@ const ConversationCard = ({ convo, active, onClick }) => {
   const [hov, setHov] = useState(false);
   return (
     <div
-      onClick={() => onClick(convo.id)}
+      onClick={() => onClick(convo)}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
@@ -53,7 +53,7 @@ const ConversationCard = ({ convo, active, onClick }) => {
   );
 };
 
-const ConversationHistory = ({ messages, isMobile }) => {
+const ConversationHistory = ({ messages, isMobile, onNewChat, onOpenConversation }) => {
   const [activeId, setActiveId] = useState(1);
 
   if (isMobile) return null;
@@ -80,7 +80,9 @@ const ConversationHistory = ({ messages, isMobile }) => {
           </div>
           <span style={{ fontSize:'13px', fontWeight:'600', color:'#0C0C0C' }}>History</span>
         </div>
-        <button style={{
+        <button
+          onClick={() => onNewChat?.()}
+          style={{
           display:'flex', alignItems:'center', gap:'4px',
           padding:'5px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', cursor:'pointer',
           background:`linear-gradient(135deg,${B},#2C76FF)`, color:'#fff', border:'none',
@@ -104,7 +106,10 @@ const ConversationHistory = ({ messages, isMobile }) => {
             key={convo.id}
             convo={convo}
             active={activeId === convo.id}
-            onClick={setActiveId}
+            onClick={(item) => {
+              setActiveId(item.id);
+              onOpenConversation?.(item);
+            }}
           />
         ))}
       </div>
