@@ -46,10 +46,17 @@ export function AuthProvider({ children }) {
 
   const doOAuth = async (provider) => {
     if (inIframe()) {
-      // In iframe (Replit preview) — redirect works better than popup
       await signInWithRedirect(auth, provider);
-    } else {
+      return;
+    }
+    try {
       await signInWithPopup(auth, provider);
+    } catch (e) {
+      if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/popup-closed-by-user') {
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+      throw e;
     }
   };
 

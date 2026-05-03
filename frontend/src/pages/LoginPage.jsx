@@ -21,13 +21,6 @@ export default function LoginPage() {
   useEffect(() => { setMode(isSignup ? 'signup' : 'signin'); }, [isSignup]);
   useEffect(() => { clearError(); setSuccess(''); }, [mode]);
 
-  const handle = (fn, label) => async () => {
-    setBusy(label); clearError(); setSuccess('');
-    try { await fn(); }
-    catch { /* error shown via context */ }
-    finally { setBusy(''); }
-  };
-
   const handleEmail = async (e) => {
     e.preventDefault();
     if (mode === 'signup' && password !== confirm) return;
@@ -104,13 +97,13 @@ export default function LoginPage() {
           <>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
               <SocialBtn
-                onClick={handle(signInGoogle, 'google')}
+                onClick={async () => { setBusy('google'); clearError(); setSuccess(''); try { await signInGoogle(); } catch {} finally { setBusy(''); } }}
                 loading={busy === 'google'}
                 icon={<GoogleIcon />}
                 label="Continue with Google"
               />
               <SocialBtn
-                onClick={handle(signInGithub, 'github')}
+                onClick={async () => { setBusy('github'); clearError(); setSuccess(''); try { await signInGithub(); } catch {} finally { setBusy(''); } }}
                 loading={busy === 'github'}
                 icon={<GitHubIcon />}
                 label="Continue with GitHub"
@@ -199,7 +192,7 @@ export default function LoginPage() {
             <div style={{ marginTop: 4 }}>
               <div style={{ height: 1, background: 'rgba(0,0,0,0.07)', margin: '2px 0 12px' }} />
               <button
-                onClick={handle(signInGuest, 'guest')}
+                onClick={async () => { setBusy('guest'); clearError(); setSuccess(''); try { await signInGuest(); } catch {} finally { setBusy(''); } }}
                 disabled={!!busy}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', padding: '10px 16px', fontSize: 13.5, fontWeight: 500, color: '#555', background: 'transparent', border: '1px dashed rgba(0,0,0,0.15)', borderRadius: 12, cursor: busy ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'background 0.15s, border-color 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.25)'; }}

@@ -200,7 +200,20 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         borderBottom: '1px solid rgba(0,0,0,0.07)',
       }}>
-        <img src="/airis-sphere.png" alt="Airis" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(67,125,253,0.3))' }}/>
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          title="Go to Airis home"
+          style={{
+            width: 32, height: 32, padding: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <img src="/airis-sphere.png" alt="Airis" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(67,125,253,0.3))' }}/>
+        </button>
       </div>
 
       {/* Scrollable top items — scrollbar hidden */}
