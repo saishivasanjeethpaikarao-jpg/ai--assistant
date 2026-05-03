@@ -116,7 +116,7 @@ export default function DownloadPage() {
               'Run it on your computer',
               'Open Airis from your desktop or Start Menu',
             ]}
-            cta="Get desktop file"
+            cta="Open desktop app"
             ctaAction={() => navigate('/app')}
           />
 
@@ -132,7 +132,7 @@ export default function DownloadPage() {
               'Install it on your phone',
               'Open Airis and start chatting',
             ]}
-            cta="Get APK file"
+            cta="Open mobile app"
             ctaAction={() => navigate('/app')}
           />
         </div>
