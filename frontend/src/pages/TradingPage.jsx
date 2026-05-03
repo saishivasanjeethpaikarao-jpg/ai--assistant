@@ -1,10 +1,19 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, BarChart, Bar, Legend,
-} from 'recharts';
+const MiniChart = ({ data, color, compact }) => {
+  const max = Math.max(1, ...data.map(d => d.value || 0));
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: compact ? 120 : 160, padding: '8px 2px 0' }}>
+      {data.map((d) => (
+        <div key={d.label} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: '100%', height: Math.max(10, Math.round(((d.value || 0) / max) * (compact ? 88 : 120))), background: color, borderRadius: 8, opacity: 0.92 }} />
+          <div style={{ width: '100%', fontSize: 10, color: '#888', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 // ── Design Tokens ──────────────────────────────────────────────────────────────
 const BL     = '#437DFD';
@@ -599,31 +608,6 @@ const PortfolioChart = ({ portfolio, prices, isMobile }) => {
     return `₹${v}`;
   };
 
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '10px 14px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', fontFamily: FONT, minWidth: 150 }}>
-        <div style={{ fontSize: 11, color: '#aaa', marginBottom: 6, fontWeight: 600 }}>{label}</div>
-        {showStacked ? (
-          <>
-            {payload.map((p, i) => (
-              <div key={p.dataKey} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 12, marginBottom: 3 }}>
-                <span style={{ color: p.color, fontWeight: 600 }}>{p.dataKey}</span>
-                <span style={{ fontWeight: 700, color: DK }}>{fmtY(p.value)}</span>
-              </div>
-            ))}
-            <div style={{ borderTop: `1px solid ${BORDER}`, marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 700 }}>
-              <span style={{ color: '#666' }}>Total</span>
-              <span style={{ color: DK }}>{fmtY(payload.reduce((s, p) => s + (p.value || 0), 0))}</span>
-            </div>
-          </>
-        ) : (
-          <div style={{ fontSize: 15, fontWeight: 700, color: isUp ? GR : RD }}>{fmtY(payload[0]?.value || 0)}</div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div style={{ padding: isMobile ? '14px 14px 4px' : '16px 22px 4px', flexShrink: 0, background: BG }}>
       <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 16, padding: isMobile ? '14px 12px' : '18px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
@@ -676,37 +660,14 @@ const PortfolioChart = ({ portfolio, prices, isMobile }) => {
             <span style={{ fontSize: 13, color: '#ccc' }}>Not enough data for this period</span>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={isMobile ? 150 : 190}>
-            {showStacked && portfolio.length > 1 ? (
-              <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barCategoryGap="20%">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 9.5, fill: '#bbb', fontFamily: FONT }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                <YAxis tickFormatter={fmtY} tick={{ fontSize: 9.5, fill: '#bbb', fontFamily: FONT }} tickLine={false} axisLine={false} width={48} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 10.5, fontFamily: FONT, paddingTop: 8 }} />
-                {symbols.map((sym, i) => (
-                  <Bar key={sym} dataKey={sym} stackId="portfolio"
-                    fill={CHART_COLORS[i % CHART_COLORS.length]}
-                    radius={i === symbols.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]} />
-                ))}
-              </BarChart>
-            ) : (
-              <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="pfGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={lineColor} stopOpacity={0.18} />
-                    <stop offset="95%" stopColor={lineColor} stopOpacity={0.01} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 9.5, fill: '#bbb', fontFamily: FONT }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                <YAxis tickFormatter={fmtY} tick={{ fontSize: 9.5, fill: '#bbb', fontFamily: FONT }} tickLine={false} axisLine={false} width={48} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="total" stroke={lineColor} strokeWidth={2.5}
-                  fill="url(#pfGrad)" dot={false} activeDot={{ r: 4, fill: lineColor }} />
-              </AreaChart>
-            )}
-          </ResponsiveContainer>
+          <MiniChart
+            compact={isMobile}
+            color={showStacked && portfolio.length > 1 ? CHART_COLORS[0] : lineColor}
+            data={(showStacked && portfolio.length > 1
+              ? chartData.map(d => ({ label: d.date, value: d.total }))
+              : chartData.map(d => ({ label: d.date, value: d.total })
+              )).slice(-Math.min(chartData.length, isMobile ? 6 : 10))}
+          />
         )}
       </div>
     </div>
