@@ -147,6 +147,7 @@ export default function LandingPage() {
             {['Features', 'Brain', 'Voice', 'Trading', 'Pricing'].map(l => (
               <button key={l} style={{ fontSize: 13, fontWeight: 500, color: '#555', padding: '6px 15px', borderRadius: 100, border: 'none', background: 'transparent', cursor: 'pointer' }}>{l}</button>
             ))}
+            <button onClick={() => navigate('/download')} style={{ fontSize: 13, fontWeight: 600, color: S.blue, padding: '6px 15px', borderRadius: 100, border: 'none', background: 'rgba(67,125,253,0.08)', cursor: 'pointer' }}>Download</button>
           </div>
         )}
 
@@ -176,6 +177,7 @@ export default function LandingPage() {
           {['Features', 'Brain', 'Voice', 'Trading', 'Pricing'].map(l => (
             <button key={l} onClick={() => setMenuOpen(false)} style={{ display: 'block', width: '100%', textAlign: 'left', fontSize: 15, fontWeight: 500, color: '#333', padding: '12px 0', borderBottom: '1px solid rgba(0,0,0,0.05)', border: 'none', background: 'transparent', cursor: 'pointer' }}>{l}</button>
           ))}
+          <button onClick={() => { setMenuOpen(false); navigate('/download'); }} style={{ display: 'block', width: '100%', textAlign: 'left', fontSize: 15, fontWeight: 600, color: S.blue, padding: '12px 0', borderBottom: '1px solid rgba(0,0,0,0.05)', border: 'none', background: 'transparent', cursor: 'pointer' }}>📲 Download App</button>
           <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
             <button onClick={() => navigate('/login')} style={{ flex: 1, fontSize: 14, fontWeight: 500, color: '#444', background: 'rgba(0,0,0,0.05)', border: 'none', cursor: 'pointer', padding: '11px', borderRadius: 12 }}>Sign in</button>
             <button onClick={() => navigate('/login?signup=1')} style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#fff', background: S.blue, border: 'none', cursor: 'pointer', padding: '11px', borderRadius: 12 }}>Get started free</button>
@@ -508,7 +510,7 @@ export default function LandingPage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, auto)', gap: isMobile ? '24px 20px' : '0 40px' }}>
             {[
-              { head: 'Product', links: ['Features', 'Pricing', 'Changelog', 'Roadmap'] },
+              { head: 'Product', links: ['Features', 'Pricing', 'Download', 'Roadmap'] },
               { head: 'Capabilities', links: ['Voice Cloning', 'NIFTY Trading', '12-Layer Brain', 'Vibe Coder'] },
               { head: 'Company', links: ['About', 'Blog', 'Careers', 'Contact'] },
               { head: 'Legal', links: ['Privacy', 'Terms', 'Security', 'Cookies'] },

@@ -8,7 +8,9 @@ Iron Man–style AI assistant: 12-layer brain, voice in/out, bilingual (English 
 - **Backend**: Python HTTP server (`backend/dashboard_api.py`) on port 8000
 - Vite proxy: `/api` → `localhost:8000`
 - **Auth**: Firebase Authentication (Google, GitHub, Email/Password, Anonymous/Guest) via `frontend/src/firebase.js`
-- **Routing**: React Router v6 — `/` landing, `/login` auth, `/app` protected main app, `/trading` full trading dashboard
+- **Routing**: React Router v6 — `/` landing, `/login` auth, `/app` protected main app, `/trading` full trading dashboard, `/download` platform download page
+- **Desktop**: Tauri wrapper (`frontend/src-tauri/`) — builds native Windows/Mac/Linux app (`npm run tauri:build`)
+- **Mobile**: Expo/React Native app (`mobile-app/`) — iOS & Android, connects to backend via `/mobile/chat`
 
 ## Design System
 

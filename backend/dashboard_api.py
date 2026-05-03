@@ -417,6 +417,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/vibe/chat': lambda: self.api_vibe_chat(data),
             '/api/vibe/detect': lambda: self.api_vibe_detect(data),
             '/api/trading/chat': lambda: self.api_trading_chat(data),
+            '/mobile/chat':      lambda: self.api_mobile_chat(data),
             '/api/tts': lambda: self.api_tts(data),
             '/api/voice/clone': lambda: self.api_voice_clone(data),
         }
@@ -581,6 +582,56 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             })
         except Exception as e:
             import traceback; traceback.print_exc()
+            self.send_json({'error': str(e)}, 500)
+
+    def api_mobile_chat(self, data):
+        try:
+            text = (data.get('text') or data.get('message') or '').strip()
+            if not text:
+                self.send_json({'error': 'No text provided'}, 400)
+                return
+            reply = None
+            try:
+                from ai_switcher import has_provider_configured, with_fallback, refresh_providers
+                from config_paths import get_dotenv_path
+                from dotenv import load_dotenv
+                load_dotenv(get_dotenv_path(), override=True)
+                refresh_providers()
+                if has_provider_configured():
+                    from assistant_persona import ASSISTANT_PERSONA
+                    messages_payload = [
+                        {"role": "system", "content": ASSISTANT_PERSONA},
+                        {"role": "user", "content": text},
+                    ]
+                    import requests as req_lib
+                    try:
+                        from openai import OpenAI
+                    except ImportError:
+                        OpenAI = None
+
+                    def call_ai(provider, msgs):
+                        pname = provider.get('name', '').lower()
+                        api_key = provider.get('api_key')
+                        base_url = provider.get('base_url', '')
+                        model = provider.get('model', '')
+                        if pname == 'ollama':
+                            url = base_url.rstrip('/') + '/v1/chat/completions'
+                            r = req_lib.post(url, json={'model': model, 'messages': msgs}, timeout=60)
+                            r.raise_for_status()
+                            return r.json()['choices'][0]['message']['content']
+                        if OpenAI is None:
+                            raise RuntimeError('openai package not installed')
+                        client = OpenAI(api_key=api_key, base_url=base_url)
+                        resp = client.chat.completions.create(model=model, messages=msgs)
+                        return resp.choices[0].message.content
+
+                    reply = with_fallback(call_ai, messages_payload)
+            except Exception as e:
+                print(f"[mobile/chat AI] {e}")
+            if not reply:
+                reply = "Hi! I'm Airis. Configure an AI provider in Settings to get full responses."
+            self.send_json({'reply': reply, 'success': True})
+        except Exception as e:
             self.send_json({'error': str(e)}, 500)
 
     def api_system_status(self):

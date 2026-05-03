@@ -13,6 +13,7 @@ import ConversationHistory  from './components/ConversationHistory';
 import LandingPage          from './pages/LandingPage';
 import TradingPage          from './pages/TradingPage';
 import LoginPage            from './pages/LoginPage';
+import DownloadPage         from './pages/DownloadPage';
 import useStore             from './store/useStore';
 import { api }              from './services/api';
 import { useBreakpoint }    from './hooks/useBreakpoint';
@@ -262,8 +263,9 @@ export default function App() {
       <Route path="/"        element={<LandingPage />} />
       <Route path="/login"   element={<LoginPage />} />
       <Route path="/app"     element={<ProtectedApp />} />
-      <Route path="/trading" element={<TradingPage />} />
-      <Route path="*"        element={<Navigate to="/" replace />} />
+      <Route path="/trading"  element={<TradingPage />} />
+      <Route path="/download" element={<DownloadPage />} />
+      <Route path="*"         element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
