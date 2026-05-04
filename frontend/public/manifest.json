@@ -1,0 +1,28 @@
+{
+  "name": "Airis",
+  "short_name": "Airis",
+  "description": "Iron Man-style AI Assistant with voice, trading intelligence, and autonomous task execution",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0C0C0C",
+  "theme_color": "#437DFD",
+  "orientation": "portrait-primary",
+  "categories": ["productivity"],
+  "icons": [
+    {
+      "src": "/airis-sphere.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Chat",
+      "short_name": "Chat",
+      "description": "Start a new conversation",
+      "url": "/?action=new-chat",
+      "icons": [{ "src": "/airis-sphere.png", "sizes": "512x512" }]
+    }
+  ]
+}
