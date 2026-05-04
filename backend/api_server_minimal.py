@@ -32,7 +32,17 @@ def get_settings():
     s["fish_audio_api_key_set"] = bool(s.get("fish_audio_api_key"))
     s["elevenlabs_api_key_set"] = bool(s.get("elevenlabs_api_key"))
     s["firebase_api_key_set"] = bool(s.get("firebase_api_key"))
-    return {"success": True, "settings": s, "preferences": data.get("preferences", {}), "providers": []}
+    
+    providers = []
+    if s.get("groq_api_key"):
+        providers.append({
+            "name": "Groq",
+            "model": s.get("groq_model", "llama-3.3-70b-versatile"),
+            "enabled": True,
+            "base_url": "https://api.groq.com/openai/v1"
+        })
+    
+    return {"success": True, "settings": s, "preferences": data.get("preferences", {}), "providers": providers}
 
 class SaveRequest(BaseModel):
     settings: dict = {}
