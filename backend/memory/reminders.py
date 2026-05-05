@@ -56,30 +56,6 @@ def parse_reminder_schedule(text: str) -> str:
         return "tomorrow"
     if "today" in normalized and "at" not in normalized:
         return "today"
-
-    match = re.search(r"(today|tomorrow)\s*(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", normalized)
-    if match:
-        when_day = match.group(1)
-        hour = int(match.group(2))
-        minute = int(match.group(3) or "0")
-        suffix = match.group(4)
-        if suffix == "pm" and hour < 12:
-            hour += 12
-        if suffix == "am" and hour == 12:
-            hour = 0
-        return f"{when_day} at {hour:02d}:{minute:02d}"
-
-    match = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", normalized)
-    if match:
-        hour = int(match.group(1))
-        minute = int(match.group(2) or "0")
-        suffix = match.group(3)
-        if suffix == "pm" and hour < 12:
-            hour += 12
-        if suffix == "am" and hour == 12:
-            hour = 0
-        return f"today at {hour:02d}:{minute:02d}"
-
     return "soon"
 
 
@@ -91,37 +67,9 @@ def _parse_when_to_datetime(when_text: str) -> datetime | None:
     if normalized == "soon":
         return now + timedelta(minutes=5)
     if normalized == "today":
-        return None
+        return now.replace(hour=9, minute=0, second=0, microsecond=0)
     if normalized == "tomorrow":
-        return None
-
-    match = re.match(r"(today|tomorrow) at (\d{1,2}):?(\d{2})?\s*(am|pm)?", normalized)
-    if match:
-        day = match.group(1)
-        hour = int(match.group(2))
-        minute = int(match.group(3) or "0")
-        suffix = match.group(4)
-        if suffix == "pm" and hour < 12:
-            hour += 12
-        if suffix == "am" and hour == 12:
-            hour = 0
-        target = now if day == "today" else now + timedelta(days=1)
-        return target.replace(hour=hour, minute=minute, second=0, microsecond=0)
-
-    match = re.match(r"(\d{1,2}):?(\d{2})?\s*(am|pm)?", normalized)
-    if match:
-        hour = int(match.group(1))
-        minute = int(match.group(2) or "0")
-        suffix = match.group(3)
-        if suffix == "pm" and hour < 12:
-            hour += 12
-        if suffix == "am" and hour == 12:
-            hour = 0
-        candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        if candidate < now:
-            candidate += timedelta(days=1)
-        return candidate
-
+        return (now + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
     return None
 
 
@@ -131,10 +79,11 @@ def add_reminder(text: str, when_text: str, user_id: str | None = None) -> str:
         "text": text.strip(),
         "when": when_text.strip() or parse_reminder_schedule(text),
         "created": datetime.now().isoformat(),
+        "completed": False
     }
     reminders.append(reminder)
     save_reminders(reminders, user_id)
-    return reminder
+    return f"Reminder added: {text}"
 
 
 def list_reminders(user_id: str | None = None) -> list:
