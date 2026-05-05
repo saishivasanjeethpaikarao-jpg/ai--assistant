@@ -479,96 +479,87 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             if not user_input:
                 self.send_json({'error': 'No input provided'}, 400)
                 return
-
-            # ── Try real AI response first ───────────────────────────────
+            
             reply = None
             mode = 'CHAT'
+            
             try:
                 from ai_switcher import has_provider_configured, with_fallback, refresh_providers
                 from config_paths import get_dotenv_path
                 from dotenv import load_dotenv
                 load_dotenv(get_dotenv_path(), override=True)
                 refresh_providers()
-
-                if has_provider_configured():
-                    from assistant_persona import ASSISTANT_PERSONA
-                    from system_prompt_config import load_system_prompt
-
-                    # Build system prompt: persona + master system prompt
-                    try:
-                        master = load_system_prompt()
-                    except Exception:
-                        master = ''
-
-                    system_content = ASSISTANT_PERSONA
-                    if master:
-                        system_content = master + '\n\n' + ASSISTANT_PERSONA
-
-                    # Build recent conversation history for context (last 10)
-                    messages_payload = [{"role": "system", "content": system_content}]
-                    for h in request_history[-10:]:
-                        if h.get('input'):
-                            messages_payload.append({"role": "user", "content": h['input']})
-                        if h.get('reply'):
-                            messages_payload.append({"role": "assistant", "content": h['reply']})
-                    app_state = (data.get('app_state') or '').strip()
-                    full_user_content = f"{app_state}\n\n{user_input}" if app_state else user_input
-                    messages_payload.append({"role": "user", "content": full_user_content})
-
-                    import requests as req_lib
-                    try:
-                        from openai import OpenAI
-                    except ImportError:
-                        OpenAI = None
-
-                    def call_ai(provider, msgs):
-                        pname = provider.get('name', '').lower()
-                        api_key = provider.get('api_key')
-                        base_url = provider.get('base_url', '')
-                        model = provider.get('model', '')
-
-                        if pname == 'ollama':
-                            url = base_url.rstrip('/') + '/v1/chat/completions'
-                            r = req_lib.post(url, json={'model': model, 'messages': msgs}, timeout=60)
-                            r.raise_for_status()
-                            d = r.json()
-                            return d['choices'][0]['message']['content']
-
-                        if OpenAI is None:
-                            raise RuntimeError('openai package not installed')
-                        client = OpenAI(api_key=api_key, base_url=base_url)
-                        resp = client.chat.completions.create(model=model, messages=msgs)
-                        return resp.choices[0].message.content
-
-                    reply = with_fallback(call_ai, messages_payload)
-
+                
+                if not has_provider_configured():
+                    self.send_json({
+                        'success': False,
+                        'error': 'No AI provider configured. Please add your Groq API key in Settings.',
+                        'reply': 'Please configure an AI provider in Settings (gear icon → AI Engine).'
+                    }, 400)
+                    return
+                
+                from assistant_persona import ASSISTANT_PERSONA
+                from system_prompt_config import load_system_prompt
+                
+                try:
+                    master = load_system_prompt()
+                except Exception:
+                    master = ''
+                
+                system_content = ASSISTANT_PERSONA
+                if master:
+                    system_content = master + '\n\n' + ASSISTANT_PERSONA
+                
+                messages_payload = [{"role": "system", "content": system_content}]
+                for h in request_history[-10:]:
+                    if h.get('input'):
+                        messages_payload.append({"role": "user", "content": h['input']})
+                    if h.get('reply'):
+                        messages_payload.append({"role": "assistant", "content": h['reply']})
+                
+                app_state = (data.get('app_state') or '').strip()
+                full_user_content = f"{app_state}\n\n{user_input}" if app_state else user_input
+                messages_payload.append({"role": "user", "content": full_user_content})
+                
+                import requests as req_lib
+                try:
+                    from openai import OpenAI
+                except ImportError:
+                    OpenAI = None
+                
+                def call_ai(provider, msgs):
+                    pname = provider.get('name', '').lower()
+                    api_key = provider.get('api_key')
+                    base_url = provider.get('base_url', '')
+                    model = provider.get('model', '')
+                    
+                    if pname == 'ollama':
+                        url = base_url.rstrip('/') + '/v1/chat/completions'
+                        r = req_lib.post(url, json={'model': model, 'messages': msgs}, timeout=60)
+                        r.raise_for_status()
+                        d = r.json()
+                        return d['choices'][0]['message']['content']
+                    
+                    if OpenAI is None:
+                        raise RuntimeError('openai package not installed')
+                    client = OpenAI(api_key=api_key, base_url=base_url)
+                    resp = client.chat.completions.create(model=model, messages=msgs)
+                    return resp.choices[0].message.content
+                
+                reply = with_fallback(call_ai, messages_payload)
+                
             except Exception as ai_err:
                 print(f"[AI] Error: {ai_err}")
-                reply = None
-
-            # ── Fallback: try the coordinator ────────────────────────────
+                self.send_json({
+                    'success': False,
+                    'error': str(ai_err),
+                    'reply': f'AI error: {str(ai_err)}'
+                }, 500)
+                return
+            
             if not reply:
-                try:
-                    result = process_user_request(user_input)
-                    mode = result.get('mode', 'CHAT')
-                    candidate = result.get('response') or result.get('message') or ''
-                    # Only use coordinator reply if it's not the stub message
-                    if candidate and 'Chat mode activated' not in candidate:
-                        reply = candidate
-                except Exception:
-                    pass
-
-            # ── Hard fallback ────────────────────────────────────────────
-            if not reply:
-                reply = (
-                    "⚙️ No AI provider is configured yet.\n\n"
-                    "**To activate Airis:**\n"
-                    "1. Click the **gear icon** (bottom-left) → **AI Engine** tab\n"
-                    "2. Paste your **Groq API key** (free at console.groq.com)\n"
-                    "3. Click **Save Settings**\n\n"
-                    "Groq is free and takes 30 seconds to set up."
-                )
-
+                reply = "I'm having trouble generating a response. Please check your AI provider settings."
+            
             request_history.append({
                 'input': user_input,
                 'reply': reply,
@@ -577,7 +568,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             })
             if len(request_history) > MAX_HISTORY:
                 request_history.pop(0)
-
+            
             self.send_json({
                 'success': True,
                 'input': user_input,
