@@ -391,6 +391,8 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/trading/chat':       self.api_trading_chat_get,
             '/api/trading/portfolio':  self.api_trading_portfolio_get,
             '/api/trading/watchlist':  self.api_trading_watchlist_get,
+            '/api/reminders/delete': self.api_delete_reminder,
+            '/api/reminders/complete': self.api_complete_reminder,
         }
         handler = routes.get(path)
         if handler:
@@ -413,6 +415,8 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             '/api/settings': lambda: self.api_save_settings(data),
             '/api/system/prompt': lambda: self.api_save_system_prompt(data),
             '/api/reminders': lambda: self.api_add_reminder(data),
+            '/api/reminders/delete': lambda: self.api_delete_reminder(data),
+            '/api/reminders/complete': lambda: self.api_complete_reminder(data),
             '/api/vibe/code': lambda: self.api_vibe_code(data),
             '/api/vibe/run': lambda: self.api_vibe_run(data),
             '/api/vibe/fix': lambda: self.api_vibe_fix(data),
@@ -632,7 +636,25 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
 
     def api_system_status(self):
         try:
-            self.send_json({'success': True, 'status': get_system_status(), 'timestamp': datetime.now().isoformat()})
+            status = get_system_status()
+            # Add memory stats
+            try:
+                from memory.adaptive_memory import get_memory
+                mem = get_memory()
+                status['memory_details'] = {
+                    'total_memories': len(mem.get('strategies', [])) if isinstance(mem, dict) else 0,
+                    'preferences': len(mem.get('preferences', {})) if isinstance(mem, dict) else 0,
+                }
+            except Exception:
+                status['memory_details'] = {'error': 'Could not load memory'}
+            # Add execution stats
+            try:
+                from autonomous_executor import get_executor
+                exec = get_executor()
+                status['executor_stats'] = exec.get_metrics()
+            except Exception:
+                status['executor_stats'] = {'error': 'Could not load executor stats'}
+            self.send_json({'success': True, 'status': status, 'timestamp': datetime.now().isoformat()})
         except Exception as e:
             self.send_json({'error': str(e)}, 500)
 
@@ -848,7 +870,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             reminders = list_reminders(user_id='guest')
             self.send_json({'success': True, 'reminders': reminders})
         except Exception as e:
-            self.send_json({'success': True, 'reminders': [], 'note': str(e)})
+            self.send_json({'success': False, 'reminders': [], 'error': str(e)}, 500)
 
     def api_add_reminder(self, data):
         try:
@@ -856,12 +878,37 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             text = data.get('text', '').strip()
             when = data.get('when', 'later').strip()
             if not text:
-                self.send_json({'error': 'No reminder text'}, 400)
+                self.send_json({'success': False, 'error': 'No reminder text'}, 400)
                 return
             result = add_reminder(text=text, when_text=when, user_id='guest')
-            self.send_json({'success': True, 'message': result})
+            self.send_json({'success': True, 'message': result, 'reminders': list_reminders(user_id='guest')})
         except Exception as e:
-            self.send_json({'error': str(e)}, 500)
+            self.send_json({'success': False, 'error': str(e)}, 500)
+
+    def api_delete_reminder(self, data):
+        try:
+            from memory.reminders import delete_reminder_at, list_reminders
+            index = data.get('index', -1)
+            if index < 0:
+                self.send_json({'success': False, 'error': 'Invalid index'}, 400)
+                return
+            result = delete_reminder_at(user_id='guest', index=index)
+            self.send_json({'success': result, 'reminders': list_reminders(user_id='guest')})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
+
+    def api_complete_reminder(self, data):
+        try:
+            from memory.reminders import set_reminder_completed, list_reminders
+            index = data.get('index', -1)
+            completed = data.get('completed', True)
+            if index < 0:
+                self.send_json({'success': False, 'error': 'Invalid index'}, 400)
+                return
+            result = set_reminder_completed(user_id='guest', index=index, completed=completed)
+            self.send_json({'success': result, 'reminders': list_reminders(user_id='guest')})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
 
     # ── Vibe Coder ───────────────────────────────────────────────────────────
 
@@ -870,7 +917,23 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             from vibe_coder import get_agents_list
             self.send_json({'success': True, 'agents': get_agents_list()})
         except Exception as e:
-            self.send_json({'error': str(e)}, 500)
+            self.send_json({'success': False, 'error': str(e)}, 500)
+
+    def api_vibe_code(self, data):
+        try:
+            from vibe_coder import generate_code
+            prompt = (data.get('prompt') or '').strip()
+            agent_id = (data.get('agent_id') or 'auto').strip()
+            if not prompt:
+                self.send_json({'success': False, 'error': 'No prompt provided'}, 400)
+                return
+            result = generate_code(prompt, agent_id)
+            self.send_json({'success': True, **result})
+        except RuntimeError as e:
+            self.send_json({'success': False, 'error': str(e), 'message': 'Please configure a Groq API key in Settings to use Vibe Coder.'}, 400)
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            self.send_json({'success': False, 'error': str(e)}, 500)
 
     def api_vibe_code(self, data):
         try:
