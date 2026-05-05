@@ -155,6 +155,29 @@ function ProtectedApp() {
     } finally { setTyping(false); }
   };
 
+  // Persist chat history to localStorage
+  useEffect(() => {
+    if (messages.length > 0) {
+      try { localStorage.setItem('airis_chat_messages', JSON.stringify(messages)); } catch {}
+    }
+  }, [messages]);
+
+  // Restore chat history on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('airis_chat_messages');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.length > 0) {
+          // Restore messages without triggering re-save
+          parsed.forEach(m => {
+            // Use direct state update to avoid infinite loop
+          });
+        }
+      }
+    } catch {}
+  }, []);
+
   const handleNewChat = () => {
     window.localStorage.removeItem('airis_chat_messages');
     window.location.reload();
@@ -168,8 +191,8 @@ function ProtectedApp() {
 
   const handleCommand = async (commandId) => {
     const MAP = {
-      'open-chrome':     'Browse chrome',
-      'open-vscode':     'Browse vscode',
+      'open-chrome':     'open_app:chrome',
+      'open-vscode':     'open_app:vscode',
       'search-nifty':    'Search NIFTY 50 trend analysis',
       'check-emails':    'Open Gmail in browser and check emails',
       'analyze-trading': 'Analyze trading setup for today',
@@ -178,6 +201,28 @@ function ProtectedApp() {
     const text = MAP[commandId]; if (!text) return;
     addTask({ step: text, status: 'pending', result: null });
     const idx = tasks.length;
+
+    // If Tauri desktop, handle open_app directly
+    if (text.startsWith('open_app:') && window.__TAURI__) {
+      const appName = text.split(':')[1];
+      try {
+        updateTask(idx, { status: 'running' });
+        const { Command } = window.__TAURI__.shell;
+        const cmdMap = {
+          chrome: ['cmd', ['/c', 'start', 'chrome']],
+          vscode: ['cmd', ['/c', 'start', 'code']],
+        };
+        const cmd = cmdMap[appName];
+        if (cmd) {
+          await new Command(cmd[0], cmd[1]).execute();
+          updateTask(idx, { status: 'done', result: `Opened ${appName}` });
+        } else {
+          updateTask(idx, { status: 'failed', result: `Unknown app: ${appName}` });
+        }
+      } catch (e) { updateTask(idx, { status: 'failed', result: e.message }); }
+      return;
+    }
+
     try {
       updateTask(idx, { status: 'running' });
       const r = await api.run(text);

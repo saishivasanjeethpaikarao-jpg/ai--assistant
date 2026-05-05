@@ -44,16 +44,47 @@ export function executeActions(actions, ctx) {
         case 'open_app': {
           const app = (param || '').trim().toLowerCase();
           if (!app) break;
-          const map = {
+
+          // Try Tauri shell first (desktop)
+          if (typeof window !== 'undefined' && window.__TAURI__) {
+            try {
+              const { Command } = window.__TAURI__.shell;
+              const map = {
+                chrome:       ['cmd', ['/c', 'start', 'chrome']],
+                'google chrome': ['cmd', ['/c', 'start', 'chrome']],
+                vscode:       ['cmd', ['/c', 'start', 'code']],
+                'vs code':    ['cmd', ['/c', 'start', 'code']],
+                'visual studio code': ['cmd', ['/c', 'start', 'code']],
+                notepad:      ['cmd', ['/c', 'start', 'notepad']],
+                explorer:     ['cmd', ['/c', 'start', 'explorer']],
+                terminal:     ['cmd', ['/c', 'start', 'cmd']],
+                powershell:   ['cmd', ['/c', 'start', 'powershell']],
+                calculator:   ['cmd', ['/c', 'start', 'calc']],
+                calc:         ['cmd', ['/c', 'start', 'calc']],
+                edge:         ['cmd', ['/c', 'start', 'msedge']],
+                firefox:      ['cmd', ['/c', 'start', 'firefox']],
+              };
+              const target = map[app];
+              if (target) {
+                new Command(target[0], target[1]).execute();
+              }
+              break;
+            } catch (e) {
+              console.warn('Tauri shell open_app failed:', e);
+            }
+          }
+
+          // Fallback: open URLs in browser
+          const urlMap = {
             chrome: 'https://www.google.com/chrome/',
             'google chrome': 'https://www.google.com/chrome/',
             vscode: 'https://code.visualstudio.com/',
             'vs code': 'https://code.visualstudio.com/',
             'visual studio code': 'https://code.visualstudio.com/',
-            explorer: 'file:///home',
+            explorer: 'file:///',
           };
-          const target = map[app];
-          if (target) window.open(target, '_blank', 'noopener,noreferrer');
+          const target = urlMap[app];
+          if (target) window.open(target.startsWith('file') ? target : `https://${target.replace(/^https?:\/\//, '')}`, '_blank', 'noopener,noreferrer');
           break;
         }
 

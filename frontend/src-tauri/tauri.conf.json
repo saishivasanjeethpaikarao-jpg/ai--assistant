@@ -14,8 +14,20 @@
     "allowlist": {
       "all": false,
       "shell": {
-        "all": false,
-        "open": true
+        "all": true,
+        "open": true,
+        "sidecar": false,
+        "scope": [
+          { "name": "cmd", "cmd": "cmd", "args": true },
+          { "name": "start", "cmd": "cmd", "args": true },
+          { "name": "code", "cmd": "code", "args": true },
+          { "name": "notepad", "cmd": "notepad", "args": true },
+          { "name": "calc", "cmd": "calc", "args": true },
+          { "name": "explorer", "cmd": "explorer", "args": true },
+          { "name": "powershell", "cmd": "powershell", "args": true },
+          { "name": "msedge", "cmd": "msedge", "args": true },
+          { "name": "firefox", "cmd": "firefox", "args": true }
+        ]
       },
       "window": {
         "all": false,
