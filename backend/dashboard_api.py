@@ -891,22 +891,11 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
                 return
             result = generate_code(prompt, agent_id)
             self.send_json({'success': True, **result})
+        except RuntimeError as e:
+            self.send_json({'success': False, 'error': str(e), 'message': 'Please configure a Groq API key in Settings to use Vibe Coder.'}, 400)
         except Exception as e:
             import traceback; traceback.print_exc()
-            self.send_json({'error': str(e)}, 500)
-
-    def api_vibe_run(self, data):
-        try:
-            from vibe_coder import run_code
-            code = (data.get('code') or '').strip()
-            language = (data.get('language') or 'python').strip()
-            if not code:
-                self.send_json({'error': 'No code provided'}, 400)
-                return
-            result = run_code(code, language)
-            self.send_json({'success': True, **result})
-        except Exception as e:
-            self.send_json({'error': str(e)}, 500)
+            self.send_json({'success': False, 'error': str(e)}, 500)
 
     def api_vibe_fix(self, data):
         try:
