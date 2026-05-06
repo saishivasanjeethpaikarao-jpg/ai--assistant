@@ -1630,7 +1630,7 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
         pass
 
 
-def start_server(port=8000):
+def start_server(port=5000):
     server = HTTPServer(('0.0.0.0', port), DashboardAPIHandler)
     print(f"Airis Backend API — port {port}")
     print("Ready: /api/request  /api/settings  /api/capabilities  /api/system/layers")
