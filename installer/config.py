@@ -17,7 +17,7 @@ class InstallerConfig:
     
     # Product information
     app_name: str = 'Jarvis'
-    version: str = '8.0.0'
+    version: str = '2.0.0'
     manufacturer: str = 'Jarvis Development'
     description: str = 'Advanced AI Desktop Assistant'
     
@@ -45,9 +45,9 @@ class InstallerConfig:
     # Registry entries
     registry_entries: Dict[str, str] = field(default_factory=lambda: {
         'InstallPath': '[INSTALLFOLDER]',
-        'Version': '8.0.0',
-        'DisplayName': 'Jarvis AI Assistant',
-        'DisplayVersion': '8.0.0',
+        'Version': '2.0.0',
+        'DisplayName': 'Airis AI Assistant',
+        'DisplayVersion': '2.0.0',
         'Publisher': 'Jarvis Development',
     })
     

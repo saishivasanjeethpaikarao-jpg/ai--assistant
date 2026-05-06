@@ -4,8 +4,8 @@
 # https://learn.microsoft.com/en-us/windows/win32/menurc/vs-versioninfo
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 0, 0, 0),
-    prodvers=(1, 0, 0, 0),
+    filevers=(2, 0, 0, 0),
+    prodvers=(2, 0, 0, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -21,12 +21,12 @@ VSVersionInfo(
           [
             StringStruct('CompanyName', 'Personal AI Assistant'),
             StringStruct('FileDescription', 'Personal AI Assistant Desktop App'),
-            StringStruct('FileVersion', '1.0.0.0'),
+            StringStruct('FileVersion', '2.0.0.0'),
             StringStruct('InternalName', 'PersonalAIAssistant'),
             StringStruct('LegalCopyright', 'Copyright (c) 2026'),
             StringStruct('OriginalFilename', 'PersonalAIAssistant.exe'),
-            StringStruct('ProductName', 'Personal AI Assistant'),
-            StringStruct('ProductVersion', '1.0.0.0')
+            StringStruct('ProductName', 'Airis AI Assistant'),
+            StringStruct('ProductVersion', '2.0.0.0')
           ]
         )
       ]

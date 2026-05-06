@@ -4,7 +4,10 @@ import subprocess
 import sys
 import threading
 import time
-import audioop
+try:
+    import audioop
+except ImportError:
+    audioop = None
 import warnings
 import difflib
 import json
@@ -1014,7 +1017,7 @@ def detect_double_clap(max_wait_seconds: float = 5.0) -> bool:
         start = time.time()
         while time.time() - start < max_wait_seconds:
             data = stream.read(1024, exception_on_overflow=False)
-            rms = audioop.rms(data, 2)
+            rms = audioop.rms(data, 2) if audioop else 0
             now = time.time()
             if rms > threshold and now - last_peak_time > 0.2:
                 claps += 1
