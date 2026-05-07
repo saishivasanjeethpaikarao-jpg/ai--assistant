@@ -119,8 +119,14 @@ def _build_providers():
 
 
 def _init_providers():
-    global PROVIDERS
+    global PROVIDERS, current_index
     PROVIDERS = _build_providers()
+    current_index = 0
+
+def refresh_providers():
+    global PROVIDERS, current_index
+    PROVIDERS = _build_providers()
+    current_index = 0
 
 
 _init_providers()

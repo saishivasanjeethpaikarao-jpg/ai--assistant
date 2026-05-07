@@ -10,7 +10,7 @@ from datetime import datetime
 
 # Import existing system components
 from assistant_core import generate_text
-from core.command_engine import command_engine
+from tools import tool_registry
 from brain.brain import memory_context, learn_text
 
 # Import Multi-Agent system
