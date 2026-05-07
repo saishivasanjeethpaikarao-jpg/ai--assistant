@@ -39,6 +39,13 @@ def launch_app(app_name: str, args: str = "") -> ToolResult:
     """
     app_name = app_name.lower().strip()
     
+    # Check if running on web/linux (Render, etc.)
+    if sys.platform != "win32":
+        return ToolResult(
+            success=False,
+            message=f"App launching is only available on desktop (Windows). You requested: {app_name}"
+        )
+    
     # Check if app is in registry
     if app_name in COMMON_APPS:
         executable = COMMON_APPS[app_name]

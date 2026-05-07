@@ -10,6 +10,18 @@ const firebaseConfig = {
   appId: '1:698656713592:web:2754c56495afde5ddef68d',
 };
 
+// Add Cloudflare Pages domain to authorized domains
+const AUTHORIZED_DOMAINS = [
+  'studio-1742912828-cb958.firebaseapp.com',
+  'airis-9ox.pages.dev',
+  'localhost',
+];
+
+export const isDomainAuthorized = () => {
+  const host = typeof window !== 'undefined' ? window.location.hostname : '';
+  return AUTHORIZED_DOMAINS.some(d => host === d || host.endsWith('.' + d));
+};
+
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();

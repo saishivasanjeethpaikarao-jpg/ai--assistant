@@ -18,6 +18,10 @@ const useStore = create(
     // Toasts
     toasts: [],
 
+    // Settings state
+    settings: {},
+    preferences: {},
+
     // Actions
     togglePanel: () => set((state) => ({ isPanelExpanded: !state.isPanelExpanded })),
     toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
@@ -48,6 +52,16 @@ const useStore = create(
 
     removeToast: (id) => set((state) => ({
       toasts: state.toasts.filter((toast) => toast.id !== id)
+    })),
+
+    // Settings actions
+    setSettings: (settings) => set({ settings }),
+    setPreferences: (preferences) => set({ preferences }),
+    updateSetting: (key, value) => set((state) => ({
+      settings: { ...state.settings, [key]: value }
+    })),
+    updatePreference: (key, value) => set((state) => ({
+      preferences: { ...state.preferences, [key]: value }
     })),
   })
 );

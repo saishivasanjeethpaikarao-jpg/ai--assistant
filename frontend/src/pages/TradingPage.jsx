@@ -149,17 +149,15 @@ function parseCommand(raw) {
   }
 
   // Add to portfolio: "add 100 RELIANCE at 1500" / "bought 50 TCS at 3400"
-  const pfPatterns2 = [
-    /^(?:add|buy|bought|purchased|i\s+bought)\s+(\d+)\s+([A-Z][A-Z0-9&-]{1,14})\s+(?:at|@|for)\s+(?:₹?)([\d.]+)/i,
-    /^(?:add|buy|bought|purchased|i\s+bought)\s+([A-Z][A-Z0-9&-]{1,14})\s+(\d+)\s+(?:shares?\s+)?(?:at|@|for)\s+(?:₹?)([\d.]+)/i,
-  ];
   {
-    const m = msg.match(pfPatterns2[0]);
+    const pfRe1 = /^(?:add|buy|bought|purchased|i\s+bought)\s+(\d+)\s+([A-Z][A-Z0-9&-]{1,14})\s+(?:at|@|for)\s+(?:₹?)([\d.]+)/i;
+    const pfRe2 = /^(?:add|buy|bought|purchased|i\s+bought)\s+([A-Z][A-Z0-9&-]{1,14})\s+(\d+)\s+(?:shares?\s+)?(?:at|@|for)\s+(?:₹?)([\d.]+)/i;
+    const m = msg.match(pfRe1);
     if (m) {
       const qty = parseInt(m[1]), sym = m[2].toUpperCase(), price = parseFloat(m[3]);
       if (qty > 0 && price > 0) return { type: 'add_portfolio', symbol: sym, qty, price };
     }
-    const m2 = msg.match(pfPatterns2[1]);
+    const m2 = msg.match(pfRe2);
     if (m2) {
       const sym = m2[1].toUpperCase(), qty = parseInt(m2[2]), price = parseFloat(m2[3]);
       if (qty > 0 && price > 0) return { type: 'add_portfolio', symbol: sym, qty, price };
