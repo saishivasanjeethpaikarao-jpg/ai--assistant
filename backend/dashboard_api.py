@@ -928,7 +928,9 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
                 self.send_json({'success': False, 'error': 'No prompt provided'}, 400)
                 return
             result = generate_code(prompt, agent_id)
-            self.send_json({'success': True, **result})
+            resp_data = {'success': True}
+            resp_data.update(result)
+            self.send_json(resp_data)
         except RuntimeError as e:
             self.send_json({'success': False, 'error': str(e), 'message': 'Please configure a Groq API key in Settings to use Vibe Coder.'}, 400)
         except Exception as e:
@@ -944,7 +946,9 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
                 self.send_json({'error': 'No prompt provided'}, 400)
                 return
             result = generate_code(prompt, agent_id)
-            self.send_json({'success': True, **result})
+            resp_data = {'success': True}
+            resp_data.update(result)
+            self.send_json(resp_data)
         except RuntimeError as e:
             self.send_json({'success': False, 'error': str(e), 'message': 'Please configure a Groq API key in Settings to use Vibe Coder.'}, 400)
         except Exception as e:
@@ -960,7 +964,9 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
                 self.send_json({'error': 'No code provided'}, 400)
                 return
             result = fix_code(code, error)
-            self.send_json({'success': True, **result})
+            resp_data = {'success': True}
+            resp_data.update(result)
+            self.send_json(resp_data)
         except Exception as e:
             import traceback; traceback.print_exc()
             self.send_json({'error': str(e)}, 500)
@@ -974,7 +980,9 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
                 self.send_json({'error': 'No message provided'}, 400)
                 return
             result = chat_about_code(message, code_context)
-            self.send_json({'success': True, **result})
+            resp_data = {'success': True}
+            resp_data.update(result)
+            self.send_json(resp_data)
         except Exception as e:
             self.send_json({'error': str(e)}, 500)
 

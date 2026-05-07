@@ -204,7 +204,8 @@ export const api = {
     return axiosInstance.post('/history/clear', {});
   },
   saveHistory: (messages) => {
-    if (isTauri()) { localSettings.setHistory(messages); return Promise.resolve({ success: true }); }
+    const trimmed = Array.isArray(messages) ? messages.slice(-50) : [];
+    if (isTauri()) { localSettings.setHistory(trimmed); return Promise.resolve({ success: true }); }
     return Promise.resolve({ success: false });
   },
 

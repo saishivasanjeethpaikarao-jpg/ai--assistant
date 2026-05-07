@@ -1,28 +1,46 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import json, os
+import json, os, sqlite3
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*", "https://airis-9ox.pages.dev"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-SETTINGS_FILE = "/tmp/settings.json"
+DB_DIR = "/opt/render/project/data"
+DB_PATH = os.path.join(DB_DIR, "settings.db")
+
+def get_db():
+    os.makedirs(DB_DIR, exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
+    return conn
 
 def load():
-    if os.path.exists(SETTINGS_FILE):
-        with open(SETTINGS_FILE) as f:
-            return json.load(f)
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT value FROM settings WHERE key = 'data'").fetchone()
+        conn.close()
+        if row:
+            return json.loads(row["value"])
+    except Exception:
+        pass
     return {"settings": {}, "preferences": {}}
 
 def save(data):
-    with open(SETTINGS_FILE, "w") as f:
-        json.dump(data, f)
+    try:
+        conn = get_db()
+        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('data', ?)", (json.dumps(data),))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 @app.get("/api/settings")
 def get_settings():

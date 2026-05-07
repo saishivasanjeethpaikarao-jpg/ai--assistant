@@ -34,12 +34,16 @@ jobs:
       - name: Build APK with EAS
         run: cd mobile-app && eas build --platform android --profile preview --non-interactive
 
-      - name: Rename APK for release
-        run: mv airis.apk airis-android.apk
-
       - name: Get tag name
         id: tag
         run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Download APK from EAS
+        run: |
+          cd mobile-app
+          eas build:list --platform android --status finished --json --non-interactive > build.json
+          BUILD_ID=$(jq -r '.[0].id' build.json)
+          eas build:download --build-id $BUILD_ID --output airis-android.apk
 
       - name: Upload APK to GitHub Release
         uses: softprops/action-gh-release@v2
@@ -57,6 +61,6 @@ jobs:
             3. Open Airis and start chatting
           draft: false
           prerelease: false
-          files: airis-android.apk
+          files: mobile-app/airis-android.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
