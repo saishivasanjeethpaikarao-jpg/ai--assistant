@@ -252,52 +252,52 @@ export const api = {
   },
 
    // System
-   getSystemStatus: () => axiosInstance.get('/api/system/status'),
-   getSystemLayers: () => axiosInstance.get('/api/system/layers'),
-   getSystemPrompt: () => axiosInstance.get('/api/system/prompt'),
-   saveSystemPrompt: (prompt) => axiosInstance.post('/api/system/prompt', { prompt }),
+   getSystemStatus: () => axiosInstance.get('/system/status'),
+   getSystemLayers: () => axiosInstance.get('/system/layers'),
+   getSystemPrompt: () => axiosInstance.get('/system/prompt'),
+   saveSystemPrompt: (prompt) => axiosInstance.post('/system/prompt', { prompt }),
 
    // Reminders
-   getReminders: () => axiosInstance.get('/api/reminders'),
-   addReminder: (text, when) => axiosInstance.post('/api/reminders', { text, when }),
-   deleteReminder: (index) => axiosInstance.post('/api/reminders/delete', { index }),
-   completeReminder: (index) => axiosInstance.post('/api/reminders/complete', { index }),
+   getReminders: () => axiosInstance.get('/reminders'),
+   addReminder: (text, when) => axiosInstance.post('/reminders', { text, when }),
+   deleteReminder: (index) => axiosInstance.post('/reminders/delete', { index }),
+   completeReminder: (index) => axiosInstance.post('/reminders/complete', { index }),
 
    // Memory
-   getMemoryStats: () => axiosInstance.get('/api/memory/stats'),
+   getMemoryStats: () => axiosInstance.get('/memory/stats'),
 
    // Capabilities
-   getCapabilities: () => axiosInstance.get('/api/capabilities'),
+   getCapabilities: () => axiosInstance.get('/capabilities'),
 
    // Analytics
-   getAnalytics: () => axiosInstance.get('/api/analytics'),
+   getAnalytics: () => axiosInstance.get('/analytics'),
 
   // TTS / Voice Cloning
-   ttsConfig: () => axiosInstance.get('/api/tts/config'),
-   tts: (text, reference_id, model) => axiosInstance.post('/api/tts', { text, reference_id, model }, { responseType: 'arraybuffer' }),
-   cloneVoice: (name, audio_b64, content_type) => axiosInstance.post('/api/voice/clone', { name, audio_b64, content_type }),
+   ttsConfig: () => axiosInstance.get('/tts/config'),
+   tts: (text, reference_id, model) => axiosInstance.post('/tts', { text, reference_id, model }, { responseType: 'arraybuffer' }),
+   cloneVoice: (name, audio_b64, content_type) => axiosInstance.post('/voice/clone', { name, audio_b64, content_type }),
 
    // Market Data
-   getMarketIndices: () => axiosInstance.get('/api/market/indices'),
-   getMarketQuote: (symbol) => axiosInstance.get(`/api/market/quote?symbol=${encodeURIComponent(symbol)}`),
-   searchStocks: (q) => axiosInstance.get(`/api/market/search?q=${encodeURIComponent(q)}`),
-   getMarketMovers: () => axiosInstance.get('/api/market/movers'),
+   getMarketIndices: () => axiosInstance.get('/market/indices'),
+   getMarketQuote: (symbol) => axiosInstance.get(`/market/quote?symbol=${encodeURIComponent(symbol)}`),
+   searchStocks: (q) => axiosInstance.get(`/market/search?q=${encodeURIComponent(q)}`),
+   getMarketMovers: () => axiosInstance.get('/market/movers'),
 
    // Tauri shell (desktop only)
    openApp: tauriShell.openApp,
    isTauri: isTauri,
 
    // Trading data persistence (auth required)
-   getPortfolio: (uid, token) => axiosInstance.get('/api/trading/portfolio', {
+   getPortfolio: (uid, token) => axiosInstance.get('/trading/portfolio', {
      headers: { Authorization: `Bearer ${token}` }
    }),
-   savePortfolio: (portfolio, uid, token) => axiosInstance.post('/api/trading/portfolio', { portfolio }, {
+   savePortfolio: (portfolio, uid, token) => axiosInstance.post('/trading/portfolio', { portfolio }, {
      headers: { Authorization: `Bearer ${token}` }
    }),
-   getWatchlist: (uid, token) => axiosInstance.get('/api/trading/watchlist', {
+   getWatchlist: (uid, token) => axiosInstance.get('/trading/watchlist', {
      headers: { Authorization: `Bearer ${token}` }
    }),
-   saveWatchlist: (watchlist, uid, token) => axiosInstance.post('/api/trading/watchlist', { watchlist }, {
+   saveWatchlist: (watchlist, uid, token) => axiosInstance.post('/trading/watchlist', { watchlist }, {
      headers: { Authorization: `Bearer ${token}` }
    }),
 };
@@ -377,8 +377,8 @@ export { speakText, browserSpeak };
 
 // Standalone portfolio API (for Portfolio.jsx page)
 export const portfolioAPI = {
-  get: async () => axiosInstance.get('/api/trading/portfolio'),
-  add: async (data) => axiosInstance.post('/api/trading/portfolio/add', data),
-  remove: async (symbol) => axiosInstance.post('/api/trading/portfolio/remove', { symbol }),
+  get: async () => axiosInstance.get('/trading/portfolio'),
+  add: async (data) => axiosInstance.post('/trading/portfolio/add', data),
+  remove: async (symbol) => axiosInstance.post('/trading/portfolio/remove', { symbol }),
 };
 

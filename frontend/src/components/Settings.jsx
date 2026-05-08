@@ -760,7 +760,7 @@ const Settings = ({ isMobile = false }) => {
             {tab === 'voice'     && <VoiceTab s={s} set={set} status={status} />}
             {tab === 'language'  && <LanguageTab s={s} set={set} prefs={prefs} setPref={setPref} />}
             {tab === 'wakeword'  && <WakeWordTab s={s} set={set} />}
-            {tab === 'clone'     && <CloneTab status={status} currentRefId={s.fish_audio_reference_id} onCloneSuccess={id => set('fish_audio_reference_id', id)} />}
+            {tab === 'clone'     && <CloneTab status={status} currentRefId={s.fish_audio_reference_id} onCloneSuccess={id => { set('fish_audio_reference_id', id); try { const ls = JSON.parse(localStorage.getItem('airis_settings') || '{}'); ls.fish_audio_reference_id = id; localStorage.setItem('airis_settings', JSON.stringify(ls)); } catch {} }} />}
             {tab === 'prompt'    && <PromptTab prompt={systemPrompt} setPrompt={setSystemPrompt} saving={savingPrompt} onSave={handleSavePrompt} />}
             {tab === 'notifs'    && <NotifsTab prefs={prefs} setPref={setPref} />}
             {tab === 'appearance'&& <AppearanceTab prefs={prefs} setPref={setPref} />}
