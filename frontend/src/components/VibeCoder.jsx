@@ -971,7 +971,7 @@ const FileItem = ({ file, active, renaming, renameVal, onOpen, onRename, onRenam
 };
 
 // ── Main VibeCoder ────────────────────────────────────────────────────────────
-const VibeCoder = ({ isMobile = false }) => {
+const VibeCoder = ({ isMobile = false, initialPrompt = '' }) => {
   const [projects,     setProjects]     = useState(LP);
   const [activeProj,   setActiveProj]   = useState(null);
   const [files,        setFiles]        = useState([]);
@@ -1001,6 +1001,15 @@ const VibeCoder = ({ isMobile = false }) => {
 
   useEffect(() => { if (activeProj) SF(activeProj.id, files); }, [files, activeProj]);
   useEffect(() => { msgsEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isWorking]);
+
+  // Process initialPrompt from App.jsx — create project and send to AI
+  useEffect(() => {
+    if (initialPrompt && !activeProj && !isWorking) {
+      pendingMsgRef.current = initialPrompt;
+      createProject(initialPrompt.slice(0, 50) || 'My App', 'blank');
+    }
+  }, [initialPrompt]);
+
   useEffect(() => {
     if (activeProj?.id && pendingMsgRef.current) {
       const msg = pendingMsgRef.current;

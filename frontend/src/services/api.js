@@ -80,29 +80,29 @@ const tauriShell = {
   openApp: async (appName) => {
     if (!isTauri()) return { success: false, error: 'Not running in Tauri' };
     try {
-      const { invoke } = window.__TAURI__.tauri;
       const { Command } = window.__TAURI__.shell;
 
       const commands = {
-        chrome: 'cmd /c start "" "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"',
-        'google chrome': 'cmd /c start "" "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"',
-        vscode: 'cmd /c start "" "code"',
-        'vs code': 'cmd /c start "" "code"',
-        'visual studio code': 'cmd /c start "" "code"',
-        notepad: 'cmd /c start "" "notepad"',
-        explorer: 'cmd /c start "" "explorer"',
-        terminal: 'cmd /c start "" "cmd"',
-        powershell: 'cmd /c start "" "powershell"',
-        calculator: 'cmd /c start "" "calc"',
-        settings: 'cmd /c start "" "ms-settings:"',
-        edge: 'cmd /c start "" "msedge"',
-        firefox: 'cmd /c start "" "firefox"',
+        chrome: ['cmd', ['/c', 'start', 'chrome']],
+        'google chrome': ['cmd', ['/c', 'start', 'chrome']],
+        vscode: ['cmd', ['/c', 'start', 'code']],
+        'vs code': ['cmd', ['/c', 'start', 'code']],
+        'visual studio code': ['cmd', ['/c', 'start', 'code']],
+        notepad: ['cmd', ['/c', 'start', 'notepad']],
+        explorer: ['cmd', ['/c', 'start', 'explorer']],
+        terminal: ['cmd', ['/c', 'start', 'cmd']],
+        powershell: ['cmd', ['/c', 'start', 'powershell']],
+        calculator: ['cmd', ['/c', 'start', 'calc']],
+        settings: ['cmd', ['/c', 'start', 'ms-settings:']],
+        edge: ['cmd', ['/c', 'start', 'msedge']],
+        firefox: ['cmd', ['/c', 'start', 'firefox']],
       };
 
-      const cmd = commands[appName.toLowerCase()];
-      if (!cmd) return { success: false, error: `Unknown app: ${appName}` };
+      const entry = commands[appName.toLowerCase()];
+      if (!entry) return { success: false, error: `Unknown app: ${appName}` };
 
-      await new Command(cmd).execute();
+      const [program, args] = entry;
+      await new Command(program, args).execute();
       return { success: true, message: `Opened ${appName}` };
     } catch (e) {
       return { success: false, error: e.message };
@@ -264,8 +264,29 @@ export const api = {
    searchStocks: (q) => axiosInstance.get(`/api/market/search?q=${encodeURIComponent(q)}`),
    getMarketMovers: () => axiosInstance.get('/api/market/movers'),
 
-  // Tauri shell (desktop only)
-  openApp: tauriShell.openApp,
-  isTauri: isTauri,
+   // Tauri shell (desktop only)
+   openApp: tauriShell.openApp,
+   isTauri: isTauri,
+
+   // Trading data persistence (auth required)
+   getPortfolio: (uid, token) => axiosInstance.get('/api/trading/portfolio', {
+     headers: { Authorization: `Bearer ${token}` }
+   }),
+   savePortfolio: (portfolio, uid, token) => axiosInstance.post('/api/trading/portfolio', { portfolio }, {
+     headers: { Authorization: `Bearer ${token}` }
+   }),
+   getWatchlist: (uid, token) => axiosInstance.get('/api/trading/watchlist', {
+     headers: { Authorization: `Bearer ${token}` }
+   }),
+   saveWatchlist: (watchlist, uid, token) => axiosInstance.post('/api/trading/watchlist', { watchlist }, {
+     headers: { Authorization: `Bearer ${token}` }
+   }),
+};
+
+// Standalone portfolio API (for Portfolio.jsx page)
+export const portfolioAPI = {
+  get: async () => axiosInstance.get('/api/trading/portfolio'),
+  add: async (data) => axiosInstance.post('/api/trading/portfolio/add', data),
+  remove: async (symbol) => axiosInstance.post('/api/trading/portfolio/remove', { symbol }),
 };
 

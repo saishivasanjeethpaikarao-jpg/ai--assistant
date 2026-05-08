@@ -724,6 +724,7 @@ const PortfolioTab = ({ portfolio, setPortfolio, onQuote, isMobile, prefill, cle
   const [prices,  setPrices]  = useState({});
   const [loading, setLoading] = useState(false);
   const [symSug,  setSymSug]  = useState([]);
+  const [editId,  setEditId]  = useState(null);
   const debRef                = useRef(null);
 
   // Auto-open form and pre-fill when coming from quote modal
@@ -761,23 +762,34 @@ const PortfolioTab = ({ portfolio, setPortfolio, onQuote, isMobile, prefill, cle
     setPrices(res); setLoading(false);
   };
 
+  const startEdit = (holding) => {
+    setEditId(holding.id);
+    setSym(normSym(holding.symbol));
+    setQty(String(holding.qty));
+    setBuyPx(String(holding.buyPrice));
+    setShowAdd(true);
+  };
+
   const addPosition = () => {
     const s = sym.trim().toUpperCase();
     const q = parseFloat(qty);
     const b = parseFloat(buyPx);
     if (!s || !q || !b || q <= 0 || b <= 0) return;
-    const full = s.endsWith('.NS') || s.endsWith('.BO') ? s : s;
-    const idx = portfolio.findIndex(p => normSym(p.symbol) === s);
-    if (idx >= 0) {
-      const updated = [...portfolio];
-      const old = updated[idx];
-      const tot = old.qty + q;
-      updated[idx] = { ...old, qty: tot, buyPrice: Math.round((old.qty*old.buyPrice + q*b)/tot*100)/100 };
-      setPortfolio(updated);
+    if (editId) {
+      setPortfolio(p => p.map(x => x.id === editId ? { ...x, qty: q, buyPrice: b } : x));
     } else {
-      setPortfolio(p => [...p, { id: uid(), symbol: full, qty: q, buyPrice: b, addedAt: new Date().toISOString() }]);
+      const idx = portfolio.findIndex(p => normSym(p.symbol) === s);
+      if (idx >= 0) {
+        const updated = [...portfolio];
+        const old = updated[idx];
+        const tot = old.qty + q;
+        updated[idx] = { ...old, qty: tot, buyPrice: Math.round((old.qty*old.buyPrice + q*b)/tot*100)/100 };
+        setPortfolio(updated);
+      } else {
+        setPortfolio(p => [...p, { id: uid(), symbol: s, qty: q, buyPrice: b, addedAt: new Date().toISOString() }]);
+      }
     }
-    setSym(''); setQty(''); setBuyPx(''); setShowAdd(false); setSymSug([]);
+    setSym(''); setQty(''); setBuyPx(''); setEditId(null); setShowAdd(false); setSymSug([]);
   };
 
   const totalInvested = portfolio.reduce((s,p) => s + p.qty*p.buyPrice, 0);
@@ -810,7 +822,7 @@ const PortfolioTab = ({ portfolio, setPortfolio, onQuote, isMobile, prefill, cle
       {/* Add form */}
       {showAdd && (
         <div style={{ padding: isMobile ? '12px 14px' : '14px 22px', borderBottom: `1px solid ${BORDER}`, background: `${GR}06`, flexShrink: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: DK, marginBottom: 10 }}>Add position to portfolio</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: DK, marginBottom: 10 }}>{editId ? 'Edit position' : 'Add position to portfolio'}</div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: '1 1 130px' }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: '#666', display: 'block', marginBottom: 5 }}>Stock Symbol</label>
@@ -847,8 +859,8 @@ const PortfolioTab = ({ portfolio, setPortfolio, onQuote, isMobile, prefill, cle
                 onBlur={e  => e.currentTarget.style.borderColor = BORDER} />
             </div>
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              <button onClick={addPosition} style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, background: GR, color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: FONT }}>Add</button>
-              <button onClick={() => { setShowAdd(false); setSym(''); setQty(''); setBuyPx(''); setSymSug([]); }}
+              <button onClick={addPosition} style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, background: GR, color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: FONT }}>{editId ? 'Save' : 'Add'}</button>
+              <button onClick={() => { setShowAdd(false); setSym(''); setQty(''); setBuyPx(''); setEditId(null); setSymSug([]); }}
                 style={{ padding: '9px 14px', fontSize: 13, background: 'transparent', color: '#888', border: `1px solid ${BORDER}`, borderRadius: 10, cursor: 'pointer', fontFamily: FONT }}>Cancel</button>
             </div>
           </div>
@@ -889,16 +901,19 @@ const PortfolioTab = ({ portfolio, setPortfolio, onQuote, isMobile, prefill, cle
                       {q && <div style={{ fontSize: 11.5, color: pctColor(q.change_pct), fontWeight: 600 }}>{pctSign(q.change_pct)}{q.change_pct?.toFixed(2)}% today</div>}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${BORDER}`, paddingTop: 10 }}>
-                    <div>
-                      <div style={{ fontSize: 10, color: '#aaa', fontWeight: 600, textTransform: 'uppercase' }}>P&L</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: pnl != null ? pctColor(pnl) : '#bbb' }}>
-                        {pnl != null ? `${pctSign(pnl)}₹${fmt(Math.abs(pnl))}` : '—'}
-                        {pnlPct != null && <span style={{ fontSize: 11, marginLeft: 6 }}>({pctSign(pnlPct)}{pnlPct.toFixed(2)}%)</span>}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${BORDER}`, paddingTop: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: '#aaa', fontWeight: 600, textTransform: 'uppercase' }}>P&L</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: pnl != null ? pctColor(pnl) : '#bbb' }}>
+                          {pnl != null ? `${pctSign(pnl)}₹${fmt(Math.abs(pnl))}` : '—'}
+                          {pnlPct != null && <span style={{ fontSize: 11, marginLeft: 6 }}>({pctSign(pnlPct)}{pnlPct.toFixed(2)}%)</span>}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => startEdit(p)} style={{ background: `${BL}10`, border: 'none', cursor: 'pointer', color: BL, fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, fontFamily: FONT }}>Edit</button>
+                        <button onClick={() => setPortfolio(p2 => p2.filter(x => x.id !== p.id))} style={{ background: `${RD}10`, border: 'none', cursor: 'pointer', color: RD, fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, fontFamily: FONT }}>Remove</button>
                       </div>
                     </div>
-                    <button onClick={() => setPortfolio(p2 => p2.filter(x => x.id !== p.id))} style={{ background: `${RD}10`, border: 'none', cursor: 'pointer', color: RD, fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, fontFamily: FONT }}>Remove</button>
-                  </div>
                 </div>
               );
             })}
@@ -936,7 +951,11 @@ const PortfolioTab = ({ portfolio, setPortfolio, onQuote, isMobile, prefill, cle
                       <td style={{ padding: '12px', textAlign:'right', fontSize:12.5, fontWeight:600, color:q?pctColor(q.change_pct):'#ccc' }}>{q?`${pctSign(q.change_pct)}${q.change_pct?.toFixed(2)}%`:'—'}</td>
                       <td style={{ padding: '12px', textAlign:'right', fontSize:13, fontWeight:700, color:pnl!=null?pctColor(pnl):'#ccc' }}>{pnl!=null?`${pctSign(pnl)}₹${fmt(Math.abs(pnl))}`:'—'}</td>
                       <td style={{ padding: '12px', textAlign:'right', fontSize:12.5, fontWeight:600, color:pnlPct!=null?pctColor(pnlPct):'#ccc' }}>{pnlPct!=null?`${pctSign(pnlPct)}${pnlPct.toFixed(2)}%`:'—'}</td>
-                      <td style={{ padding: '12px', textAlign:'center' }}>
+                      <td style={{ padding: '12px', textAlign:'center', whiteSpace:'nowrap' }}>
+                        <button onClick={() => startEdit(p)}
+                          style={{ background:'none', border:'none', cursor:'pointer', color:'#aaa', fontSize:12, fontWeight:600, transition:'color 0.15s', padding:'2px 6px', marginRight:4 }}
+                          onMouseEnter={e => e.currentTarget.style.color=BL}
+                          onMouseLeave={e => e.currentTarget.style.color='#aaa'}>Edit</button>
                         <button onClick={() => setPortfolio(p2 => p2.filter(x => x.id !== p.id))}
                           style={{ background:'none', border:'none', cursor:'pointer', color:'#ddd', fontSize:18, transition:'color 0.15s', padding:'2px 6px' }}
                           onMouseEnter={e => e.currentTarget.style.color=RD}
