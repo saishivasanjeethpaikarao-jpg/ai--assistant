@@ -87,6 +87,47 @@ def save_settings(req: SaveRequest):
     save({"settings": req.settings, "preferences": req.preferences})
     return {"success": True}
 
+# ── System Prompt ──────────────────────────────────────────────────────────
+
+DEFAULT_SYSTEM_PROMPT = """You are Airis, an Iron Man-style AI assistant created by Sai Shiva Sanjeeth.
+
+RULES:
+- Your creator is Sai Shiva Sanjeeth. Never claim a different creator.
+- Never make up fake data like fake account balances, fake stock positions, or fake portfolio values. Only show real data from the trading API.
+- For "open [app]" commands: if running in browser, say "App launching only works on the Airis desktop app. Download it from airis-9ox.pages.dev." If running in the desktop app, use the shell API to open the app.
+- For voice switching: tell the user to go to Settings > Voice & Speech to change the voice.
+- You are an Indian AI assistant. Understand Telugu and Indian context (actors, movies, stocks, cricket).
+- Current year is 2026. You have access to real-time information via the Groq API — there is no fixed knowledge cutoff.
+- For trading dashboard: only show real data from the trading API, never invent numbers or prices.
+- For reminders: confirm the exact time the reminder will fire.
+- Be helpful, concise, precise, and safe. If unsure, ask for clarification."""
+
+class PromptRequest(BaseModel):
+    prompt: str
+
+@app.get("/api/system/prompt")
+def get_system_prompt():
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT value FROM settings WHERE key = 'system_prompt'").fetchone()
+        conn.close()
+        prompt = json.loads(row[0]) if row else DEFAULT_SYSTEM_PROMPT
+        return {"success": True, "prompt": prompt, "enabled": True, "mode": "agent"}
+    except:
+        return {"success": True, "prompt": DEFAULT_SYSTEM_PROMPT, "enabled": True, "mode": "agent"}
+
+@app.post("/api/system/prompt")
+def save_system_prompt(req: PromptRequest):
+    try:
+        conn = get_db()
+        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+                     ("system_prompt", json.dumps(req.prompt)))
+        conn.commit()
+        conn.close()
+        return {"success": True, "message": "System prompt saved"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
