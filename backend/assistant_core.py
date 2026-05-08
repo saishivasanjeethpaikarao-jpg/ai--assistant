@@ -70,7 +70,10 @@ from system_prompt_config import load_system_prompt, is_system_prompt_enabled
 from advanced_system import is_advanced_system_enabled, get_all_layers, get_layer_count
 from autonomous_executor import get_executor, execute as autonomous_execute
 from memory.adaptive_memory import get_memory, store_learning, get_memory_stats
-from actions.data_agent import execute_python_code
+try:
+    from actions.data_agent import execute_python_code
+except ImportError:
+    execute_python_code = None
 
 # Smart Orchestrator V2 integration
 try:

@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 import logging
 
-from indian_stock_api import get_api
+from trading.indian_stock_api import get_api
 
 logger = logging.getLogger(__name__)
 

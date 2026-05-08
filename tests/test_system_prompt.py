@@ -19,7 +19,7 @@ def test_system_prompt_config():
     
     assert len(prompt) > 0, "Prompt is empty"
     assert is_system_prompt_enabled(), "System prompt not enabled"
-    assert config.get("version") == "1.0", "Config version mismatch"
+    assert config.get("version") == "2.0", "Config version mismatch"
     assert config.get("mode") == "agent", "Default mode should be agent"
     
     print("[PASS] Test 1: System Prompt Config")

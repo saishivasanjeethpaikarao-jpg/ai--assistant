@@ -7,8 +7,8 @@ import json
 from typing import Dict, List, Optional
 import logging
 
-from indian_stock_api import get_api
-from market_tracker import get_watchlist, get_portfolio
+from trading.indian_stock_api import get_api
+from trading.market_tracker import get_watchlist, get_portfolio
 from trading_advisor import (
     StockRecommendationEngine,
     UserTradingProfile,

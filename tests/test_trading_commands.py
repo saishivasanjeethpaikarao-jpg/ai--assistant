@@ -296,13 +296,14 @@ class TestTradingCommands(unittest.TestCase):
             "best_performer": None,
             "worst_performer": None
         }
+        mock_portfolio.get_portfolio_value.return_value = (50000, 52000, 2000, 4.0)
         mock_get_portfolio.return_value = mock_portfolio
         
         result = view_portfolio()
         
         self.assertIn("PORTFOLIO", result)
         self.assertIn("2", result)
-        self.assertIn("52000", result)
+        self.assertIn("52,000", result)
 
 
 class TestDataIntegrity(unittest.TestCase):
@@ -323,6 +324,7 @@ class TestDataIntegrity(unittest.TestCase):
         with patch('trading_commands.get_api') as mock_get_api:
             mock_api = Mock()
             mock_api.get_stock.return_value = None
+            mock_api.search.return_value = []
             mock_get_api.return_value = mock_api
             
             result = get_stock_price("INVALID")

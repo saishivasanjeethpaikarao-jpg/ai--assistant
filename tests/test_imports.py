@@ -1,6 +1,6 @@
 import time
 
-def test_import(module_name):
+def check_import(module_name):
     print(f"Testing {module_name}...", end=" ", flush=True)
     start = time.time()
     try:
@@ -19,6 +19,6 @@ modules = [
 ]
 
 for m in modules:
-    test_import(m)
+    check_import(m)
 
 print("\nImport diagnostic complete.")
