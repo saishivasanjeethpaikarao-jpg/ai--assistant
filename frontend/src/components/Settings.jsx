@@ -659,47 +659,24 @@ const Settings = ({ isMobile = false }) => {
   const load = async () => {
     setLoading(true);
     try {
-      // Start with localStorage values first
-      const localS = api.getLocalSettings ? api.getLocalSettings() : {};
-      const localP = api.getLocalPrefs ? api.getLocalPrefs() : {};
-      
-      // Set from localStorage immediately
-      if (Object.keys(localS).length > 0) {
-        setS(p => ({ ...p, ...localS }));
-        setStatus({
-          groq_api_key_set: !!localS.groq_api_key,
-          fish_audio_api_key_set: !!localS.fish_audio_api_key,
-          elevenlabs_api_key_set: !!localS.elevenlabs_api_key,
-          firebase_api_key_set: !!localS.firebase_api_key,
-        });
-      }
-      if (Object.keys(localP).length > 0) {
-        setPrefs(p => ({ ...p, ...localP }));
-      }
-
-      // Then fetch from backend and merge
       const res = await api.getSettings();
+      // Local values take priority over backend
       if (res.settings) {
-        const merged = { ...res.settings, ...localS };
         setStatus({
-          groq_api_key_set: !!merged.groq_api_key,
-          fish_audio_api_key_set: !!merged.fish_audio_api_key,
-          elevenlabs_api_key_set: !!merged.elevenlabs_api_key,
-          firebase_api_key_set: !!merged.firebase_api_key,
+          groq_api_key_set: res.settings.groq_api_key_set,
+          fish_audio_api_key_set: res.settings.fish_audio_api_key_set,
+          elevenlabs_api_key_set: res.settings.elevenlabs_api_key_set,
+          firebase_api_key_set: res.settings.firebase_api_key_set,
         });
-        setS(p => ({ ...p, ...merged }));
+        setS(p => ({ ...p, ...res.settings }));
       }
-      if (res.preferences) {
-        setPrefs(p => ({ ...p, ...res.preferences, ...localP }));
-      }
+      if (res.preferences) setPrefs(p => ({ ...p, ...res.preferences }));
       if (res.providers) setProviders(res.providers);
-    } catch { setError('Could not load settings — is the backend running?'); }
-    finally { setLoading(false); }
-
-    try {
-      const pr = await api.getSystemPrompt();
-      if (pr.prompt) setSystemPrompt(pr.prompt);
-    } catch {}
+    } catch {
+      setError('Could not load settings — backend may be starting up (cold start takes ~30s)');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);

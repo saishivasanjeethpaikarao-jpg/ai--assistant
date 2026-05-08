@@ -4,6 +4,7 @@ App Launcher Tool — Open applications by name.
 
 import subprocess
 import os
+import platform
 from typing import Dict
 from backend.tools import ToolResult, tool_registry
 
@@ -37,14 +38,12 @@ def launch_app(app_name: str, args: str = "") -> ToolResult:
         app_name: Name of app (see COMMON_APPS)
         args: Optional command-line arguments
     """
-    app_name = app_name.lower().strip()
-    
-    # Check if running on web/linux (Render, etc.)
-    if sys.platform != "win32":
+    if platform.system() != "Windows":
         return ToolResult(
             success=False,
-            message=f"App launching is only available on desktop (Windows). You requested: {app_name}"
+            message="App launching only works on Windows desktop app. Download the desktop EXE from the releases page."
         )
+    app_name = app_name.lower().strip()
     
     # Check if app is in registry
     if app_name in COMMON_APPS:

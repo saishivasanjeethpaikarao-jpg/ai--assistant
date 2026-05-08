@@ -194,19 +194,28 @@ export const api = {
   run: (cmd) => chatApi.chat(cmd),
   health: () => axiosInstance.get('/health'),
 
-  // History (localStorage for desktop)
-  getHistory: () => {
-    if (isTauri()) return Promise.resolve({ messages: localSettings.getHistory() });
-    return axiosInstance.get('/history');
-  },
-  clearHistory: () => {
-    if (isTauri()) { localSettings.setHistory([]); return Promise.resolve({ success: true }); }
-    return axiosInstance.post('/history/clear', {});
-  },
+  // History (persistent localStorage — never lost on refresh)
   saveHistory: (messages) => {
-    const trimmed = Array.isArray(messages) ? messages.slice(-50) : [];
-    if (isTauri()) { localSettings.setHistory(trimmed); return Promise.resolve({ success: true }); }
-    return Promise.resolve({ success: false });
+    try {
+      const trimmed = messages.slice(-50);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+    } catch {}
+  },
+  loadHistory: () => {
+    try {
+      const h = localStorage.getItem(HISTORY_KEY);
+      return h ? JSON.parse(h) : [];
+    } catch { return []; }
+  },
+  clearHistory: async () => {
+    localStorage.removeItem(HISTORY_KEY);
+    try { await axiosInstance.post('/history/clear', {}); } catch {}
+    return { success: true };
+  },
+  getHistory: () => {
+    const h = localStorage.getItem(HISTORY_KEY);
+    const messages = h ? JSON.parse(h) : [];
+    return Promise.resolve({ messages });
   },
 
   // Settings — local first
@@ -223,35 +232,37 @@ export const api = {
     }
   },
 
-  // System
-  getSystemStatus: () => axiosInstance.get('/system/status'),
-  getSystemLayers: () => axiosInstance.get('/system/layers'),
-  getSystemPrompt: () => axiosInstance.get('/system/prompt'),
-  saveSystemPrompt: (prompt) => axiosInstance.post('/system/prompt', { prompt }),
+   // System
+   getSystemStatus: () => axiosInstance.get('/api/system/status'),
+   getSystemLayers: () => axiosInstance.get('/api/system/layers'),
+   getSystemPrompt: () => axiosInstance.get('/api/system/prompt'),
+   saveSystemPrompt: (prompt) => axiosInstance.post('/api/system/prompt', { prompt }),
 
-  // Reminders
-  getReminders: () => axiosInstance.get('/reminders'),
-  addReminder: (text, when) => axiosInstance.post('/reminders', { text, when }),
+   // Reminders
+   getReminders: () => axiosInstance.get('/api/reminders'),
+   addReminder: (text, when) => axiosInstance.post('/api/reminders', { text, when }),
+   deleteReminder: (index) => axiosInstance.post('/api/reminders/delete', { index }),
+   completeReminder: (index) => axiosInstance.post('/api/reminders/complete', { index }),
 
-  // Memory
-  getMemoryStats: () => axiosInstance.get('/memory/stats'),
+   // Memory
+   getMemoryStats: () => axiosInstance.get('/api/memory/stats'),
 
-  // Capabilities
-  getCapabilities: () => axiosInstance.get('/capabilities'),
+   // Capabilities
+   getCapabilities: () => axiosInstance.get('/api/capabilities'),
 
-  // Analytics
-  getAnalytics: () => axiosInstance.get('/analytics'),
+   // Analytics
+   getAnalytics: () => axiosInstance.get('/api/analytics'),
 
   // TTS / Voice Cloning
-  ttsConfig: () => axiosInstance.get('/tts/config'),
-  tts: (text, reference_id, model) => axiosInstance.post('/tts', { text, reference_id, model }, { responseType: 'arraybuffer' }),
-  cloneVoice: (name, audio_b64, content_type) => axiosInstance.post('/voice/clone', { name, audio_b64, content_type }),
+   ttsConfig: () => axiosInstance.get('/api/tts/config'),
+   tts: (text, reference_id, model) => axiosInstance.post('/api/tts', { text, reference_id, model }, { responseType: 'arraybuffer' }),
+   cloneVoice: (name, audio_b64, content_type) => axiosInstance.post('/api/voice/clone', { name, audio_b64, content_type }),
 
-  // Market Data
-  getMarketIndices: () => axiosInstance.get('/market/indices'),
-  getMarketQuote: (symbol) => axiosInstance.get(`/market/quote?symbol=${encodeURIComponent(symbol)}`),
-  searchStocks: (q) => axiosInstance.get(`/market/search?q=${encodeURIComponent(q)}`),
-  getMarketMovers: () => axiosInstance.get('/market/movers'),
+   // Market Data
+   getMarketIndices: () => axiosInstance.get('/api/market/indices'),
+   getMarketQuote: (symbol) => axiosInstance.get(`/api/market/quote?symbol=${encodeURIComponent(symbol)}`),
+   searchStocks: (q) => axiosInstance.get(`/api/market/search?q=${encodeURIComponent(q)}`),
+   getMarketMovers: () => axiosInstance.get('/api/market/movers'),
 
   // Tauri shell (desktop only)
   openApp: tauriShell.openApp,

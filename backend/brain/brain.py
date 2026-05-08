@@ -1,57 +1,27 @@
-import json, os, sqlite3
-from config_paths import memory_package_dir
+import json, os
 
-MEMORY_DB = os.path.join(memory_package_dir(), 'brain.db')
+DATA_DIR = os.environ.get('RENDER_DATA_DIR', '/opt/render/project/data')
+os.makedirs(DATA_DIR, exist_ok=True)
+MEMORY_FILE = os.path.join(DATA_DIR, 'memory.json')
 _memories = {}
 _profile = {}
 _active_user = 'default'
 
-def _get_db():
-    db_path = memory_package_dir()
-    os.makedirs(db_path, exist_ok=True)
-    db = sqlite3.connect(os.path.join(db_path, 'brain.db'))
-    db.row_factory = sqlite3.Row
-    db.execute("CREATE TABLE IF NOT EXISTS memories (user TEXT, key TEXT, value TEXT, PRIMARY KEY (user, key))")
-    db.execute("CREATE TABLE IF NOT EXISTS profiles (user TEXT PRIMARY KEY, data TEXT)")
-    return db
-
 def _save():
-    try:
-        db = _get_db()
-        # Save memories
-        for key, value in _memories.items():
-            db.execute("INSERT OR REPLACE INTO memories (user, key, value) VALUES (?, ?, ?)",
-                        (_active_user, key, json.dumps(value)))
-        # Save profile
-        db.execute("INSERT OR REPLACE INTO profiles (user, data) VALUES (?, ?)",
-                    (_active_user, json.dumps(_profile)))
-        db.commit()
-        db.close()
-    except Exception as e:
-        print(f"Memory save error: {e}")
+    with open(MEMORY_FILE, 'w') as f:
+        json.dump({'memories': _memories, 'profile': _profile}, f)
 
 def _load():
     global _memories, _profile
-    try:
-        db = _get_db()
-        # Load memories
-        rows = db.execute("SELECT key, value FROM memories WHERE user = ?", (_active_user,)).fetchall()
-        _memories = {row['key']: json.loads(row['value']) for row in rows}
-        # Load profile
-        row = db.execute("SELECT data FROM profiles WHERE user = ?", (_active_user,)).fetchone()
-        if row:
-            _profile = json.loads(row['data'])
-        db.close()
-    except Exception as e:
-        print(f"Memory load error: {e}")
+    if os.path.exists(MEMORY_FILE):
+        with open(MEMORY_FILE) as f:
+            data = json.load(f)
+            _memories = data.get('memories', {})
+            _profile = data.get('profile', {})
 
-def set_active_user(user):
-    global _active_user, _memories, _profile
-    _active_user = user
-    _memories = {}
-    _profile = {}
-    _load()
+_load()
 
+def set_active_user(user): global _active_user; _active_user = user
 def get_active_user(): return _active_user
 def remember_fact(key, value): _memories[key] = value; _save()
 def recall_fact(key): return _memories.get(key)

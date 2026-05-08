@@ -10,78 +10,6 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
-
-      - name: Create assets directory
-        run: New-Item -ItemType Directory -Force -Path assets
-
-      - name: Generate default icon (PNG)
-        run: |
-          python -c "
-          try:
-              from PIL import Image, ImageDraw, ImageFont
-              img = Image.new('RGBA', (256, 256), (67, 97, 238, 255))
-              draw = ImageDraw.Draw(img)
-              draw.text((50, 80), 'A', fill=(255,255,255,255))
-              img.save('assets/app.png')
-          except:
-              with open('assets/app.png', 'wb') as f: f.write(b'')
-          "
-
-      - name: Convert PNG to ICO
-        run: |
-          python -c "
-          try:
-              from PIL import Image
-              img = Image.open('assets/app.png')
-              img.save('assets/app.ico', format='ICO', sizes=[(256,256),(128,128),(64,64),(48,48),(32,32),(16,16)])
-          except:
-              pass
-          "
-
-      - name: Build EXE with PyInstaller
-        run: pyinstaller --noconfirm --clean --onefile --windowed --name Airis --icon assets/app.ico --add-data "backend;backend" --add-data ".env.template;." --add-data "LICENSE;." app.spec
-
-      - name: Get tag name
-        id: tag
-        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-      - name: Upload EXE to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.tag.outputs.TAG }}
-          name: 'Airis ${{ steps.tag.outputs.TAG }}'
-          body: |
-            ## Airis Desktop App (Windows)
-
-            Download `Airis.exe` below and run it.
-
-            **Features:**
-            - Voice assistant with AI
-            - Trading analysis
-            - Smart reminders
-            - Self-improvement
-          draft: false
-          prerelease: false
-          files: dist/Airis.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   build-tauri:
     strategy:
       fail-fast: false
@@ -101,7 +29,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 

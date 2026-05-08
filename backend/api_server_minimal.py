@@ -7,39 +7,48 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*", "https://airis-9ox.pages.dev"],
+    allow_origins=[
+        "",
+        "https://airis-9ox.pages.dev",
+        "https://ai-assistant-8r3x.onrender.com",
+        "http://localhost:5173",
+        "http://localhost:5000",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-DB_DIR = "/opt/render/project/data"
-DB_PATH = os.path.join(DB_DIR, "settings.db")
+DB_PATH = "/opt/render/project/data/settings.db"
 
 def get_db():
-    os.makedirs(DB_DIR, exist_ok=True)
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
     conn.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
+    conn.commit()
     return conn
 
 def load():
     try:
         conn = get_db()
-        row = conn.execute("SELECT value FROM settings WHERE key = 'data'").fetchone()
+        rows = conn.execute("SELECT key, value FROM settings").fetchall()
+        data = {}
+        for key, value in rows:
+            data[key] = json.loads(value)
         conn.close()
-        if row:
-            return json.loads(row["value"])
-    except Exception:
-        pass
-    return {"settings": {}, "preferences": {}}
+        return data
+    except:
+        return {"settings": {}, "preferences": {}}
 
 def save(data):
     try:
         conn = get_db()
-        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('data', ?)", (json.dumps(data),))
+        for key, value in data.items():
+            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+                         (key, json.dumps(value)))
         conn.commit()
         conn.close()
-    except Exception:
+    except:
         pass
 
 @app.get("/api/settings")
@@ -58,6 +67,13 @@ def get_settings():
             "model": s.get("groq_model", "llama-3.3-70b-versatile"),
             "enabled": True,
             "base_url": "https://api.groq.com/openai/v1"
+        })
+    if s.get("ollama_enabled"):
+        providers.append({
+            "name": "Ollama",
+            "model": s.get("ollama_model", "llama3.2"),
+            "enabled": True,
+            "base_url": s.get("ollama_url", "http://localhost:11434")
         })
     
     return {"success": True, "settings": s, "preferences": data.get("preferences", {}), "providers": providers}
