@@ -147,7 +147,7 @@ const settingsApi = {
   },
 };
 
-// ── Chat API with local API key injection ──────────────────────────────
+// ── Chat API with local API key injection + conversation context ──────
 const chatApi = {
   chat: async (text, appState = null) => {
     const localS = localSettings.get();
@@ -169,6 +169,17 @@ RULES:
 - For reminders: confirm the exact time the reminder will fire.
 - Be helpful, concise, precise, and safe. If unsure, ask for clarification.`;
 
+        // Include recent conversation history for context
+        const history = localSettings.getHistory();
+        const messages = [
+          { role: 'system', content: systemPrompt },
+          ...history.slice(-10).map(m => ({
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+          })),
+          { role: 'user', content: text },
+        ];
+
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -177,10 +188,7 @@ RULES:
           },
           body: JSON.stringify({
             model,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: text },
-            ],
+            messages,
             max_tokens: 1024,
             temperature: 0.7,
           }),

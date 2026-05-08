@@ -347,7 +347,7 @@ const SpeakingIndicator = ({ isMobile }) => (
 
 const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceState, onVoiceStateChange, isMobile }) => {
   const [input,          setInput]          = useState('');
-  const [ttsEnabled,     setTtsEnabled]     = useState(true);
+  const [ttsEnabled,     setTtsEnabled]     = useState(() => { try { return localStorage.getItem('airis_tts_enabled') !== 'false'; } catch { return true; } });
   const [speaking,       setSpeaking]       = useState(false);
   const [attachedFiles,  setAttachedFiles]  = useState([]);
   const [screenSharing,  setScreenSharing]  = useState(false);
@@ -446,7 +446,11 @@ const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceS
   };
   const toggleTts = () => {
     if (speaking) { stopAllSpeech(); setSpeaking(false); }
-    setTtsEnabled(v => !v);
+    setTtsEnabled(v => {
+      const next = !v;
+      try { localStorage.setItem('airis_tts_enabled', String(next)); } catch {}
+      return next;
+    });
   };
 
   const stopScreenShare = useCallback(() => {

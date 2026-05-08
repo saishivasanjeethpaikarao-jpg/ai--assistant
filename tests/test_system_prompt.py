@@ -76,7 +76,8 @@ def test_prompt_injection():
     enabled = is_system_prompt_enabled()
     
     assert enabled, "System prompt should be enabled"
-    assert "MASTER SYSTEM PROMPT" in prompt, "Missing master prompt marker"
+    assert len(prompt) > 100, "System prompt seems too short"
+    assert "Sai Shiva Sanjeeth" in prompt, "Missing creator identity"
     
     print("[PASS] Test 4: Prompt Injection")
     print("       - System prompt will be prepended to all chat messages")

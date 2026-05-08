@@ -1,0 +1,16 @@
+{
+  "TCS_NSE": {
+    "symbol": "TCS",
+    "exchange": "NSE",
+    "quantity": 5,
+    "buy_price": 3000,
+    "buy_date": "2026-05-09T01:16:14.332912",
+    "cost_basis": 15000,
+    "current_price": 3100.0,
+    "current_value": 15500.0,
+    "gain_loss": 500.0,
+    "gain_loss_pct": 3.3333333333333335,
+    "last_update": "2026-05-09T01:16:14.336669",
+    "notes": ""
+  }
+}
