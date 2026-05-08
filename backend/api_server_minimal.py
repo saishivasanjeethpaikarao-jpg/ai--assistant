@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel
-import json, os, sqlite3
+import json, os, sqlite3, base64, httpx
 
 app = FastAPI()
 
@@ -127,6 +128,84 @@ def save_system_prompt(req: PromptRequest):
         return {"success": True, "message": "System prompt saved"}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+# ── Voice Clone ────────────────────────────────────────────────────────────
+
+@app.post("/api/voice/clone")
+async def clone_voice(request: Request):
+    data = await request.json()
+    name = data.get("name")
+    audio_b64 = data.get("audio_b64")
+    content_type = data.get("content_type", "audio/mpeg")
+
+    settings = load().get("settings", {})
+    fish_key = settings.get("fish_audio_api_key")
+
+    if not fish_key:
+        raise HTTPException(status_code=400, detail="Fish Audio API key not configured. Go to Settings > Voice & Speech.")
+
+    audio_bytes = base64.b64decode(audio_b64)
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.fish.audio/v1/model",
+            headers={"Authorization": f"Bearer {fish_key}"},
+            files={"voices": (f"voice.{content_type.split('/')[-1]}", audio_bytes, content_type)},
+            data={"title": name, "train_mode": "fast"}
+        )
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=400, detail=f"Fish Audio error: {response.text}")
+
+    result = response.json()
+    return {"success": True, "model_id": result.get("_id")}
+
+# ── TTS Proxy ──────────────────────────────────────────────────────────────
+
+@app.post("/api/tts")
+async def text_to_speech(request: Request):
+    data = await request.json()
+    text = data.get("text", "")
+    reference_id = data.get("reference_id")
+    model = data.get("model", "s2-pro")
+
+    settings = load().get("settings", {})
+    fish_key = settings.get("fish_audio_api_key")
+
+    if not fish_key:
+        raise HTTPException(status_code=400, detail="Fish Audio API key not configured")
+
+    payload = {"text": text, "model": model, "format": "mp3"}
+    if reference_id:
+        payload["reference_id"] = reference_id
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            "https://api.fish.audio/v1/tts",
+            headers={
+                "Authorization": f"Bearer {fish_key}",
+                "Content-Type": "application/json"
+            },
+            json=payload
+        )
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=400, detail="TTS failed")
+
+    return Response(content=response.content, media_type="audio/mpeg")
+
+# ── TTS Config ─────────────────────────────────────────────────────────────
+
+@app.get("/api/tts/config")
+def tts_config():
+    settings = load().get("settings", {})
+    fish_key = settings.get("fish_audio_api_key")
+    ref_id = settings.get("fish_audio_reference_id")
+    return {
+        "fish_available": bool(fish_key and ref_id),
+        "reference_id": ref_id,
+        "model": settings.get("fish_audio_model", "s2-pro")
+    }
 
 @app.get("/api/health")
 def health():

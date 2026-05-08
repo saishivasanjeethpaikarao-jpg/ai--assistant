@@ -294,6 +294,79 @@ export const api = {
    }),
 };
 
+// ── Speech / TTS ─────────────────────────────────────────────────────────
+
+const browserSpeak = (text, lang = 'en-US') => {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+
+  const settings = localSettings.get();
+  const voicePersonality = settings.voice_personality || 'airis';
+
+  const voices = window.speechSynthesis.getVoices();
+  let selectedVoice = null;
+
+  if (voicePersonality === 'airis') {
+    selectedVoice = voices.find(v => v.lang === 'en-GB' && v.name.includes('Male'))
+      || voices.find(v => v.lang === 'en-GB')
+      || voices.find(v => v.lang.startsWith('en'));
+  } else if (voicePersonality === 'siri') {
+    selectedVoice = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('female'))
+      || voices.find(v => v.lang === 'en-US' && v.name.includes('Samantha'))
+      || voices.find(v => v.lang === 'en-US');
+  } else {
+    selectedVoice = voices.find(v => v.lang.startsWith('en'));
+  }
+
+  if (selectedVoice) utterance.voice = selectedVoice;
+  utterance.rate = parseFloat(settings.voice_rate || 150) / 150;
+  utterance.volume = parseFloat(settings.voice_volume || 0.9);
+  utterance.pitch = parseFloat(settings.voice_pitch || 1.0);
+  utterance.lang = settings.voice_language === 'te' ? 'te-IN' : 'en-US';
+
+  window.speechSynthesis.speak(utterance);
+};
+
+const speakText = (text) => {
+  const settings = localSettings.get();
+
+  if (settings.fish_audio_api_key && settings.fish_audio_reference_id) {
+    api.tts(text, settings.fish_audio_reference_id, settings.fish_audio_model || 's2-pro')
+      .then(audioBuffer => {
+        const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.play();
+      })
+      .catch(() => browserSpeak(text));
+  } else if (settings.elevenlabs_api_key && settings.elevenlabs_voice_id) {
+    fetch(`https://api.elevenlabs.io/v1/text-to-speech/${settings.elevenlabs_voice_id}`, {
+      method: 'POST',
+      headers: {
+        'xi-api-key': settings.elevenlabs_api_key,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: 'eleven_monolingual_v1',
+        voice_settings: { stability: 0.5, similarity_boost: 0.5 }
+      })
+    })
+    .then(r => r.arrayBuffer())
+    .then(buffer => {
+      const blob = new Blob([buffer], { type: 'audio/mpeg' });
+      const audio = new Audio(URL.createObjectURL(blob));
+      audio.play();
+    })
+    .catch(() => browserSpeak(text));
+  } else {
+    browserSpeak(text);
+  }
+};
+
+export { speakText, browserSpeak };
+
 // Standalone portfolio API (for Portfolio.jsx page)
 export const portfolioAPI = {
   get: async () => axiosInstance.get('/api/trading/portfolio'),
