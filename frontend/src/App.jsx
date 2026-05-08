@@ -128,7 +128,7 @@ function ProtectedApp() {
       const appState = getAppState(activePanel, window.location.pathname);
       const response = await api.chat(text, appState);
       const rawContent = typeof response === 'string' ? response
-        : response?.reply || response?.message || response?.output || 'Done.';
+        : response?.response || response?.text || response?.reply || response?.message || response?.output || 'I received your request but could not generate a response.';
 
       const { cleanText, actions } = parseActions(rawContent);
       addMessage({ role: 'assistant', content: cleanText || rawContent, mode: response?.mode });
