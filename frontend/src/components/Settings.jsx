@@ -162,6 +162,14 @@ const AiTab = ({ s, set, status, providers }) => {
         </div>
       </div>
 
+      <SecHdr label="Claude API (Smartest - Recommended)" desc="Anthropic Claude — most intelligent AI. Get key at console.anthropic.com" />
+      <Field label="Claude API Key" badge={<T ok={status.claude_api_key_set} />}
+        hint={<>Get key at <Link href="https://console.anthropic.com">console.anthropic.com</Link></>}>
+        <TextInput type="password" value={s.claude_api_key || ''} onChange={v => set('claude_api_key', v)}
+          placeholder={status.claude_api_key_set ? '••••••••• (saved)' : 'sk-ant-...'} mono />
+      </Field>
+
+      <Divider />
       <SecHdr label="Groq API (Cloud AI)" desc="Fast inference via Groq Cloud — recommended. Free tier included." />
       <Field label="Groq API Key" badge={<T ok={status.groq_api_key_set} />}
         hint={<>Get a free key at <Link href="https://console.groq.com">console.groq.com</Link></>}>
@@ -170,8 +178,11 @@ const AiTab = ({ s, set, status, providers }) => {
       </Field>
       <Field label="Groq Model">
         <Select value={s.groq_model} onChange={v => set('groq_model', v)} options={[
-          'llama-3.3-70b-versatile', 'llama-3.1-8b-instant',
-          'llama3-groq-70b-8192-tool-use-preview', 'mixtral-8x7b-32768', 'gemma2-9b-it',
+          { value: 'llama-3.3-70b-versatile', label: '🧠 Llama 3.3 70B (Smartest - Recommended)' },
+          { value: 'llama-3.1-70b-versatile', label: '🧠 Llama 3.1 70B (Smart)' },
+          { value: 'llama-3.1-8b-instant', label: '⚡ Llama 3.1 8B (Fast)' },
+          { value: 'mixtral-8x7b-32768', label: '🔀 Mixtral 8x7B (Creative)' },
+          { value: 'gemma2-9b-it', label: 'Gemma 2 9B (Basic)' },
         ]} />
       </Field>
 
@@ -596,6 +607,7 @@ const AppearanceTab = ({ prefs, setPref }) => (
 
 const AllKeysTab = ({ s, set, status }) => {
   const keys = [
+    { field: 'claude_api_key',       label: 'Claude API Key',            set: status.claude_api_key_set,       link: 'https://console.anthropic.com' },
     { field: 'groq_api_key',         label: 'Groq API Key',              set: status.groq_api_key_set,         link: 'https://console.groq.com' },
     { field: 'fish_audio_api_key',   label: 'Fish Audio API Key',        set: status.fish_audio_api_key_set,   link: 'https://fish.audio' },
     { field: 'elevenlabs_api_key',   label: 'ElevenLabs API Key',        set: status.elevenlabs_api_key_set,   link: 'https://elevenlabs.io' },
@@ -628,12 +640,13 @@ const Settings = ({ isMobile = false }) => {
   const [savingPrompt, setSavingPrompt] = useState(false);
 
   const [status, setStatus] = useState({
-    groq_api_key_set: false, fish_audio_api_key_set: false,
+    groq_api_key_set: false, claude_api_key_set: false,
+    fish_audio_api_key_set: false,
     elevenlabs_api_key_set: false, firebase_api_key_set: false,
   });
 
   const [s, setS] = useState({
-    groq_api_key: '', groq_model: 'llama-3.3-70b-versatile',
+    groq_api_key: '', claude_api_key: '', groq_model: 'llama-3.3-70b-versatile',
     ollama_url: '', ollama_model: 'llama3.2',
     fish_audio_api_key: '', fish_audio_reference_id: '', fish_audio_model: 's2-pro',
     elevenlabs_api_key: '', elevenlabs_voice_id: '',
@@ -664,6 +677,7 @@ const Settings = ({ isMobile = false }) => {
       if (res.settings) {
         setStatus({
           groq_api_key_set: res.settings.groq_api_key_set,
+          claude_api_key_set: !!(res.settings.claude_api_key && res.settings.claude_api_key.replace(/\*/g, '').length > 3),
           fish_audio_api_key_set: res.settings.fish_audio_api_key_set,
           elevenlabs_api_key_set: res.settings.elevenlabs_api_key_set,
           firebase_api_key_set: res.settings.firebase_api_key_set,

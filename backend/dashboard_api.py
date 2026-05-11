@@ -651,6 +651,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
 
             keys = _load_env_keys()
             prefs = load_prefs()
+            claude_key = (keys.get('CLAUDE_API_KEY') or '').strip()
             groq_key = (keys.get('GROQ_API_KEY') or '').strip()
             fish_key = os.getenv('FISH_AUDIO_API_KEY', '').strip()
             el_key = os.getenv('ELEVENLABS_API_KEY', '').strip()
@@ -659,6 +660,8 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             self.send_json({
                 'success': True,
                 'settings': {
+                    'claude_api_key': self._mask(claude_key),
+                    'claude_api_key_set': bool(claude_key),
                     'groq_api_key': self._mask(groq_key),
                     'groq_api_key_set': bool(groq_key),
                     'groq_model': keys.get('GROQ_MODEL') or 'llama-3.3-70b-versatile',
@@ -702,6 +705,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             saved = []
 
             ENV_MAP = {
+                'claude_api_key': 'CLAUDE_API_KEY',
                 'groq_api_key': 'GROQ_API_KEY',
                 'groq_model': 'GROQ_MODEL',
                 'ollama_url': 'OLLAMA_URL',

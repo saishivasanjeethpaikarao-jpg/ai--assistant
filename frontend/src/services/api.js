@@ -147,63 +147,130 @@ const settingsApi = {
   },
 };
 
-// ── Chat API with local API key injection + conversation context ──────
-const chatApi = {
-  chat: async (text, appState = null) => {
-    const localS = localSettings.get();
-    const groqKey = localS.groq_api_key;
+// ── Smarter System Prompt ────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are Airis, an advanced AI assistant created by Sai Shiva Sanjeeth, a student developer from India. You are inspired by Iron Man's JARVIS — intelligent, witty, and extremely capable.
 
-    if (groqKey) {
-      try {
-        const model = localS.groq_model || 'llama-3.3-70b-versatile';
-        const systemPrompt = localS.system_prompt || `You are Airis, an Iron Man-style AI assistant created by Sai Shiva Sanjeeth.
+PERSONALITY:
+- Smart, concise, and helpful. Never verbose unless asked.
+- Warm but professional. Occasional dry wit.
+- You understand Indian context — Bollywood, Telugu cinema, cricket, NSE/BSE stocks, Indian culture.
+- You speak English naturally. If user writes in Telugu or Hindi, respond in that language.
+
+CAPABILITIES YOU HAVE:
+- Real-time AI conversation via Groq/Claude API
+- Stock market data and trading analysis (NSE, BSE, global markets)
+- Voice responses (text-to-speech)
+- Memory system (remember user preferences and facts)
+- Reminders and task management
+- File management (desktop app only)
+- App launching (desktop app only)
+- Web search and browsing (desktop app only)
 
 RULES:
-- Your creator is Sai Shiva Sanjeeth. Never claim a different creator.
-- Never make up fake data like fake account balances, fake stock positions, or fake portfolio values. Only show real data from the trading API.
-- For "open [app]" commands: if running in browser, say "App launching only works on the Airis desktop app. Download it from airis-9ox.pages.dev." If running in the desktop app, use the shell API to open the app.
-- For voice switching: tell the user to go to Settings > Voice & Speech to change the voice.
-- You are an Indian AI assistant. Understand Telugu and Indian context (actors, movies, stocks, cricket).
-- Current year is 2026. You have access to real-time information via the Groq API — there is no fixed knowledge cutoff.
-- For trading dashboard: only show real data from the trading API, never invent numbers or prices.
-- For reminders: confirm the exact time the reminder will fire.
-- Be helpful, concise, precise, and safe. If unsure, ask for clarification.`;
+- Be direct and brief. 1-3 sentences for simple questions.
+- Never make up fake data, prices, or statistics.
+- For real-time data (stock prices, news, weather) — fetch from the trading API or say you need an internet tool.
+- Only introduce yourself if specifically asked.
+- Never say "Namaste" unless user greets in Hindi/Telugu first.
+- App launching and file access ONLY work in the desktop EXE app, not the web version.
+- Current date: ${new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
+- Creator: Sai Shiva Sanjeeth (only mention if asked).
 
-        // Include recent conversation history for context
-        const history = localSettings.getHistory();
-        const messages = [
-          { role: 'system', content: systemPrompt },
-          ...history.slice(-10).map(m => ({
-            role: m.role === 'assistant' ? 'assistant' : 'user',
-            content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
-          })),
-          { role: 'user', content: text },
-        ];
+RESPONSE FORMAT:
+- Simple questions: 1-2 sentences max.
+- Complex questions: clear paragraphs, use bullet points only when listing multiple items.
+- Code: always use code blocks.
+- Never use excessive emojis.`;
 
+// ── Chat API with Claude + Groq + conversation context ───────────────
+const chatApi = {
+  chat: async (text, appState = null) => {
+    const settings = localSettings.get();
+
+    // Load conversation history for context
+    const history = localSettings.getHistory();
+    const recentHistory = history.slice(-10);
+    const messages = [
+      ...recentHistory.map(msg => ({
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        content: msg.content || msg.text || ''
+      })),
+      { role: 'user', content: text }
+    ];
+
+    // Save current message to history
+    const updatedHistory = [...history, { role: 'user', content: text, timestamp: Date.now() }];
+
+    // Try Claude first (smartest)
+    if (settings.claude_api_key) {
+      try {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': settings.claude_api_key,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 2048,
+            system: SYSTEM_PROMPT,
+            messages: messages,
+          }),
+        });
+
+        if (!response.ok) throw new Error('Claude error');
+        const data = await response.json();
+        const reply = data.content[0].text;
+
+        updatedHistory.push({ role: 'assistant', content: reply, timestamp: Date.now() });
+        localStorage.setItem('airis_chat_history', JSON.stringify(updatedHistory.slice(-50)));
+
+        return { success: true, response: reply, text: reply };
+      } catch (e) {
+        console.warn('Claude failed, falling back to Groq:', e);
+      }
+    }
+
+    // Try Groq
+    if (settings.groq_api_key) {
+      try {
+        const model = settings.groq_model || 'llama-3.3-70b-versatile';
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${groqKey}`,
+            'Authorization': `Bearer ${settings.groq_api_key}`,
           },
           body: JSON.stringify({
             model,
-            messages,
-            max_tokens: 1024,
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
+              ...messages
+            ],
+            max_tokens: 2048,
             temperature: 0.7,
           }),
         });
 
-        if (!response.ok) throw new Error(`Groq error: ${response.status}`);
+        if (!response.ok) throw new Error('Groq error');
         const data = await response.json();
-        const reply = data.choices?.[0]?.message?.content || 'No response';
+        const reply = data.choices[0].message.content;
+
+        updatedHistory.push({ role: 'assistant', content: reply, timestamp: Date.now() });
+        localStorage.setItem('airis_chat_history', JSON.stringify(updatedHistory.slice(-50)));
+
         return { success: true, response: reply, text: reply };
       } catch (e) {
-        console.warn('Direct Groq call failed, falling back to backend:', e);
+        console.warn('Groq failed:', e);
       }
     }
 
-    return axiosInstance.post('/request', { message: text, ...(appState ? { app_state: appState } : {}) });
+    return {
+      success: false,
+      response: 'No AI provider configured. Add your Groq or Claude API key in Settings → AI Engine.',
+      text: ''
+    };
   },
 };
 
