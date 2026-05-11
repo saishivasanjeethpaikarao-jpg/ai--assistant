@@ -5,7 +5,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'https://ai-assistant-8r3x.onre
 const axiosInstance = axios.create({
   baseURL: BASE_URL + '/api',
   headers: { 'Content-Type': 'application/json' },
-  timeout: 60000,
+  timeout: 120000,
 });
 
 axiosInstance.interceptors.response.use(
@@ -147,40 +147,20 @@ const settingsApi = {
   },
 };
 
-// ── Smarter System Prompt ────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are Airis, an advanced AI assistant created by Sai Shiva Sanjeeth, a student developer from India. You are inspired by Iron Man's JARVIS — intelligent, witty, and extremely capable.
+// ── Natural System Prompt ────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are Airis, an Iron Man-style AI assistant. Be helpful, concise, and natural.
 
-PERSONALITY:
-- Smart, concise, and helpful. Never verbose unless asked.
-- Warm but professional. Occasional dry wit.
-- You understand Indian context — Bollywood, Telugu cinema, cricket, NSE/BSE stocks, Indian culture.
-- You speak English naturally. If user writes in Telugu or Hindi, respond in that language.
-
-CAPABILITIES YOU HAVE:
-- Real-time AI conversation via Groq/Claude API
-- Stock market data and trading analysis (NSE, BSE, global markets)
-- Voice responses (text-to-speech)
-- Memory system (remember user preferences and facts)
-- Reminders and task management
-- File management (desktop app only)
-- App launching (desktop app only)
-- Web search and browsing (desktop app only)
-
-RULES:
-- Be direct and brief. 1-3 sentences for simple questions.
-- Never make up fake data, prices, or statistics.
-- For real-time data (stock prices, news, weather) — fetch from the trading API or say you need an internet tool.
-- Only introduce yourself if specifically asked.
-- Never say "Namaste" unless user greets in Hindi/Telugu first.
-- App launching and file access ONLY work in the desktop EXE app, not the web version.
-- Current date: ${new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
-- Creator: Sai Shiva Sanjeeth (only mention if asked).
-
-RESPONSE FORMAT:
-- Simple questions: 1-2 sentences max.
-- Complex questions: clear paragraphs, use bullet points only when listing multiple items.
-- Code: always use code blocks.
-- Never use excessive emojis.`;
+Rules:
+- Talk naturally like a smart assistant. Don't introduce yourself on every message.
+- Only say your name if someone asks "what is your name" or "who are you"
+- Only mention your creator if someone asks "who made you" or "who created you" - then say Sai Shiva Sanjeeth
+- Never say "Namaste" unless user speaks in Hindi/Telugu
+- Never repeat greetings after the first message
+- Be brief and direct. Don't use bullet points for simple answers.
+- Current year is 2026. You have real-time knowledge via Groq API.
+- For "open [app]" on web: say "App launching only works on the Airis desktop app"
+- Never make up fake data like fake account balances or stock positions
+- You understand Telugu, Hindi and Indian context`;
 
 // ── Chat API with Claude + Groq + conversation context ───────────────
 const chatApi = {
@@ -371,67 +351,87 @@ export const api = {
 
 // ── Speech / TTS ─────────────────────────────────────────────────────────
 
-const browserSpeak = (text, lang = 'en-US') => {
+const browserSpeak = (text) => {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
+
+  const settings = JSON.parse(localStorage.getItem('airis_settings') || '{}');
   const utterance = new SpeechSynthesisUtterance(text);
 
-  const settings = localSettings.get();
-  const voicePersonality = settings.voice_personality || 'airis';
+  const setVoiceAndSpeak = () => {
+    const voices = window.speechSynthesis.getVoices();
+    const personality = settings.voice_personality || 'airis';
 
-  const voices = window.speechSynthesis.getVoices();
-  let selectedVoice = null;
+    let voice = null;
+    if (personality === 'airis') {
+      voice = voices.find(v => v.name.includes('Daniel') && v.lang === 'en-GB')
+        || voices.find(v => v.lang === 'en-GB')
+        || voices.find(v => v.lang.startsWith('en'));
+    } else {
+      voice = voices.find(v => v.name.includes('Samantha'))
+        || voices.find(v => v.lang === 'en-US');
+    }
 
-  if (voicePersonality === 'airis') {
-    selectedVoice = voices.find(v => v.lang === 'en-GB' && v.name.includes('Male'))
-      || voices.find(v => v.lang === 'en-GB')
-      || voices.find(v => v.lang.startsWith('en'));
-  } else if (voicePersonality === 'siri') {
-    selectedVoice = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('female'))
-      || voices.find(v => v.lang === 'en-US' && v.name.includes('Samantha'))
-      || voices.find(v => v.lang === 'en-US');
+    if (voice) utterance.voice = voice;
+    utterance.rate = parseFloat(settings.voice_rate || 150) / 150;
+    utterance.volume = parseFloat(settings.voice_volume || 0.9);
+    utterance.pitch = parseFloat(settings.voice_pitch || 1.0);
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  if (window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.onvoiceschanged = setVoiceAndSpeak;
   } else {
-    selectedVoice = voices.find(v => v.lang.startsWith('en'));
+    setVoiceAndSpeak();
   }
-
-  if (selectedVoice) utterance.voice = selectedVoice;
-  utterance.rate = parseFloat(settings.voice_rate || 150) / 150;
-  utterance.volume = parseFloat(settings.voice_volume || 0.9);
-  utterance.pitch = parseFloat(settings.voice_pitch || 1.0);
-  utterance.lang = settings.voice_language === 'te' ? 'te-IN' : 'en-US';
-
-  window.speechSynthesis.speak(utterance);
 };
 
 const speakText = (text) => {
-  const settings = localSettings.get();
+  const settings = JSON.parse(localStorage.getItem('airis_settings') || '{}');
+  const fishKey = settings.fish_audio_api_key;
+  const referenceId = settings.fish_audio_reference_id;
+  const provider = settings.preferred_voice_provider || 'browser';
 
-  if (settings.fish_audio_api_key && settings.fish_audio_reference_id) {
-    api.tts(text, settings.fish_audio_reference_id, settings.fish_audio_model || 's2-pro')
-      .then(audioBuffer => {
-        const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audio.play();
-      })
-      .catch(() => browserSpeak(text));
-  } else if (settings.elevenlabs_api_key && settings.elevenlabs_voice_id) {
-    fetch(`https://api.elevenlabs.io/v1/text-to-speech/${settings.elevenlabs_voice_id}`, {
+  if (provider === 'fish' && fishKey && referenceId) {
+    fetch('https://api.fish.audio/v1/tts', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${fishKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text: text,
+        reference_id: referenceId,
+        model: settings.fish_audio_model || 's2-pro',
+        format: 'mp3',
+      }),
+    })
+    .then(r => {
+      if (!r.ok) throw new Error('Fish Audio TTS failed');
+      return r.arrayBuffer();
+    })
+    .then(buffer => {
+      const blob = new Blob([buffer], { type: 'audio/mpeg' });
+      const audio = new Audio(URL.createObjectURL(blob));
+      audio.play();
+    })
+    .catch(() => browserSpeak(text));
+  } else if (provider === 'eleven' && settings.elevenlabs_api_key) {
+    fetch(`https://api.elevenlabs.io/v1/text-to-speech/${settings.elevenlabs_voice_id || 'Rachel'}`, {
       method: 'POST',
       headers: {
         'xi-api-key': settings.elevenlabs_api_key,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         text: text,
         model_id: 'eleven_monolingual_v1',
-        voice_settings: { stability: 0.5, similarity_boost: 0.5 }
-      })
+      }),
     })
     .then(r => r.arrayBuffer())
     .then(buffer => {
-      const blob = new Blob([buffer], { type: 'audio/mpeg' });
-      const audio = new Audio(URL.createObjectURL(blob));
+      const audio = new Audio(URL.createObjectURL(new Blob([buffer], { type: 'audio/mpeg' })));
       audio.play();
     })
     .catch(() => browserSpeak(text));

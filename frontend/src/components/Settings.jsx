@@ -373,6 +373,7 @@ const CloneTab = ({ status, currentRefId, onCloneSuccess }) => {
   const handleClone = async () => {
     if (!file || !name.trim()) return;
     setPhase('reading'); setErrMsg('');
+
     try {
       const b64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -380,13 +381,48 @@ const CloneTab = ({ status, currentRefId, onCloneSuccess }) => {
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
+
       setPhase('uploading');
-      const res = await api.cloneVoice(name.trim(), b64, file.type);
-      setModelId(res.model_id);
+
+      const settings = JSON.parse(localStorage.getItem('airis_settings') || '{}');
+      const fishKey = settings.fish_audio_api_key;
+
+      if (!fishKey) {
+        setErrMsg('Fish Audio API key not set. Go to Settings > Voice & Speech and add your Fish Audio key.');
+        setPhase('error');
+        return;
+      }
+
+      const audioBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      const audioBlob = new Blob([audioBytes], { type: file.type });
+
+      const formData = new FormData();
+      formData.append('voices', audioBlob, file.name);
+      formData.append('title', name.trim());
+      formData.append('train_mode', 'fast');
+
+      const response = await fetch('https://api.fish.audio/v1/model', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${fishKey}` },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Fish Audio error: ${err}`);
+      }
+
+      const result = await response.json();
+      const modelId = result._id;
+
+      const updatedSettings = { ...settings, fish_audio_reference_id: modelId };
+      localStorage.setItem('airis_settings', JSON.stringify(updatedSettings));
+
+      setModelId(modelId);
       setPhase('done');
-      onCloneSuccess?.(res.model_id);
+      onCloneSuccess?.(modelId);
     } catch (e) {
-      setErrMsg(e?.response?.data?.error || e.message || 'Clone failed');
+      setErrMsg(e.message || 'Clone failed - check your Fish Audio API key and try again');
       setPhase('error');
     }
   };
