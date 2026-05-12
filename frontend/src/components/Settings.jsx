@@ -645,8 +645,9 @@ const AppearanceTab = ({ prefs, setPref }) => {
       label="Show AI thinking steps" sublabel="Display each layer's reasoning in the chat" />
     <Toggle value={prefs.show_mode ?? true} onChange={v => setPref('show_mode', v)}
       label="Show mode badge (COMMAND / GOAL / CHAT)" sublabel="Shows intent classification on each message" />
-  </div>
-);
+    </div>
+  );
+};
 
 const AllKeysTab = ({ s, set, status }) => {
   const keys = [
@@ -779,7 +780,7 @@ const Settings = ({ isMobile = false }) => {
           flexShrink: 0,
           background: 'transparent',
           borderRadius: 0,
-          borderTop: 'none', borderBottom: 'none', borderLeft: 'none',
+          borderTop: 'none', borderLeft: 'none',
           borderRight: isMobile ? 'none' : '1px solid var(--border)',
           borderBottom: isMobile ? '1px solid var(--border)' : 'none',
           overflowX: isMobile ? 'auto' : 'hidden',
