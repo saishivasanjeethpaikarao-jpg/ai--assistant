@@ -53,10 +53,10 @@ def launch_app(app_name: str, args: str = "") -> ToolResult:
         executable = app_name
     
     try:
+        cmd = [executable]
         if args:
-            subprocess.Popen(f'"{executable}" {args}')
-        else:
-            subprocess.Popen(f'"{executable}"')
+            cmd.extend(args.split())
+        subprocess.Popen(cmd)
         
         return ToolResult(
             success=True,
@@ -81,12 +81,11 @@ def list_available_apps() -> ToolResult:
 def is_app_running(app_name: str) -> ToolResult:
     """Check if an app is running."""
     try:
-        # Simplified check - in production use psutil
         result = subprocess.run(
-            f'tasklist | findstr "{app_name}"',
-            shell=True,
-            capture_output=True
+            ['tasklist'],
+            capture_output=True, text=True
         )
+        is_running = app_name.lower() in result.stdout.lower()
         is_running = result.returncode == 0
         return ToolResult(
             success=True,
@@ -100,8 +99,7 @@ def is_app_running(app_name: str) -> ToolResult:
 def close_app(app_name: str) -> ToolResult:
     """Close an application."""
     try:
-        # Simplified - in production use psutil
-        subprocess.run(f'taskkill /IM {app_name}.exe /F', shell=True)
+        subprocess.run(['taskkill', '/IM', f'{app_name}.exe', '/F'])
         return ToolResult(
             success=True,
             message=f"Closing {app_name}..."

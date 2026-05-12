@@ -372,8 +372,33 @@ const renderMarkdown = (text, onTickerAction) => {
           </span>
         );
       } else {
-        const fmt2 = part.replace(/\x01(.*?)\x02/g, '<strong>$1</strong>').replace(/\x03(.*?)\x04/g, '<em>$1</em>');
-        segments.push(<span key={key++} dangerouslySetInnerHTML={{ __html: fmt2 }} />);
+        const parts = [];
+        let last = 0;
+        const boldRe = /\x01(.*?)\x02/g;
+        let m;
+        while ((m = boldRe.exec(part)) !== null) {
+          if (m.index > last) parts.push(part.slice(last, m.index));
+          parts.push(<strong key={`b${key}`}>{m[1]}</strong>); key++;
+          last = m.index + m[0].length;
+        }
+        if (last < part.length) parts.push(part.slice(last));
+        const emParts = [];
+        let emLast = 0;
+        const emRe = /\x03(.*?)\x04/g;
+        for (const p of parts) {
+          if (typeof p === 'string') {
+            while ((m = emRe.exec(p)) !== null) {
+              if (m.index > emLast) emParts.push(p.slice(emLast, m.index));
+              emParts.push(<em key={`e${key}`}>{m[1]}</em>); key++;
+              emLast = m.index + m[0].length;
+            }
+            if (emLast < p.length) emParts.push(p.slice(emLast));
+            emLast = 0;
+          } else {
+            emParts.push(p);
+          }
+        }
+        segments.push(<span key={key++}>{emParts}</span>);
       }
     });
 

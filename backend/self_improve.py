@@ -37,7 +37,7 @@ class InteractionLogger:
             
             recent = [json.loads(line) for line in lines[-count:]]
             return recent
-        except:
+        except Exception:
             return []
 
 

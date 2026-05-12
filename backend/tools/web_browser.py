@@ -3,6 +3,7 @@ Web Browser Tool — Open URLs, search, navigate.
 """
 
 import webbrowser
+from urllib.parse import quote
 from typing import Optional
 from backend.tools import ToolResult, tool_registry
 
@@ -36,7 +37,7 @@ def search_google(query: str) -> ToolResult:
         query: Search query
     """
     try:
-        search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
+        search_url = f"https://www.google.com/search?q={quote(query)}"
         webbrowser.open(search_url)
         return ToolResult(
             success=True,
@@ -54,7 +55,7 @@ def search_youtube(query: str) -> ToolResult:
         query: Search query
     """
     try:
-        search_url = f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}"
+        search_url = f"https://www.youtube.com/results?search_query={quote(query)}"
         webbrowser.open(search_url)
         return ToolResult(
             success=True,
@@ -72,7 +73,7 @@ def search_wikipedia(query: str) -> ToolResult:
         query: Search query
     """
     try:
-        search_url = f"https://en.wikipedia.org/wiki/{query.replace(' ', '_')}"
+        search_url = f"https://en.wikipedia.org/wiki/{quote(query.replace(' ', '_'))}"
         webbrowser.open(search_url)
         return ToolResult(
             success=True,

@@ -4,7 +4,7 @@
 ; Or run build_installer.bat from the project root after PyInstaller succeeds.
 
 #define MyAppName "Jarvis AI"
-#define MyAppVersion "2.0.3"
+#define MyAppVersion "2.0.6"
 #define MyAppPublisher "Jarvis AI"
 #define MyAppExeName "PersonalAIAssistant.exe"
 

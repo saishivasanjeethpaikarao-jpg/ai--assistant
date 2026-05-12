@@ -275,7 +275,7 @@ export const api = {
   },
   clearHistory: async () => {
     localStorage.removeItem(HISTORY_KEY);
-    try { await axiosInstance.post('/history/clear', {}); } catch {}
+    try { await axiosInstance.post('/history/clear', {}); } catch (e) { console.warn('Failed to clear history on backend:', e); }
     return { success: true };
   },
   getHistory: () => {

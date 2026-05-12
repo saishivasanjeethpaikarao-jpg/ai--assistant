@@ -4,6 +4,7 @@ Wrapper for free NSE & BSE real-time stock data API
 Base URL: http://65.0.104.9/
 """
 
+import os
 import requests
 import logging
 from typing import Dict, List, Optional, Tuple
@@ -12,7 +13,7 @@ from dataclasses import dataclass, asdict
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "http://65.0.104.9"
+BASE_URL = os.environ.get("STOCK_API_BASE_URL", "http://65.0.104.9")
 
 
 @dataclass

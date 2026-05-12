@@ -1441,7 +1441,7 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
                             'change': round(change, 2),
                             'change_pct': round(pct, 2),
                         })
-                    except:
+                    except Exception:
                         pass
                 gainers = sorted([q for q in quotes if q['change_pct'] > 0], key=lambda x: -x['change_pct'])[:6]
                 losers  = sorted([q for q in quotes if q['change_pct'] < 0], key=lambda x: x['change_pct'])[:6]

@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import threading
 from datetime import datetime, timedelta
 
 from config_paths import memory_package_dir
@@ -9,6 +10,7 @@ BASE_DIR = memory_package_dir()
 USERS_DIR = os.path.join(BASE_DIR, "users")
 DEFAULT_FILE = os.path.join(BASE_DIR, "reminders.json")
 _GUEST_REMINDERS: list[dict] = []
+_GUEST_LOCK = threading.Lock()
 GUEST_USER_ID = "guest"
 
 os.makedirs(USERS_DIR, exist_ok=True)
@@ -25,7 +27,8 @@ def load_reminders(user_id: str | None = None) -> list:
     if user_id is None:
         return []
     if user_id == GUEST_USER_ID:
-        return list(_GUEST_REMINDERS)
+        with _GUEST_LOCK:
+            return list(_GUEST_REMINDERS)
     path = _reminder_file(user_id)
     if not path or not os.path.exists(path):
         return []
@@ -40,8 +43,9 @@ def save_reminders(reminders: list, user_id: str | None = None) -> None:
     if user_id is None:
         return
     if user_id == GUEST_USER_ID:
-        _GUEST_REMINDERS.clear()
-        _GUEST_REMINDERS.extend(reminders)
+        with _GUEST_LOCK:
+            _GUEST_REMINDERS.clear()
+            _GUEST_REMINDERS.extend(reminders)
         return
     path = _reminder_file(user_id)
     if not path:

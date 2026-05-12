@@ -5,6 +5,7 @@ Historical data simulation, strategy testing, and detailed performance metrics
 
 import json
 import os
+import random
 from typing import Dict, List, Tuple, Optional, Callable
 from dataclasses import dataclass, asdict, field
 from datetime import datetime, timedelta
@@ -159,10 +160,10 @@ class HistoricalDataSimulator:
             
             # Generate OHLCV
             open_price = current_price
-            close_price = open_price * (1 + daily_return + (volatility * (0.5 - __import__('random').random())))
-            high_price = max(open_price, close_price) * (1 + abs(volatility * __import__('random').random()))
-            low_price = min(open_price, close_price) * (1 - abs(volatility * __import__('random').random()))
-            volume = int(1000000 * (0.5 + __import__('random').random()))
+            close_price = open_price * (1 + daily_return + (volatility * (0.5 - random.random())))
+            high_price = max(open_price, close_price) * (1 + abs(volatility * random.random()))
+            low_price = min(open_price, close_price) * (1 - abs(volatility * random.random()))
+            volume = int(1000000 * (0.5 + random.random()))
             
             ohlcv_data.append(OHLCV(
                 date=current_date.strftime("%Y-%m-%d"),

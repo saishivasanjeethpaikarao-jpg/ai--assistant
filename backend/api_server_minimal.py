@@ -2,7 +2,10 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
-import json, os, sqlite3, base64, httpx
+import json, os, sqlite3, base64, httpx, logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -38,7 +41,8 @@ def load():
             data[key] = json.loads(value)
         conn.close()
         return data
-    except:
+    except Exception as e:
+        logger.error(f"Failed to load settings: {e}")
         return {"settings": {}, "preferences": {}}
 
 def save(data):
@@ -49,8 +53,8 @@ def save(data):
                          (key, json.dumps(value)))
         conn.commit()
         conn.close()
-    except:
-        pass
+    except Exception as e:
+        logger.error(f"Failed to save settings: {e}")
 
 @app.get("/api/settings")
 def get_settings():
@@ -114,7 +118,8 @@ def get_system_prompt():
         conn.close()
         prompt = json.loads(row[0]) if row else DEFAULT_SYSTEM_PROMPT
         return {"success": True, "prompt": prompt, "enabled": True, "mode": "agent"}
-    except:
+    except Exception as e:
+        logger.warning(f"Failed to load system prompt: {e}")
         return {"success": True, "prompt": DEFAULT_SYSTEM_PROMPT, "enabled": True, "mode": "agent"}
 
 @app.post("/api/system/prompt")
