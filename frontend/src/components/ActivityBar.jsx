@@ -191,13 +191,15 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
       alignItems: 'center',
       userSelect: 'none',
       overflow: 'hidden',
-      borderRadius: 0, borderTop: 'none', borderBottom: 'none', borderLeft: 'none'
+      borderRadius: 0, borderTop: 'none', borderBottom: 'none', borderLeft: 'none',
+      WebkitAppRegion: 'drag'
     }}>
       {/* Logo */}
       <div style={{
         width: '52px', height: '54px', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         borderBottom: '1px solid var(--border)',
+        WebkitAppRegion: 'drag'
       }}>
         <button
           type="button"
@@ -209,6 +211,7 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
             background: 'transparent',
             border: 'none',
             cursor: 'pointer',
+            WebkitAppRegion: 'no-drag'
           }}
         >
           <img src="/airis-sphere.png" alt="Airis" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(67,125,253,0.3))' }}/>
@@ -228,11 +231,15 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
           paddingTop: '4px',
         }}
       >
-        {TOP.map(id => <IconBtn key={id} id={id} active={activePanel === id} onClick={handleClick}/>)}
+        {TOP.map(id => (
+          <div key={id} style={{ WebkitAppRegion: 'no-drag' }}>
+            <IconBtn id={id} active={activePanel === id} onClick={handleClick}/>
+          </div>
+        ))}
       </div>
 
       {/* Bottom items */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: '10px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: '10px', flexShrink: 0, WebkitAppRegion: 'no-drag' }}>
         {BOTTOM.map(id => <IconBtn key={id} id={id} active={activePanel === id} onClick={handleClick}/>)}
         <div ref={menuRef} style={{ position: 'relative', marginTop: '8px' }}>
           <div
