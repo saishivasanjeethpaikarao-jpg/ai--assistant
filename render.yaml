@@ -11,3 +11,13 @@ services:
         sync: false
       - key: GROQ_MODEL
         value: llama-3.3-70b-versatile
+      - key: CLAUDE_API_KEY
+        sync: false
+      - key: FISH_AUDIO_API_KEY
+        sync: false
+      - key: FISH_AUDIO_REFERENCE_ID
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: FIREBASE_API_KEY
+        sync: false
