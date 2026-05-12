@@ -25,19 +25,19 @@ const T = ({ ok }) => (
 );
 
 const SecHdr = ({ label, desc }) => (
-  <div style={{ marginBottom: '14px', paddingBottom: '10px', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-    <div style={{ fontSize: '13px', fontWeight: '700', color: '#0C0C0C', marginBottom: '3px', letterSpacing: '-0.01em' }}>{label}</div>
-    {desc && <div style={{ fontSize: '11px', color: '#888', lineHeight: '1.5' }}>{desc}</div>}
+  <div style={{ marginBottom: '14px', paddingBottom: '10px', borderBottom: '1px solid var(--border)' }}>
+    <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '3px', letterSpacing: '-0.01em' }}>{label}</div>
+    {desc && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>{desc}</div>}
   </div>
 );
 
 const Field = ({ label, badge, hint, children }) => (
   <div style={{ marginBottom: '16px' }}>
-    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#555', marginBottom: '6px', fontWeight: '600' }}>
+    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: '600' }}>
       {label} {badge}
     </label>
     {children}
-    {hint && <div style={{ fontSize: '11px', color: '#aaa', marginTop: '5px', lineHeight: '1.6' }}>{hint}</div>}
+    {hint && <div style={{ fontSize: '11px', color: '#666', marginTop: '5px', lineHeight: '1.6' }}>{hint}</div>}
   </div>
 );
 
@@ -52,13 +52,13 @@ const TextInput = ({ value, onChange, placeholder, type = 'text', mono }) => {
         placeholder={placeholder}
         style={{
           width: '100%', padding: isPwd ? '8px 36px 8px 12px' : '8px 12px',
-          background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: '8px',
-          color: '#0C0C0C', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+          background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '8px',
+          color: 'var(--text-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
           fontFamily: mono ? "'Fira Code', Consolas, monospace" : 'inherit',
-          transition: 'border-color 0.15s',
+          transition: 'all 0.15s',
         }}
-        onFocus={e => e.target.style.borderColor = B}
-        onBlur={e => e.target.style.borderColor = 'rgba(0,0,0,0.12)'}
+        onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+        onBlur={e => e.target.style.borderColor = 'var(--border)'}
       />
       {isPwd && (
         <button type="button" onClick={() => setShow(s => !s)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#bbb', cursor: 'pointer' }}>
@@ -71,22 +71,22 @@ const TextInput = ({ value, onChange, placeholder, type = 'text', mono }) => {
 
 const Select = ({ value, onChange, options }) => (
   <select value={value} onChange={e => onChange(e.target.value)}
-    style={{ width: '100%', padding: '8px 12px', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: '8px', color: '#0C0C0C', fontSize: '13px', outline: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
-    onFocus={e => e.target.style.borderColor = B}
-    onBlur={e => e.target.style.borderColor = 'rgba(0,0,0,0.12)'}>
-    {options.map(o => <option key={o.value || o} value={o.value || o}>{o.label || o}</option>)}
+    style={{ width: '100%', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
+    onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+    onBlur={e => e.target.style.borderColor = 'var(--border)'}>
+    {options.map(o => <option key={o.value || o} value={o.value || o} style={{background: '#000'}}>{o.label || o}</option>)}
   </select>
 );
 
 const Toggle = ({ value, onChange, label, sublabel }) => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
     <div style={{ flex: 1, paddingRight: '16px' }}>
-      <div style={{ fontSize: '13px', color: '#0C0C0C', fontWeight: '500' }}>{label}</div>
-      {sublabel && <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px', lineHeight: '1.5' }}>{sublabel}</div>}
+      <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: '500' }}>{label}</div>
+      {sublabel && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: '1.5' }}>{sublabel}</div>}
     </div>
     <div onClick={() => onChange(!value)} style={{
       width: '40px', height: '22px', borderRadius: '11px', cursor: 'pointer',
-      background: value ? `linear-gradient(135deg,${B},#2C76FF)` : 'rgba(0,0,0,0.1)',
+      background: value ? `linear-gradient(135deg,var(--primary),var(--secondary))` : 'rgba(255,255,255,0.1)',
       position: 'relative', transition: 'background 0.2s', flexShrink: 0,
       boxShadow: value ? `0 2px 8px rgba(67,125,253,0.35)` : 'none',
     }}>
@@ -113,11 +113,11 @@ const Slider = ({ label, value, onChange, min, max, step = 0.1, format }) => (
   </Field>
 );
 
-const Divider = () => <div style={{ height: '1px', background: 'rgba(0,0,0,0.06)', margin: '20px 0' }} />;
+const Divider = () => <div style={{ height: '1px', background: 'var(--border)', margin: '20px 0' }} />;
 
 const Link = ({ href, children }) => (
   <a href={href} target="_blank" rel="noreferrer"
-    style={{ color: B, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: '600' }}>
+    style={{ color: 'var(--primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: '600' }}>
     {children} <FiExternalLink size={10} />
   </a>
 );
@@ -144,8 +144,8 @@ const AiTab = ({ s, set, status, providers }) => {
     <div>
       <div style={{
         padding: '12px 14px', borderRadius: '12px', marginBottom: '20px',
-        background: hasProvider ? 'rgba(0,196,140,0.06)' : 'rgba(253,91,93,0.06)',
-        border: `1px solid ${hasProvider ? 'rgba(0,196,140,0.2)' : 'rgba(253,91,93,0.2)'}`,
+        background: hasProvider ? 'rgba(0,196,140,0.1)' : 'rgba(253,91,93,0.1)',
+        border: `1px solid ${hasProvider ? 'rgba(0,196,140,0.3)' : 'rgba(253,91,93,0.3)'}`,
         display: 'flex', alignItems: 'flex-start', gap: '10px',
       }}>
         {hasProvider ? <FiCheckCircle size={14} style={{ color: '#00C48C', marginTop: '1px', flexShrink: 0 }} />
@@ -154,7 +154,7 @@ const AiTab = ({ s, set, status, providers }) => {
           <div style={{ fontSize: '12px', color: hasProvider ? '#00C48C' : '#FD5B5D', fontWeight: '700' }}>
             {hasProvider ? 'AI provider active — Airis is ready' : 'No AI provider configured'}
           </div>
-          <div style={{ fontSize: '11px', color: '#888', marginTop: '3px', lineHeight: '1.5' }}>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '3px', lineHeight: '1.5' }}>
             {hasProvider
               ? providers.filter(p => p.enabled).map(p => `${p.name} (${p.model})`).join(', ')
               : 'Add a Groq API key below. Free tier at console.groq.com — takes 30 seconds.'}
@@ -266,9 +266,9 @@ const LanguageTab = ({ s, set, prefs, setPref }) => (
         { value: 'ml',    label: '🇮🇳 Malayalam (മലയാളം)' },
       ]} />
     </Field>
-    <div style={{ padding: '12px 14px', background: 'rgba(0,196,140,0.05)', border: '1px solid rgba(0,196,140,0.15)', borderRadius: '10px', marginBottom: '14px' }}>
+    <div style={{ padding: '12px 14px', background: 'rgba(0,196,140,0.1)', border: '1px solid rgba(0,196,140,0.3)', borderRadius: '10px', marginBottom: '14px' }}>
       <div style={{ fontSize: '12px', color: '#00C48C', fontWeight: '700', marginBottom: '4px' }}>Bilingual by default</div>
-      <div style={{ fontSize: '11px', color: '#666', lineHeight: '1.7' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '1.7' }}>
         Airis automatically detects whether you speak English or Telugu and replies in the same language.
         Select "Auto-detect" to keep this behaviour, or force a specific language above.
       </div>
@@ -335,7 +335,7 @@ const WakeWordTab = ({ s, set }) => (
   </div>
 );
 
-const CloneTab = ({ status, currentRefId, onCloneSuccess }) => {
+const CloneTab = ({ status, currentRefId, onCloneSuccess, isMobile }) => {
   const [file, setFile]       = useState(null);
   const [name, setName]       = useState('My Airis Voice');
   const [drag, setDrag]       = useState(false);
@@ -401,11 +401,16 @@ const CloneTab = ({ status, currentRefId, onCloneSuccess }) => {
       formData.append('title', name.trim());
       formData.append('train_mode', 'fast');
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
+
       const response = await fetch('https://api.fish.audio/v1/model', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${fishKey}` },
         body: formData,
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const err = await response.text();
@@ -435,48 +440,44 @@ const CloneTab = ({ status, currentRefId, onCloneSuccess }) => {
       <SecHdr label="Voice Cloning" desc="Upload a 30–60 second voice recording — Airis will clone it and speak in your voice." />
 
       {!status.fish_audio_api_key_set && (
-        <div style={{ padding: '12px 14px', background: 'rgba(253,91,93,0.06)', border: '1px solid rgba(253,91,93,0.2)', borderRadius: '10px', marginBottom: '16px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+        <div style={{ padding: '12px 14px', background: 'rgba(253,91,93,0.1)', border: '1px solid rgba(253,91,93,0.3)', borderRadius: '10px', marginBottom: '16px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
           <FiAlertTriangle size={14} style={{ color: '#FD5B5D', marginTop: '1px', flexShrink: 0 }} />
           <div>
             <div style={{ fontSize: '12px', color: '#FD5B5D', fontWeight: '700', marginBottom: '3px' }}>Fish Audio API key required</div>
-            <div style={{ fontSize: '11px', color: '#888' }}>Go to <strong style={{ color: '#555' }}>Voice & Speech</strong> tab → add your Fish Audio key, then come back here.</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Go to <strong style={{ color: 'var(--text-primary)' }}>Voice & Speech</strong> tab → add your Fish Audio key, then come back here.</div>
           </div>
         </div>
       )}
 
       {currentRefId && phase !== 'done' && (
-        <div style={{ padding: '12px 14px', background: 'rgba(0,196,140,0.06)', border: '1px solid rgba(0,196,140,0.2)', borderRadius: '10px', marginBottom: '16px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ padding: '12px 14px', background: 'rgba(0,196,140,0.1)', border: '1px solid rgba(0,196,140,0.3)', borderRadius: '10px', marginBottom: '16px', display: 'flex', gap: '10px', alignItems: 'center' }}>
           <FiCheckCircle size={14} style={{ color: '#00C48C', flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '12px', color: '#00C48C', fontWeight: '700' }}>Voice clone active</div>
-            <div style={{ fontSize: '11px', color: '#888', fontFamily: 'monospace', marginTop: '3px' }}>{currentRefId}</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'monospace', marginTop: '3px' }}>{currentRefId}</div>
           </div>
-          <div style={{ fontSize: '10px', color: '#00C48C', background: 'rgba(0,196,140,0.1)', padding: '3px 10px', borderRadius: '20px', border: '1px solid rgba(0,196,140,0.25)', fontWeight: '700' }}>LIVE</div>
+          <div style={{ fontSize: '10px', color: '#00C48C', background: 'rgba(0,196,140,0.2)', padding: '3px 10px', borderRadius: '20px', border: '1px solid rgba(0,196,140,0.4)', fontWeight: '700' }}>LIVE</div>
         </div>
       )}
 
       {phase === 'done' && (
-        <div style={{ padding: '14px 16px', background: 'rgba(0,196,140,0.06)', border: '1px solid rgba(0,196,140,0.2)', borderRadius: '12px', marginBottom: '16px' }}>
+        <div style={{ padding: '14px 16px', background: 'rgba(0,196,140,0.1)', border: '1px solid rgba(0,196,140,0.3)', borderRadius: '12px', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <FiCheckCircle size={16} style={{ color: '#00C48C' }} />
             <span style={{ fontSize: '13px', color: '#00C48C', fontWeight: '700' }}>Voice clone created successfully!</span>
           </div>
-          <div style={{ fontSize: '11px', color: '#666', marginBottom: '10px' }}>Airis will now speak in your cloned voice for all responses.</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px' }}>Airis will now speak in your cloned voice for all responses.</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ fontSize: '11px', color: '#888' }}>Model ID:</div>
-            <code style={{ fontSize: '11px', color: '#437DFD', fontFamily: 'monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{modelId}</code>
-          </div>
-          <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
-            <div style={{ fontSize: '11px', color: '#00C48C', background: 'rgba(0,196,140,0.08)', padding: '3px 10px', borderRadius: '20px', border: '1px solid rgba(0,196,140,0.2)', fontWeight: '700' }}>Voice active</div>
-            <div style={{ fontSize: '11px', color: '#437DFD', background: 'rgba(67,125,253,0.07)', padding: '3px 10px', borderRadius: '20px', border: '1px solid rgba(67,125,253,0.2)', fontWeight: '700' }}>Fish Audio</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Model ID:</div>
+            <code style={{ fontSize: '11px', color: 'var(--primary)', fontFamily: 'monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{modelId}</code>
           </div>
         </div>
       )}
 
       {phase === 'error' && (
-        <div style={{ padding: '12px 14px', background: 'rgba(253,91,93,0.06)', border: '1px solid rgba(253,91,93,0.2)', borderRadius: '10px', marginBottom: '16px' }}>
+        <div style={{ padding: '12px 14px', background: 'rgba(253,91,93,0.1)', border: '1px solid rgba(253,91,93,0.3)', borderRadius: '10px', marginBottom: '16px' }}>
           <div style={{ fontSize: '12px', color: '#FD5B5D', fontWeight: '700', marginBottom: '4px' }}>Clone failed</div>
-          <div style={{ fontSize: '11px', color: '#888', fontFamily: 'monospace' }}>{errMsg}</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{errMsg}</div>
         </div>
       )}
 
@@ -485,7 +486,7 @@ const CloneTab = ({ status, currentRefId, onCloneSuccess }) => {
       </Field>
 
       <div style={{ marginBottom: '14px' }}>
-        <label style={{ fontSize: '12px', color: '#555', fontWeight: '600', display: 'block', marginBottom: '6px' }}>
+        <label style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '600', display: 'block', marginBottom: '6px' }}>
           Audio Sample
         </label>
         <div
@@ -494,9 +495,9 @@ const CloneTab = ({ status, currentRefId, onCloneSuccess }) => {
           onDrop={handleDrop}
           onClick={() => fileRef.current?.click()}
           style={{
-            border: `2px dashed ${drag ? '#437DFD' : file ? '#00C48C' : 'rgba(0,0,0,0.15)'}`,
+            border: `2px dashed ${drag ? 'var(--primary)' : file ? '#00C48C' : 'var(--border)'}`,
             borderRadius: '12px', padding: '28px 16px', textAlign: 'center',
-            background: drag ? 'rgba(67,125,253,0.04)' : file ? 'rgba(0,196,140,0.04)' : '#fafafa',
+            background: drag ? 'rgba(67,125,253,0.05)' : file ? 'rgba(0,196,140,0.05)' : 'rgba(255,255,255,0.02)',
             cursor: 'pointer', transition: 'all 0.2s',
           }}
         >
@@ -576,24 +577,24 @@ const CloneTab = ({ status, currentRefId, onCloneSuccess }) => {
 const PromptTab = ({ prompt, setPrompt, saving, onSave }) => (
   <div>
     <SecHdr label="System Prompt" desc="Customize Airis's core personality, rules and capabilities." />
-    <div style={{ padding: '12px 14px', background: 'rgba(67,125,253,0.04)', border: '1px solid rgba(67,125,253,0.15)', borderRadius: '10px', marginBottom: '14px', fontSize: '11px', color: '#666', lineHeight: '1.7' }}>
-      The system prompt defines how Airis thinks and behaves. The default includes the 12-layer brain rules, bilingual support, safety filters, and Airis personality. Only change this if you know what you're doing.
+    <div style={{ padding: '12px 14px', background: 'rgba(67,125,253,0.05)', border: '1px solid rgba(67,125,253,0.2)', borderRadius: '10px', marginBottom: '14px', fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '1.7' }}>
+      The system prompt defines how Airis thinks and behaves. Only change this if you know what you're doing.
     </div>
     <textarea
       value={prompt}
       onChange={e => setPrompt(e.target.value)}
       rows={18}
       style={{
-        width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)',
-        borderRadius: '10px', color: '#0C0C0C', fontSize: '12px',
+        width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)',
+        borderRadius: '10px', color: 'var(--text-primary)', fontSize: '12px',
         fontFamily: "'Fira Code', Consolas, monospace", lineHeight: '1.7', resize: 'vertical',
-        outline: 'none', padding: '12px', boxSizing: 'border-box', transition: 'border-color 0.15s',
+        outline: 'none', padding: '12px', boxSizing: 'border-box', transition: 'all 0.15s',
       }}
-      onFocus={e => e.target.style.borderColor = '#437DFD'}
-      onBlur={e => e.target.style.borderColor = 'rgba(0,0,0,0.12)'}
+      onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+      onBlur={e => e.target.style.borderColor = 'var(--border)'}
     />
     <button onClick={onSave} disabled={saving}
-      style={{ marginTop: '12px', padding: '10px 20px', background: 'linear-gradient(135deg,#437DFD,#2C76FF)', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(67,125,253,0.3)' }}>
+      style={{ marginTop: '12px', padding: '10px 20px', background: 'linear-gradient(135deg,var(--primary),var(--secondary))', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(67,125,253,0.3)' }}>
       {saving ? <><FiRefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><FiSave size={12} /> Save System Prompt</>}
     </button>
   </div>
@@ -608,24 +609,30 @@ const NotifsTab = ({ prefs, setPref }) => (
       label="Sound notifications" sublabel="Play a chime when Airis completes a task" />
     <Divider />
     <SecHdr label="Airis Background Mode" desc="Keep Airis running silently in the background." />
-    <div style={{ padding: '12px 14px', background: 'rgba(67,125,253,0.04)', border: '1px solid rgba(67,125,253,0.15)', borderRadius: '10px', fontSize: '11px', color: '#666', lineHeight: '1.7' }}>
+    <div style={{ padding: '12px 14px', background: 'rgba(67,125,253,0.1)', border: '1px solid rgba(67,125,253,0.3)', borderRadius: '10px', fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '1.7' }}>
       Background mode requires running the desktop Python script.<br />
-      <code style={{ fontFamily: 'monospace', color: '#437DFD', background: 'rgba(67,125,253,0.07)', padding: '1px 6px', borderRadius: '4px' }}>python backend/airis_mode.py</code><br /><br />
+      <code style={{ fontFamily: 'monospace', color: 'var(--primary)', background: 'rgba(67,125,253,0.1)', padding: '1px 6px', borderRadius: '4px' }}>python backend/airis_mode.py</code><br /><br />
       This enables: wake word detection, double-clap, background reminders, and live voice responses without the browser being open.
     </div>
   </div>
 );
 
-const AppearanceTab = ({ prefs, setPref }) => (
-  <div>
-    <SecHdr label="Theme" desc="Visual style of the Airis interface." />
-    <Field label="Color Theme">
-      <Select value={prefs.appearance || 'dark'} onChange={v => setPref('appearance', v)} options={[
-        { value: 'dark',  label: '⬛ Dark (default — like VS Code)' },
-        { value: 'darker',label: '🖤 Darker (pure black, OLED-friendly)' },
-        { value: 'light', label: '⬜ Light (coming soon)' },
-      ]} />
-    </Field>
+const AppearanceTab = ({ prefs, setPref }) => {
+  const handleThemeChange = (v) => {
+    setPref('appearance', v);
+    document.documentElement.setAttribute('data-theme', v);
+  };
+  return (
+    <div>
+      <SecHdr label="Theme" desc="Visual style of the Airis interface." />
+      <Field label="Color Theme">
+        <Select value={prefs.appearance || 'dark'} onChange={handleThemeChange} options={[
+          { value: 'dark',  label: '⬛ Dark (default — like VS Code)' },
+          { value: 'darker',label: '🖤 Darker (pure black, OLED-friendly)' },
+          { value: 'light', label: '⬜ Light' },
+          { value: 'jarvis',label: '🤖 JARVIS (futuristic holographic)' },
+        ]} />
+      </Field>
     <Field label="Density">
       <Select value={prefs.density || 'comfortable'} onChange={v => setPref('density', v)} options={[
         { value: 'comfortable', label: 'Comfortable (default)' },
@@ -749,17 +756,17 @@ const Settings = ({ isMobile = false }) => {
   };
 
   if (loading) return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', gap: '8px', background: '#F5F4F2' }}>
-      <FiRefreshCw size={16} style={{ animation: 'spin 1s linear infinite', color: B }} /> Loading settings...
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', gap: '8px', background: 'var(--bg)' }}>
+      <FiRefreshCw size={16} style={{ animation: 'spin 1s linear infinite', color: 'var(--primary)' }} /> Loading settings...
     </div>
   );
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#F5F4F2', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'hidden' }}>
       {/* Tab bar */}
-      <div style={{ height: isMobile ? '52px' : '44px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'stretch', flexShrink: 0, boxShadow: '0 1px 0 rgba(67,125,253,0.05)', overflowX: isMobile ? 'auto' : 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: isMobile ? '0 14px' : '0 20px', borderBottom: `2px solid ${B}`, background: '#fff', fontSize: '13px', fontWeight: '700', color: B, gap: '8px', letterSpacing: '-0.01em', whiteSpace: 'nowrap', flexShrink: 0 }}>
-          <FiSliders size={14} style={{ color: B }} />
+      <div style={{ height: isMobile ? '52px' : '44px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'stretch', flexShrink: 0, overflowX: isMobile ? 'auto' : 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: isMobile ? '0 14px' : '0 20px', borderBottom: `2px solid var(--primary)`, fontSize: '13px', fontWeight: '700', color: 'var(--primary)', gap: '8px', letterSpacing: '-0.01em', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          <FiSliders size={14} style={{ color: 'var(--primary)' }} />
           <span>Settings</span>
         </div>
       </div>
@@ -767,12 +774,14 @@ const Settings = ({ isMobile = false }) => {
       {/* Body: left nav + content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', overflow: 'hidden', minHeight: 0 }}>
         {/* Left nav */}
-        <div style={{
+        <div className="glass" style={{
           width: isMobile ? '100%' : '190px',
           flexShrink: 0,
-          background: '#fff',
-          borderRight: isMobile ? 'none' : '1px solid rgba(0,0,0,0.07)',
-          borderBottom: isMobile ? '1px solid rgba(0,0,0,0.07)' : 'none',
+          background: 'transparent',
+          borderRadius: 0,
+          borderTop: 'none', borderBottom: 'none', borderLeft: 'none',
+          borderRight: isMobile ? 'none' : '1px solid var(--border)',
+          borderBottom: isMobile ? '1px solid var(--border)' : 'none',
           overflowX: isMobile ? 'auto' : 'hidden',
           overflowY: 'auto',
           padding: isMobile ? '8px 10px' : '10px 8px'
@@ -786,10 +795,10 @@ const Settings = ({ isMobile = false }) => {
                   width: isMobile ? 'auto' : '100%',
                   padding: isMobile ? '7px 10px' : '8px 12px',
                   display: 'flex', alignItems: 'center', gap: '9px',
-                  background: active ? `rgba(67,125,253,0.08)` : 'transparent',
+                  background: active ? `rgba(67,125,253,0.15)` : 'transparent',
                   border: 'none', borderRadius: '9px',
-                  borderLeft: `3px solid ${active ? B : 'transparent'}`,
-                  color: active ? B : '#888', fontSize: '12px', fontWeight: active ? '700' : '500',
+                  borderLeft: `3px solid ${active ? 'var(--primary)' : 'transparent'}`,
+                  color: active ? 'var(--primary)' : 'var(--text-secondary)', fontSize: '12px', fontWeight: active ? '700' : '500',
                   cursor: 'pointer', textAlign: 'left', transition: 'all 0.12s', marginBottom: '2px',
                   flexShrink: 0,
                 }}
@@ -804,8 +813,8 @@ const Settings = ({ isMobile = false }) => {
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '12px' : '24px 28px', background: '#F5F4F2', minHeight: 0 }}>
-          <div style={{ maxWidth: '560px', background: '#fff', borderRadius: isMobile ? '14px' : '16px', border: '1px solid rgba(0,0,0,0.07)', padding: isMobile ? '16px' : '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '12px' : '24px 28px', background: 'transparent', minHeight: 0 }}>
+          <div className="glass" style={{ maxWidth: '560px', padding: isMobile ? '16px' : '24px' }}>
             {tab === 'ai'        && <AiTab s={s} set={set} status={status} providers={providers} />}
             {tab === 'voice'     && <VoiceTab s={s} set={set} status={status} />}
             {tab === 'language'  && <LanguageTab s={s} set={set} prefs={prefs} setPref={setPref} />}
@@ -818,10 +827,10 @@ const Settings = ({ isMobile = false }) => {
 
             {tab !== 'prompt' && tab !== 'clone' && (
               <>
-                {error && <div style={{ padding: '10px 14px', background: 'rgba(253,91,93,0.06)', border: '1px solid rgba(253,91,93,0.2)', borderRadius: '10px', color: '#FD5B5D', fontSize: '12px', marginTop: '16px' }}>{error}</div>}
-                {saved && <div style={{ padding: '10px 14px', background: 'rgba(0,196,140,0.06)', border: '1px solid rgba(0,196,140,0.2)', borderRadius: '10px', color: '#00C48C', fontSize: '12px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}><FiCheckCircle size={13} /> Saved successfully!</div>}
+                {error && <div style={{ padding: '10px 14px', background: 'rgba(253,91,93,0.1)', border: '1px solid rgba(253,91,93,0.3)', borderRadius: '10px', color: '#FD5B5D', fontSize: '12px', marginTop: '16px' }}>{error}</div>}
+                {saved && <div style={{ padding: '10px 14px', background: 'rgba(0,196,140,0.1)', border: '1px solid rgba(0,196,140,0.3)', borderRadius: '10px', color: '#00C48C', fontSize: '12px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}><FiCheckCircle size={13} /> Saved successfully!</div>}
                 <button onClick={handleSave} disabled={saving}
-                  style={{ marginTop: '20px', width: '100%', padding: '11px', background: saving ? 'rgba(67,125,253,0.5)' : `linear-gradient(135deg,${B},#2C76FF)`, border: 'none', borderRadius: '10px', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px', boxShadow: saving ? 'none' : '0 4px 14px rgba(67,125,253,0.3)' }}>
+                  style={{ marginTop: '20px', width: '100%', padding: '11px', background: saving ? 'rgba(67,125,253,0.5)' : `linear-gradient(135deg,var(--primary),var(--secondary))`, border: 'none', borderRadius: '10px', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px', boxShadow: saving ? 'none' : '0 4px 14px rgba(67,125,253,0.3)' }}>
                   {saving ? <><FiRefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><FiSave size={14} /> Save Settings</>}
                 </button>
               </>

@@ -80,6 +80,7 @@ function ProtectedApp() {
   useEffect(() => {
     const down = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); setCommandOpen(true); }
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') { e.preventDefault(); document.querySelector('textarea')?.focus(); }
       if (e.key === 'Escape') { setCommandOpen(false); if (isMobile) setSidebarOpen(false); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); setSidebarOpen(o => !o); }
     };
@@ -231,11 +232,10 @@ function ProtectedApp() {
   };
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F5F4F2', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', fontFamily: "'Inter', sans-serif" }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-        <img src="/airis-sphere.png" alt="Airis" style={{ width: 60, height: 60, objectFit: 'contain', animation: 'float 3s ease-in-out infinite' }} />
-        <span style={{ color: '#aaa', fontSize: 14 }}>Loading Airis…</span>
-        <style>{`@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }`}</style>
+        <div className="pulsing-orb" style={{ width: 80, height: 80 }}></div>
+        <span style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Initializing Airis…</span>
       </div>
     </div>
   );
@@ -254,7 +254,7 @@ function ProtectedApp() {
       display: 'flex', flexDirection: 'column',
       height: '100dvh',
       overflow: 'hidden',
-      background: '#F5F4F2',
+      background: 'var(--bg)',
     }}>
       {isGuest && <GuestBanner />}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>

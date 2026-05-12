@@ -184,21 +184,20 @@ const ActivityBar = ({ activePanel, onPanelChange, onCommandOpen, isMobile }) =>
   }
 
   return (
-    <div style={{
+    <div className="glass" style={{
       width: '52px', flexShrink: 0,
-      background: 'rgba(255,255,255,0.95)',
-      borderRight: '1px solid rgba(0,0,0,0.08)',
+      borderRight: '1px solid var(--border)',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center',
       userSelect: 'none',
       overflow: 'hidden',
-      backdropFilter: 'blur(20px)',
+      borderRadius: 0, borderTop: 'none', borderBottom: 'none', borderLeft: 'none'
     }}>
       {/* Logo */}
       <div style={{
         width: '52px', height: '54px', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        borderBottom: '1px solid rgba(0,0,0,0.07)',
+        borderBottom: '1px solid var(--border)',
       }}>
         <button
           type="button"

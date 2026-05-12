@@ -65,27 +65,28 @@ const CommandPalette = ({ isOpen, onClose, onCommand }) => {
 
   return (
     <div
-      style={{ position:'fixed', inset:0, backgroundColor:'rgba(0,0,0,0.35)', backdropFilter:'blur(8px)', display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:'12vh', zIndex:9999, animation:'fadeIn 0.12s ease' }}
+      style={{ position:'fixed', inset:0, backgroundColor:'rgba(0,0,0,0.65)', backdropFilter:'blur(12px)', display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:'12vh', zIndex:9999, animation:'fadeIn 0.12s ease' }}
       onClick={onClose}
     >
       <div
+        className="glass"
         onClick={e => e.stopPropagation()}
         style={{
           width:'560px', maxWidth:'calc(100vw - 40px)',
-          background:'#fff', borderRadius:'16px', overflow:'hidden',
-          boxShadow:'0 32px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(67,125,253,0.12)',
-          border:'1px solid rgba(0,0,0,0.08)',
+          background:'rgba(20,20,25,0.95)', overflow:'hidden',
+          boxShadow:'0 32px 80px rgba(0,0,0,0.4)',
+          border:'1px solid var(--border)',
         }}
       >
         {/* Search input */}
-        <div style={{ display:'flex', alignItems:'center', gap:'12px', padding:'14px 18px', borderBottom:'1px solid rgba(0,0,0,0.07)' }}>
-          <FiSearch size={17} style={{ color:'rgba(67,125,253,0.5)', flexShrink:0 }}/>
+        <div style={{ display:'flex', alignItems:'center', gap:'12px', padding:'14px 18px', borderBottom:'1px solid var(--border)' }}>
+          <FiSearch size={17} style={{ color:'var(--primary)', flexShrink:0 }}/>
           <input
             ref={inputRef} type="text" value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search commands..."
-            style={{ flex:1, backgroundColor:'transparent', border:'none', outline:'none', color:'#0C0C0C', fontSize:'15px', fontFamily:'inherit' }}
+            style={{ flex:1, backgroundColor:'transparent', border:'none', outline:'none', color:'#F0F0F0', fontSize:'15px', fontFamily:'inherit' }}
           />
           <kbd style={{ padding:'3px 8px', background:'rgba(0,0,0,0.05)', border:'1px solid rgba(0,0,0,0.1)', borderRadius:'6px', fontSize:'11px', color:'#888', fontFamily:'monospace' }}>
             esc
@@ -123,10 +124,10 @@ const CommandPalette = ({ isOpen, onClose, onCommand }) => {
                     <Icon size={14} style={{ color: isSel ? '#fff' : B }}/>
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:'13px', color: isSel ? '#0C0C0C' : '#555', fontWeight: isSel ? '600' : '400' }}>
+                    <div style={{ fontSize:'13px', color: isSel ? '#F0F0F0' : '#888', fontWeight: isSel ? '600' : '400' }}>
                       {highlightMatch(cmd.label, query)}
                     </div>
-                    <div style={{ fontSize:'11px', color:'#bbb', marginTop:'1px' }}>{cmd.category}</div>
+                    <div style={{ fontSize:'11px', color:'var(--text-secondary)', marginTop:'1px' }}>{cmd.category}</div>
                   </div>
                   <kbd style={{ padding:'3px 7px', background:'rgba(0,0,0,0.04)', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'5px', fontSize:'11px', color:'#aaa', fontFamily:'monospace', flexShrink:0 }}>
                     {cmd.shortcut}
@@ -138,7 +139,7 @@ const CommandPalette = ({ isOpen, onClose, onCommand }) => {
         </div>
 
         {/* Footer */}
-        <div style={{ padding:'8px 18px', borderTop:'1px solid rgba(0,0,0,0.07)', display:'flex', gap:'16px', fontSize:'11px', color:'#ccc' }}>
+        <div style={{ padding:'8px 18px', borderTop:'1px solid var(--border)', display:'flex', gap:'16px', fontSize:'11px', color:'#666' }}>
           <span>↑↓ navigate</span>
           <span>↵ select</span>
           <span>esc close</span>

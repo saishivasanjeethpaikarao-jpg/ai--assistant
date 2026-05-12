@@ -1,35 +1,61 @@
-import json, os
+import sqlite3
+import os
+import json
+import asyncio
+from core.event_bus import EventBus
 
-DATA_DIR = os.environ.get('RENDER_DATA_DIR', '/opt/render/project/data')
-os.makedirs(DATA_DIR, exist_ok=True)
-MEMORY_FILE = os.path.join(DATA_DIR, 'memory.json')
-_memories = {}
-_profile = {}
-_active_user = 'default'
+DB_PATH = os.environ.get('RENDER_DATA_DIR', '/opt/render/project/data') + '/settings.db'
+bus = EventBus()
 
-def _save():
-    with open(MEMORY_FILE, 'w') as f:
-        json.dump({'memories': _memories, 'profile': _profile}, f)
+def get_db():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("CREATE TABLE IF NOT EXISTS brain_memory (key TEXT PRIMARY KEY, value TEXT)")
+    conn.commit()
+    return conn
 
-def _load():
-    global _memories, _profile
-    if os.path.exists(MEMORY_FILE):
-        with open(MEMORY_FILE) as f:
-            data = json.load(f)
-            _memories = data.get('memories', {})
-            _profile = data.get('profile', {})
+async def remember_fact(key, value):
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO brain_memory (key, value) VALUES (?, ?)", (key, json.dumps(value)))
+    conn.commit()
+    conn.close()
+    await bus.publish("memory_updated", {"key": key, "value": value})
 
-_load()
+def recall_fact(key):
+    conn = get_db()
+    row = conn.execute("SELECT value FROM brain_memory WHERE key = ?", (key,)).fetchone()
+    conn.close()
+    return json.loads(row[0]) if row else None
 
-def set_active_user(user): global _active_user; _active_user = user
-def get_active_user(): return _active_user
-def remember_fact(key, value): _memories[key] = value; _save()
-def recall_fact(key): return _memories.get(key)
-def forget_fact(key): _memories.pop(key, None); _save()
-def list_memories(): return dict(_memories)
-def store_profile_value(key, value): _profile[key] = value; _save()
-def recall_profile_value(key): return _profile.get(key)
-def list_profile_values(): return dict(_profile)
-def learn_text(text): pass
-def memory_context(): return '\n'.join(f'{k}: {v}' for k, v in _memories.items())
-def profile_context(): return '\n'.join(f'{k}: {v}' for k, v in _profile.items())
+def forget_fact(key):
+    conn = get_db()
+    conn.execute("DELETE FROM brain_memory WHERE key = ?", (key,))
+    conn.commit()
+    conn.close()
+
+def list_memories():
+    conn = get_db()
+    rows = conn.execute("SELECT key, value FROM brain_memory").fetchall()
+    conn.close()
+    return {k: json.loads(v) for k, v in rows}
+
+def memory_context():
+    memories = list_memories()
+    return '\n'.join(f'{k}: {v}' for k, v in memories.items())
+
+def store_profile_value(key, value):
+    remember_fact(f"profile_{key}", value)
+
+def recall_profile_value(key):
+    return recall_fact(f"profile_{key}")
+
+def list_profile_values():
+    memories = list_memories()
+    return {k.replace("profile_", ""): v for k, v in memories.items() if k.startswith("profile_")}
+
+def profile_context():
+    profiles = list_profile_values()
+    return '\n'.join(f'{k}: {v}' for k, v in profiles.items())
+
+def learn_text(text):
+    pass # Placeholder for advanced learning

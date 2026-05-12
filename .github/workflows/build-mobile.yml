@@ -32,11 +32,11 @@ jobs:
         run: cd mobile-app && npm install
 
       - name: Build APK with EAS
-        run: cd mobile-app && eas build --platform android --profile preview --non-interactive
+        run: cd mobile-app && eas build --platform android --profile preview --non-interactive --wait
 
-      - name: Download APK from EAS & rename
+      - name: Download APK from EAS
         run: |
-          APK_URL=$(cd mobile-app && eas build:list --platform android --limit 1 --json | python3 -c "import sys,json; builds=json.load(sys.stdin); print(builds[0]['artifacts']['buildUrl'])")
+          APK_URL=$(cd mobile-app && eas build:list --platform android --limit 1 --status finished --json | python3 -c "import sys,json; builds=json.load(sys.stdin); print(builds[0]['artifacts']['buildUrl'])")
           curl -L "$APK_URL" -o airis-android.apk
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

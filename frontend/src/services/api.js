@@ -148,26 +148,35 @@ const settingsApi = {
 };
 
 // ── Natural System Prompt ────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are Airis, an Iron Man-style AI assistant. Be helpful, concise, and natural.
+const getSystemPrompt = () => {
+  const now = new Date().toLocaleString();
+  return `You are Airis, an advanced Iron Man JARVIS-style AI assistant created by Sai Shiva Sanjeeth, a student developer from India.
 
-Rules:
-- Talk naturally like a smart assistant. Don't introduce yourself on every message.
-- Only say your name if someone asks "what is your name" or "who are you"
-- Only mention your creator if someone asks "who made you" or "who created you" - then say Sai Shiva Sanjeeth
-- Never say "Namaste" unless user speaks in Hindi/Telugu
-- Never repeat greetings after the first message
-- Be brief and direct. Don't use bullet points for simple answers.
-- Current year is 2026. You have real-time knowledge via Groq API.
-- For "open [app]" on web: say "App launching only works on the Airis desktop app"
-- Never make up fake data like fake account balances or stock positions
-- You understand Telugu, Hindi and Indian context`;
+PERSONALITY:
+- Intelligent, witty, concise. Like JARVIS from Iron Man.
+- Never verbose unless asked. 1-3 sentences for simple answers.
+- Understand Indian context: Telugu cinema, Bollywood, cricket, NSE/BSE stocks, Indian culture, Telugu and Hindi languages.
+- Reply in same language as user (English/Telugu/Hindi).
+- Never say "Namaste" unless user greets in Hindi/Telugu first.
+- Only introduce yourself when specifically asked.
+- Creator is Sai Shiva Sanjeeth (only mention if asked).
+- Never make up fake data or statistics.
+- Current date: ${now}
 
-// ── Chat API with Claude + Groq + conversation context ───────────────
+CAPABILITIES:
+- AI conversation with memory of last 10 messages
+- Stock market analysis (NSE, BSE, global)
+- Voice responses (TTS)
+- Reminders and tasks
+- File management (desktop only)
+- App launching (desktop only)
+- Web search (desktop only)`;
+};
+
+// ── Chat API with multi-provider fallback ──────────────────────────────
 const chatApi = {
   chat: async (text, appState = null) => {
     const settings = localSettings.get();
-
-    // Load conversation history for context
     const history = localSettings.getHistory();
     const recentHistory = history.slice(-10);
     const messages = [
@@ -178,77 +187,161 @@ const chatApi = {
       { role: 'user', content: text }
     ];
 
-    // Save current message to history
     const updatedHistory = [...history, { role: 'user', content: text, timestamp: Date.now() }];
 
-    // Try Claude first (smartest)
-    if (settings.claude_api_key) {
-      try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': settings.claude_api_key,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 2048,
-            system: SYSTEM_PROMPT,
-            messages: messages,
-          }),
-        });
+    // Sync to backend
+    axiosInstance.post('/history', { role: 'user', content: text }).catch(() => {});
 
-        if (!response.ok) throw new Error('Claude error');
-        const data = await response.json();
-        const reply = data.content[0].text;
+    const providers = [
+      {
+        name: 'Claude',
+        key: settings.anthropic_api_key || settings.claude_api_key,
+        url: 'https://api.anthropic.com/v1/messages',
+        model: settings.claude_model || 'claude-sonnet-4-20250514',
+        type: 'anthropic'
+      },
+      {
+        name: 'OpenAI',
+        key: settings.openai_api_key,
+        url: 'https://api.openai.com/v1/chat/completions',
+        model: settings.openai_model || 'gpt-4o',
+        type: 'openai'
+      },
+      {
+        name: 'Gemini',
+        key: settings.gemini_api_key,
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${settings.gemini_model || 'gemini-2.0-flash'}:generateContent?key=${settings.gemini_api_key}`,
+        type: 'gemini'
+      },
+      {
+        name: 'Groq',
+        key: settings.groq_api_key,
+        url: 'https://api.groq.com/openai/v1/chat/completions',
+        model: settings.groq_model || 'llama-3.3-70b-versatile',
+        type: 'openai'
+      },
+      {
+        name: 'NVIDIA',
+        key: settings.nvidia_nim_api_key,
+        url: 'https://integrate.api.nvidia.com/v1/chat/completions',
+        model: settings.nvidia_model || 'nvidia/llama-3.1-nemotron-70b',
+        type: 'openai'
+      },
+      {
+        name: 'Mistral',
+        key: settings.mistral_api_key,
+        url: 'https://api.mistral.ai/v1/chat/completions',
+        model: settings.mistral_model || 'mistral-large-latest',
+        type: 'openai'
+      },
+      {
+        name: 'Together',
+        key: settings.together_api_key,
+        url: 'https://api.together.xyz/v1/chat/completions',
+        model: settings.together_model || 'meta-llama/Llama-3-70b',
+        type: 'openai'
+      },
+      {
+        name: 'Ollama',
+        key: 'no-key-needed',
+        url: (settings.ollama_url || 'http://localhost:11434') + '/api/chat',
+        model: settings.ollama_model || 'llama3.2',
+        type: 'ollama'
+      }
+    ];
 
-        updatedHistory.push({ role: 'assistant', content: reply, timestamp: Date.now() });
-        localStorage.setItem('airis_chat_history', JSON.stringify(updatedHistory.slice(-50)));
-
-        return { success: true, response: reply, text: reply };
-      } catch (e) {
-        console.warn('Claude failed, falling back to Groq:', e);
+    // Reorder based on primary provider if selected
+    const primary = settings.primary_provider;
+    if (primary) {
+      const idx = providers.findIndex(p => p.name.toLowerCase() === primary.toLowerCase());
+      if (idx > -1) {
+        const [p] = providers.splice(idx, 1);
+        providers.unshift(p);
       }
     }
 
-    // Try Groq
-    if (settings.groq_api_key) {
+    const sysPrompt = getSystemPrompt();
+
+    for (const provider of providers) {
+      if (!provider.key && provider.type !== 'ollama') continue;
+
       try {
-        const model = settings.groq_model || 'llama-3.3-70b-versatile';
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${settings.groq_api_key}`,
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: 'system', content: SYSTEM_PROMPT },
-              ...messages
-            ],
-            max_tokens: 2048,
-            temperature: 0.7,
-          }),
-        });
+        let reply = '';
+        if (provider.type === 'anthropic') {
+          const res = await fetch(provider.url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': provider.key,
+              'anthropic-version': '2023-06-01',
+              'dangerouslyAllowBrowser': 'true'
+            },
+            body: JSON.stringify({
+              model: provider.model,
+              max_tokens: 2048,
+              system: sysPrompt,
+              messages: messages,
+            }),
+          });
+          if (!res.ok) throw new Error(`${provider.name} failed`);
+          const data = await res.json();
+          reply = data.content[0].text;
+        } else if (provider.type === 'openai') {
+          const res = await fetch(provider.url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${provider.key}`,
+            },
+            body: JSON.stringify({
+              model: provider.model,
+              messages: [{ role: 'system', content: sysPrompt }, ...messages],
+            }),
+          });
+          if (!res.ok) throw new Error(`${provider.name} failed`);
+          const data = await res.json();
+          reply = data.choices[0].message.content;
+        } else if (provider.type === 'gemini') {
+          const res = await fetch(provider.url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+              system_instruction: { parts: [{ text: sysPrompt }] }
+            }),
+          });
+          if (!res.ok) throw new Error(`${provider.name} failed`);
+          const data = await res.json();
+          reply = data.candidates[0].content.parts[0].text;
+        } else if (provider.type === 'ollama') {
+          const res = await fetch(provider.url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: provider.model,
+              messages: [{ role: 'system', content: sysPrompt }, ...messages],
+              stream: false
+            }),
+          });
+          if (!res.ok) throw new Error(`${provider.name} failed`);
+          const data = await res.json();
+          reply = data.message.content;
+        }
 
-        if (!response.ok) throw new Error('Groq error');
-        const data = await response.json();
-        const reply = data.choices[0].message.content;
-
-        updatedHistory.push({ role: 'assistant', content: reply, timestamp: Date.now() });
-        localStorage.setItem('airis_chat_history', JSON.stringify(updatedHistory.slice(-50)));
-
-        return { success: true, response: reply, text: reply };
+        if (reply) {
+          updatedHistory.push({ role: 'assistant', content: reply, timestamp: Date.now(), provider: provider.name });
+          localSettings.setHistory(updatedHistory.slice(-50));
+          axiosInstance.post('/history', { role: 'assistant', content: reply }).catch(() => {});
+          return { success: true, response: reply, text: reply, provider: provider.name };
+        }
       } catch (e) {
-        console.warn('Groq failed:', e);
+        console.warn(`${provider.name} failed, trying next...`, e);
       }
     }
 
     return {
       success: false,
-      response: 'No AI provider configured. Add your Groq or Claude API key in Settings → AI Engine.',
+      response: 'All AI providers failed. Please check your API keys in Settings.',
       text: ''
     };
   },
@@ -257,6 +350,55 @@ const chatApi = {
 export const api = {
   // Core
   chat: chatApi.chat,
+  visionChat: async (text, imageBase64) => {
+    // Multi-modal support (Claude/GPT-4o Vision)
+    const settings = localSettings.get();
+    const key = settings.openai_api_key || settings.anthropic_api_key;
+    if (!key) throw new Error("Vision requires OpenAI or Claude API key");
+
+    if (settings.openai_api_key) {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.openai_api_key}` },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text },
+              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
+            ]
+          }]
+        })
+      });
+      const data = await res.json();
+      return { reply: data.choices[0].message.content };
+    } else {
+       // Anthropic Vision
+       const res = await fetch('https://api.anthropic.com/v1/messages', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+           'x-api-key': settings.anthropic_api_key,
+           'anthropic-version': '2023-06-01',
+           'dangerouslyAllowBrowser': 'true'
+         },
+         body: JSON.stringify({
+           model: 'claude-3-5-sonnet-20240620',
+           max_tokens: 1024,
+           messages: [{
+             role: 'user',
+             content: [
+               { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } },
+               { type: 'text', text }
+             ]
+           }]
+         })
+       });
+       const data = await res.json();
+       return { reply: data.content[0].text };
+    }
+  },
   run: (cmd) => chatApi.chat(cmd),
   health: () => axiosInstance.get('/health'),
 
@@ -391,9 +533,11 @@ const speakText = (text) => {
   const settings = JSON.parse(localStorage.getItem('airis_settings') || '{}');
   const fishKey = settings.fish_audio_api_key;
   const referenceId = settings.fish_audio_reference_id;
-  const provider = settings.preferred_voice_provider || 'browser';
+  const elevenKey = settings.elevenlabs_api_key;
+  const provider = settings.preferred_voice_provider;
 
-  if (provider === 'fish' && fishKey && referenceId) {
+  // Bug 5 logic: Prioritize set provider, but fall back if keys/IDs exist
+  if ((provider === 'fish' || (!provider && referenceId)) && fishKey && referenceId) {
     fetch('https://api.fish.audio/v1/tts', {
       method: 'POST',
       headers: {
@@ -417,8 +561,8 @@ const speakText = (text) => {
       audio.play();
     })
     .catch(() => browserSpeak(text));
-  } else if (provider === 'eleven' && settings.elevenlabs_api_key) {
-    fetch(`https://api.elevenlabs.io/v1/text-to-speech/${settings.elevenlabs_voice_id || 'Rachel'}`, {
+  } else if ((provider === 'eleven' || (!provider && elevenKey)) && elevenKey) {
+    fetch(`https://api.elevenlabs.io/v1/text-to-speech/${settings.elevenlabs_voice_id || '21m00Tcm4TlvDq8ikWAM'}`, {
       method: 'POST',
       headers: {
         'xi-api-key': settings.elevenlabs_api_key,

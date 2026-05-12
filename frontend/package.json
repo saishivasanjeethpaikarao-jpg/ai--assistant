@@ -1,6 +1,6 @@
 {
   "name": "airis-ai-assistant",
-  "version": "2.0.6",
+  "version": "3.0.0",
   "description": "Modern AI Assistant Desktop App",
   "private": true,
   "type": "module",

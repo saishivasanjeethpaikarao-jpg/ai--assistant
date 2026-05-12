@@ -4,10 +4,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const backendUrl = env.VITE_API_URL || 'http://localhost:8000'
-  const basePath   = env.VITE_BASE_PATH || '/'
+  const basePath   = env.VITE_BASE_PATH || ''
 
   return {
-    base: basePath,
+    base: basePath === '/' ? '' : basePath,
     plugins: [react()],
     server: {
       port: 5000,

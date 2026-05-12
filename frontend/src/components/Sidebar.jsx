@@ -9,7 +9,7 @@ import {
 import { api } from '../services/api';
 
 const B = '#437DFD';
-const BORDER = 'rgba(0,0,0,0.07)';
+const BORDER = 'rgba(255,255,255,0.08)';
 
 const TITLES = {
   chat:      { label: 'Chats',        icon: FiMessageSquare },
@@ -76,14 +76,14 @@ const ChatPanel = ({ history }) => {
   const [filter, setFilter] = useState('today');
   const [search, setSearch] = useState('');
   const items = history.length > 0 ? history.slice(-8).reverse() : [];
-  const filtered = items.filter(i => !search || i.input?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = items.filter(i => !search || (i.input || i.content || '').toLowerCase().includes(search.toLowerCase()));
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
       <div style={{ padding:'10px 12px 6px', flexShrink:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'#fff', border:`1px solid ${BORDER}`, borderRadius:'10px', padding:'8px 12px' }}>
-          <FiSearch size={13} style={{ color:'#bbb', flexShrink:0 }}/>
+        <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'rgba(255,255,255,0.03)', border:`1px solid ${BORDER}`, borderRadius:'10px', padding:'8px 12px' }}>
+          <FiSearch size={13} style={{ color:'#888', flexShrink:0 }}/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search chats..."
-            style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:'13px', color:'#0C0C0C' }}/>
+            style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:'13px', color:'#F0F0F0' }}/>
         </div>
       </div>
       <div style={{ display:'flex', gap:'4px', padding:'0 12px 8px', flexShrink:0 }}>
@@ -99,12 +99,12 @@ const ChatPanel = ({ history }) => {
       <div style={{ flex:1, overflowY:'auto', minHeight:0 }}>
         <SectionHdr title={`Recent (${filtered.length})`} />
         {filtered.length === 0
-          ? <p style={{ padding:'16px', fontSize:'12px', color:'#bbb', textAlign:'center' }}>Start chatting to see history here</p>
+          ? <p style={{ padding:'16px', fontSize:'12px', color:'#888', textAlign:'center' }}>Start chatting to see history here</p>
           : filtered.map((item,i) => (
-            <Row key={i} primary={item.input}
+            <Row key={i} primary={item.input || item.content}
               secondary={item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Just now'}
               active={i===0}
-              avatar={(item.input?.[0] || 'C').toUpperCase()}
+              avatar={( (item.input || item.content)?.[0] || 'C').toUpperCase()}
             />
           ))
         }
@@ -486,20 +486,23 @@ const Sidebar = ({ activePanel, isOpen, isMobile, onClose }) => {
 
   const panelContent = (
     <>
-      <div style={{ height:'52px', display:'flex', alignItems:'center', gap:'8px', padding:'0 16px', borderBottom:`1px solid ${BORDER}`, flexShrink:0, justifyContent:'space-between', background:'#fff' }}>
+      <div style={{ height:'52px', display:'flex', alignItems:'center', gap:'8px', padding:'0 16px', borderBottom:`1px solid ${BORDER}`, flexShrink:0, justifyContent:'space-between', background:'transparent' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
           <div style={{ width:'28px', height:'28px', borderRadius:'8px', background:'rgba(67,125,253,0.1)', display:'flex', alignItems:'center', justifyContent:'center' }}>
             <TitleIcon size={14} style={{ color:B }}/>
           </div>
-          <span style={{ fontSize:'13px', fontWeight:'600', color:'#0C0C0C' }}>
+          <span style={{ fontSize:'13px', fontWeight:'600', color:'#F0F0F0' }}>
             {config.label}
           </span>
         </div>
         {isMobile && (
-          <button onClick={onClose} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:'28px', height:'28px', borderRadius:'8px', background:'rgba(0,0,0,0.04)', border:`1px solid ${BORDER}`, color:'#aaa', cursor:'pointer' }}>
+          <button onClick={onClose} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:'28px', height:'28px', borderRadius:'8px', background:'rgba(255,255,255,0.05)', border:`1px solid ${BORDER}`, color:'#888', cursor:'pointer' }}>
             <FiX size={14}/>
           </button>
         )}
+      </div>
+      <div style={{ padding: '16px', display: 'flex', justifyContent: 'center' }}>
+          <div className="pulsing-orb"></div>
       </div>
       {activePanel==='chat'      && <ChatPanel history={history}/>}
       {activePanel==='memory'    && <MemoryPanel stats={memStats}/>}
@@ -529,7 +532,7 @@ const Sidebar = ({ activePanel, isOpen, isMobile, onClose }) => {
   }
 
   return (
-    <div style={{ width:'240px', flexShrink:0, background:'#F8F7F5', borderRight:`1px solid ${BORDER}`, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
+    <div className="glass" style={{ width:'240px', flexShrink:0, borderRight:`1px solid ${BORDER}`, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0, borderRadius: 0, borderTop: 'none', borderBottom: 'none', borderLeft: 'none' }}>
       {panelContent}
     </div>
   );

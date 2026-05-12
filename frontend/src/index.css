@@ -1,86 +1,138 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
 
-*, *::before, *::after {
+:root {
+  --primary: #437DFD;
+  --secondary: #7C3AED;
+  --accent: #00C48C;
+  --error: #FD5B5D;
+  --bg: #0A0A0F;
+  --surface: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.08);
+  --text-primary: #F0F0F0;
+  --text-secondary: #888888;
+  --glass-blur: blur(20px);
+}
+
+[data-theme='light'] {
+  --bg: #F5F7FA;
+  --surface: rgba(0, 0, 0, 0.03);
+  --border: rgba(0, 0, 0, 0.08);
+  --text-primary: #1A1A1A;
+  --text-secondary: #666666;
+}
+
+[data-theme='darker'] {
+  --bg: #000000;
+  --surface: rgba(255, 255, 255, 0.03);
+  --border: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='jarvis'] {
+  --bg: #050B18;
+  --primary: #00D1FF;
+  --secondary: #0047FF;
+  --surface: rgba(0, 209, 255, 0.05);
+  --border: rgba(0, 209, 255, 0.2);
+}
+
+* {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-#root {
-  min-height: 100vh;
-}
-
 body {
-  background: #F5F4F2;
-  color: #0C0C0C;
-  font-family: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 13px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg);
+  color: var(--text-primary);
+  overflow: hidden;
 }
 
-button {
-  font-family: inherit;
-  font-size: inherit;
-  cursor: pointer;
-  border: none;
-  background: none;
-  color: inherit;
-  padding: 0;
+.glass {
+  background: var(--surface);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border);
+  border-radius: 16px;
 }
 
-textarea, input {
-  font-family: inherit;
-  font-size: inherit;
-}
-
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(67,125,253,0.2);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(67,125,253,0.38);
+.pulsing-orb {
+  width: 40px;
+  height: 40px;
+  background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+  border-radius: 50%;
+  box-shadow: 0 0 20px var(--primary);
+  animation: pulse 2s infinite ease-in-out;
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
+  0% { transform: scale(0.95); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  100% { transform: scale(0.95); opacity: 0.5; }
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+.chat-bubble {
+  padding: 12px 16px;
+  border-radius: 16px;
+  max-width: 80%;
+  margin-bottom: 12px;
+  line-height: 1.5;
+  font-size: 14px;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+.user-bubble {
+  align-self: flex-end;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  border-bottom-right-radius: 4px;
 }
 
-@keyframes glowPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(67,125,253,0.25); }
-  50%      { box-shadow: 0 0 0 8px rgba(67,125,253,0); }
+.ai-bubble {
+  align-self: flex-start;
+  background: var(--surface);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
 }
 
-@keyframes slideInLeft {
-  from { transform: translateX(-100%); }
-  to   { transform: translateX(0); }
+.input-area {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--border);
+  padding: 16px;
 }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0; }
+textarea {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  resize: none;
+  outline: none;
+  width: 100%;
+  font-family: inherit;
+  font-size: 15px;
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-6px); }
+button {
+  cursor: pointer;
+  transition: transform 0.2s, filter 0.2s;
+}
+
+button:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+pre {
+  background: #000;
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 8px 0;
+  border: 1px solid var(--border);
+}
+
+code {
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
 }
