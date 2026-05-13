@@ -17,14 +17,14 @@ const MiniChart = ({ data, color, compact }) => {
 };
 
 // ── Design Tokens ──────────────────────────────────────────────────────────────
-const BL     = '#7B61FF';
+const BL     = '#437DFD';
 const GR     = '#00C48C';
 const RD     = '#FD5B5D';
 const OR     = '#FF8C42';
-const DK     = '#0C0C0C';
-const BG     = '#F5F4F2';
-const BORDER = 'rgba(0,0,0,0.08)';
-const FONT   = "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif";
+const DK     = '#F0F0F0';
+const BG     = '#0A0A0F';
+const BORDER = 'rgba(255,255,255,0.08)';
+const FONT   = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
 
 const uid      = () => Math.random().toString(36).slice(2, 10);
 const fmt      = (n) => n == null ? '—' : Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -219,9 +219,9 @@ const IndexChip = ({ idx }) => {
   if (!idx) return <div style={{ background: 'rgba(0,0,0,0.04)', borderRadius: 8, padding: '6px 8px', minHeight: 52, animation: 'tpPulse 1.5s infinite' }} />;
   const up = idx.change_pct >= 0;
   return (
-    <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '7px 9px' }}>
-      <div style={{ fontSize: 9, fontWeight: 700, color: '#bbb', letterSpacing: '0.04em', marginBottom: 2 }}>{idx.name}</div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: DK }}>{fmt(idx.price)}</div>
+    <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER}`, borderRadius: 8, padding: '7px 9px' }}>
+      <div style={{ fontSize: 9, fontWeight: 700, color: '#888', letterSpacing: '0.04em', marginBottom: 2 }}>{idx.name}</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#F0F0F0' }}>{fmt(idx.price)}</div>
       <div style={{ fontSize: 10, fontWeight: 600, color: up ? GR : RD }}>{pctSign(idx.change_pct)}{idx.change_pct?.toFixed(2)}%</div>
     </div>
   );
@@ -720,7 +720,7 @@ const PortfolioChart = ({ portfolio, prices, isMobile }) => {
   const pct = invested > 0 ? (pnl / invested) * 100 : 0;
 
   return (
-    <div style={{ padding: isMobile ? '14px 14px 4px' : '16px 22px 4px', flexShrink: 0, background: BG }}>
+    <div style={{ padding: isMobile ? '14px 14px 4px' : '16px 22px 4px', flexShrink: 0, background: "transparent" }}>
       <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 16, padding: isMobile ? '14px 12px' : '18px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
           <div>
@@ -823,7 +823,7 @@ const PortfolioTab = ({ portfolio, setPortfolio, onQuote, isMobile, prefill, cle
   const totalPct      = totalInvested > 0 ? (totalPnl/totalInvested*100) : 0;
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: BG }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: "transparent" }}>
       {/* Summary bar */}
       <div style={{ padding: isMobile ? '10px 14px' : '12px 22px', borderBottom: `1px solid ${BORDER}`, display: 'flex', gap: isMobile ? 12 : 22, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0, background: '#fff' }}>
         {[['Invested', `₹${fmt(totalInvested)}`, DK], ['Current', `₹${fmt(totalCurrent)}`, DK], ['P&L', `${pctSign(totalPnl)}₹${fmt(Math.abs(totalPnl))} (${pctSign(totalPct)}${totalPct.toFixed(2)}%)`, pctColor(totalPnl)]].map(([lbl, val, clr]) => (
@@ -1045,7 +1045,7 @@ const WatchlistTab = ({ watchlist, setWatchlist, onQuote, isMobile }) => {
   };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: BG }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: "transparent" }}>
       {/* Search bar */}
       <div style={{ padding: isMobile ? '12px 14px' : '14px 22px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0, background: '#fff' }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -1143,7 +1143,7 @@ const MarketTab = ({ indices, movers, onQuote, isMobile }) => {
   ];
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 14px 32px' : '22px 22px 36px', background: BG }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 14px 32px' : '22px 22px 36px', background: "transparent" }}>
       {/* All Indices */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>All Indices</div>
@@ -1226,7 +1226,7 @@ const AlertsTab = ({ isMobile, onQuote, alerts, setAlerts, alertPrices, alertLoa
   const liveTriggered = (a) => !!a.triggered;
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: BG }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: "transparent" }}>
       {/* Notification permission banner */}
       {!notifGranted && (
         <div style={{ padding: '10px 22px', background: `${OR}12`, borderBottom: `1px solid ${OR}30`, display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
@@ -1634,10 +1634,10 @@ export default function TradingPage() {
   const niftyUp = (nifty?.change_pct || 0) >= 0;
 
   return (
-    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: BG, fontFamily: FONT, overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: BG, fontFamily: FONT, overflow: 'hidden', color: '#F0F0F0' }}>
 
       {/* ── Header ── */}
-      <header style={{ height: 54, flexShrink: 0, background: '#fff', borderBottom: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', padding: '0 14px', gap: 10, zIndex: 10 }}>
+      <header style={{ height: 54, flexShrink: 0, background: 'rgba(255,255,255,0.02)', borderBottom: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', padding: '0 14px', gap: 10, zIndex: 10, backdropFilter: 'blur(10px)' }}>
         <button onClick={() => navigate('/app')}
           style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#666', background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 10, padding: '6px 12px', cursor: 'pointer', fontFamily: FONT, flexShrink: 0, fontWeight: 500 }}>
           ← Back
@@ -1674,7 +1674,9 @@ export default function TradingPage() {
 
         {/* Market sidebar — desktop */}
         {!isMobile && (
-          <MarketSidebar indices={indices} movers={movers} onQuote={openQuote} isMobile={false} sidebarOpen={false} onClose={() => {}} />
+          <div className="glass" style={{borderRadius: 0, borderTop: 'none', borderBottom: 'none', borderLeft: 'none'}}>
+            <MarketSidebar indices={indices} movers={movers} onQuote={openQuote} isMobile={false} sidebarOpen={false} onClose={() => {}} />
+          </div>
         )}
 
         {/* Market sidebar — mobile drawer */}

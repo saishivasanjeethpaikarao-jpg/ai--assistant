@@ -184,7 +184,15 @@ const SendIcon = ({ size=15 }) => (
 
 // ── Empty State ───────────────────────────────────────────────────────────────
 
-const EmptyState = ({ onMicClick, micSupported, onFeatureClick, isMobile, voiceState }) => (
+const SUGGESTIONS = [
+  "Analyze NIFTY 50 technicals",
+  "How's the market sentiment today?",
+  "Tell me a joke like JARVIS",
+  "Analyze RELIANCE stock",
+  "Explain quantum computing simply"
+];
+
+const EmptyState = ({ onMicClick, micSupported, onFeatureClick, isMobile, voiceState, onSuggestionClick }) => (
   <div style={{
     flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
     padding: isMobile ? '20px 16px' : '28px 48px',
@@ -219,6 +227,14 @@ const EmptyState = ({ onMicClick, micSupported, onFeatureClick, isMobile, voiceS
     }}>
       {FEATURES.map((f,i) => (
         <FeatureCard key={i} feature={f} onClick={() => onFeatureClick?.(f.label)}/>
+      ))}
+    </div>
+
+    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '24px' }}>
+      {SUGGESTIONS.map((s, i) => (
+        <button key={i} onClick={() => onSuggestionClick?.(s)} className="glass" style={{ padding: '8px 16px', fontSize: '12px', color: 'var(--primary)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          {s}
+        </button>
       ))}
     </div>
 
@@ -277,25 +293,46 @@ const UserAvatar = () => (
 
 // ── Message bubbles ───────────────────────────────────────────────────────────
 
-const MessageBubble = ({ msg, isMobile }) => {
+const MessageBubble = ({ msg, isMobile, onRegenerate }) => {
   const isUser  = msg.role === 'user';
   const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+  const [showActions, setShowActions] = useState(false);
+
   return (
-    <div style={{
-      display:'flex', gap:'12px', padding: isMobile ? '12px 16px' : '14px 24px',
-      alignItems:'flex-start',
-      borderBottom:'1px solid rgba(67,125,253,0.05)',
-      background: isUser ? 'transparent' : 'rgba(67,125,253,0.025)',
-      animation:'ciFadeIn 0.25s ease-out',
-    }}>
-      {isUser ? <UserAvatar/> : <AirisAvatar/>}
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:'11px', fontWeight:'700', marginBottom:'5px', letterSpacing:'0.06em', textTransform:'uppercase', color: isUser ? 'rgba(67,125,253,0.7)' : '#437DFD' }}>
-          {isUser ? 'You' : 'Airis'}
+    <div
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
+      style={{
+        display:'flex',
+        flexDirection: 'column',
+        padding: isMobile ? '12px 16px' : '14px 24px',
+        alignItems: isUser ? 'flex-end' : 'flex-start',
+        animation:'ciFadeIn 0.25s ease-out',
+        position: 'relative'
+      }}>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px', flexDirection: isUser ? 'row-reverse' : 'row' }}>
+        {isUser ? <UserAvatar/> : <AirisAvatar/>}
+        <div style={{ fontSize:'11px', fontWeight:'700', letterSpacing:'0.06em', textTransform:'uppercase', color: isUser ? 'rgba(67,125,253,0.7)' : '#437DFD' }}>
+          {isUser ? 'You' : 'Airis'} {msg.provider && <span style={{fontSize: '9px', opacity: 0.5}}> via {msg.provider}</span>}
+          {msg.responseTime && <span style={{fontSize: '9px', opacity: 0.5, marginLeft: '8px'}}>({msg.responseTime}ms)</span>}
         </div>
-        <div style={{ fontSize: isMobile ? '14px' : '13px', color:'#333', lineHeight:'1.8', whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
-          {content}
-        </div>
+      </div>
+      <div className={`chat-bubble ${isUser ? 'user-bubble' : 'ai-bubble'}`} style={{ fontSize: isMobile ? '14px' : '15px' }}>
+        {content}
+        {!isUser && showActions && (
+          <div style={{ position: 'absolute', bottom: '-20px', left: '24px', display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => { navigator.clipboard.writeText(content); }}
+              style={{ fontSize: '10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '4px', padding: '2px 6px', color: 'var(--text-secondary)' }}>
+              Copy
+            </button>
+            <button
+              onClick={onRegenerate}
+              style={{ fontSize: '10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '4px', padding: '2px 6px', color: 'var(--text-secondary)' }}>
+              Regenerate
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -347,6 +384,7 @@ const SpeakingIndicator = ({ isMobile }) => (
 
 const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceState, onVoiceStateChange, isMobile }) => {
   const [input,          setInput]          = useState('');
+  const [showOrb,        setShowOrb]        = useState(true);
   const [ttsEnabled,     setTtsEnabled]     = useState(() => { try { return localStorage.getItem('airis_tts_enabled') !== 'false'; } catch { return true; } });
   const [speaking,       setSpeaking]       = useState(false);
   const [attachedFiles,  setAttachedFiles]  = useState([]);
@@ -531,14 +569,14 @@ const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceS
   const currentVoiceState = listening ? 'listening' : speaking ? 'speaking' : 'idle';
 
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0, minHeight:0, background:'#fff' }}>
+    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0, minHeight:0, background:'var(--bg)' }}>
 
       {/* Tab bar */}
       <div style={{
-        height: isMobile ? '48px' : '44px', background:'#fff',
-        borderBottom:'1px solid rgba(0,0,0,0.08)',
+        height: isMobile ? '48px' : '44px', background:'rgba(255,255,255,0.02)',
+        borderBottom:'1px solid var(--border)',
         display:'flex', alignItems:'stretch', justifyContent:'space-between', flexShrink:0,
-        boxShadow:'0 1px 0 rgba(67,125,253,0.05)',
+        backdropFilter: 'blur(10px)'
       }}>
         <div style={{
           display:'flex', alignItems:'center', padding:isMobile ? '0 14px' : '0 20px',
@@ -565,7 +603,7 @@ const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceS
       </div>
 
       {/* Messages */}
-      <div style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', background:'#fff', minHeight:0 }}>
+      <div style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', background:'transparent', minHeight:0 }}>
         {messages.length===0 && !isTyping && !listening
           ? <EmptyState
               onMicClick={toggleMic}
@@ -573,10 +611,21 @@ const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceS
               onFeatureClick={handleFeatureClick}
               isMobile={isMobile}
               voiceState={currentVoiceState}
+              onSuggestionClick={(s) => { setInput(s); textareaRef.current?.focus(); }}
             />
           : (
             <div>
-              {messages.map((msg,idx) => <MessageBubble key={idx} msg={msg} isMobile={isMobile}/>)}
+              {messages.map((msg,idx) => (
+                <MessageBubble
+                  key={idx}
+                  msg={msg}
+                  isMobile={isMobile}
+                  onRegenerate={() => {
+                    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+                    if (lastUserMsg) onSendMessage(lastUserMsg.content);
+                  }}
+                />
+              ))}
               {isTyping  && <TypingIndicator isMobile={isMobile}/>}
               {listening && <ListeningIndicator isMobile={isMobile}/>}
               {speaking && !isTyping && <SpeakingIndicator isMobile={isMobile}/>}
@@ -587,7 +636,7 @@ const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceS
       </div>
 
       {/* Input */}
-      <div style={{ background:'#fff', borderTop:'1px solid rgba(0,0,0,0.08)', padding: isMobile?'8px 10px 10px':'12px 18px 14px', flexShrink:0 }}>
+      <div className="input-area" style={{ padding: isMobile?'8px 10px 10px':'12px 18px 14px', flexShrink:0 }}>
 
         {/* Attached file chips */}
         {attachedFiles.length > 0 && (
@@ -650,13 +699,12 @@ const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceS
         <div
           style={{
             display:'flex', gap:'8px', alignItems:'flex-end',
-            background:'#F5F4F2', border:'1.5px solid rgba(67,125,253,0.2)',
+            background:'rgba(255,255,255,0.05)', border:'1px solid var(--border)',
             borderRadius:'16px', padding: isMobile?'10px 10px 10px 16px':'12px 10px 12px 16px',
-            transition:'border-color 0.2s, box-shadow 0.2s',
-            boxShadow:'0 2px 8px rgba(67,125,253,0.06)',
+            transition:'all 0.2s',
           }}
-          onFocusCapture={e => { e.currentTarget.style.borderColor='#437DFD'; e.currentTarget.style.boxShadow='0 0 0 3px rgba(67,125,253,0.1), 0 2px 8px rgba(67,125,253,0.1)'; }}
-          onBlurCapture={e  => { e.currentTarget.style.borderColor='rgba(67,125,253,0.2)'; e.currentTarget.style.boxShadow='0 2px 8px rgba(67,125,253,0.06)'; }}>
+          onFocusCapture={e => { e.currentTarget.style.borderColor='var(--primary)'; e.currentTarget.style.boxShadow='0 0 0 2px rgba(67,125,253,0.2)'; }}
+          onBlurCapture={e  => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.boxShadow='none'; }}>
           <textarea ref={textareaRef} value={input}
             onChange={e => { setInput(e.target.value); autoResize(); }}
             onKeyDown={e => { if(e.key==='Enter'&&!e.shiftKey&&!isMobile){ e.preventDefault(); handleSend(); } }}
