@@ -8,7 +8,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "",
+        "*",
         "https://airis-9ox.pages.dev",
         "https://ai-assistant-8r3x.onrender.com",
         "http://localhost:5173",
