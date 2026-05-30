@@ -384,42 +384,17 @@ const CloneTab = ({ status, currentRefId, onCloneSuccess, isMobile }) => {
 
       setPhase('uploading');
 
-      const settings = JSON.parse(localStorage.getItem('airis_settings') || '{}');
-      const fishKey = settings.fish_audio_api_key;
-
-      if (!fishKey) {
+      if (!status.fish_audio_api_key_set) {
         setErrMsg('Fish Audio API key not set. Go to Settings > Voice & Speech and add your Fish Audio key.');
         setPhase('error');
         return;
       }
 
-      const audioBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-      const audioBlob = new Blob([audioBytes], { type: file.type });
+      const result = await api.cloneVoice(name.trim(), b64, file.type || 'audio/mpeg');
+      const modelId = result.model_id || result.id || result.reference_id;
+      if (!modelId) throw new Error(result.message || 'Voice clone succeeded but no model ID was returned.');
 
-      const formData = new FormData();
-      formData.append('voices', audioBlob, file.name);
-      formData.append('title', name.trim());
-      formData.append('train_mode', 'fast');
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000);
-
-      const response = await fetch('https://api.fish.audio/v1/model', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${fishKey}` },
-        body: formData,
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Fish Audio error: ${err}`);
-      }
-
-      const result = await response.json();
-      const modelId = result._id;
-
+      const settings = JSON.parse(localStorage.getItem('airis_settings') || '{}');
       const updatedSettings = { ...settings, fish_audio_reference_id: modelId };
       localStorage.setItem('airis_settings', JSON.stringify(updatedSettings));
 

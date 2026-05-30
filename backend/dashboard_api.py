@@ -7,7 +7,7 @@ import json
 import os
 import sys
 from datetime import datetime
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -484,7 +484,11 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
                 self.send_json({'error': 'No input provided'}, 400)
                 return
 
-            app_state = (data.get('app_state') or '').strip()
+            app_state_raw = data.get('app_state') or ''
+            if isinstance(app_state_raw, (dict, list)):
+                app_state = json.dumps(app_state_raw, ensure_ascii=False)
+            else:
+                app_state = str(app_state_raw).strip()
             full_input = f"{app_state}\n\n{user_input}" if app_state else user_input
 
             from core.orchestrator import get_orchestrator
@@ -643,7 +647,7 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
 
     def api_get_settings(self):
         try:
-            from ai_switcher import _load_env_keys, get_provider_status
+            from ai_switcher import _is_real_secret, _load_env_keys, get_provider_status
             from config_prefs import load_prefs
             from config_paths import get_dotenv_path
             from dotenv import load_dotenv
@@ -653,6 +657,10 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
             prefs = load_prefs()
             claude_key = (keys.get('CLAUDE_API_KEY') or '').strip()
             groq_key = (keys.get('GROQ_API_KEY') or '').strip()
+            openai_key = (keys.get('OPENAI_API_KEY') or '').strip()
+            nvidia_key = (keys.get('NVIDIA_NIM_API_KEY') or '').strip()
+            mistral_key = (keys.get('MISTRAL_API_KEY') or '').strip()
+            together_key = (keys.get('TOGETHER_API_KEY') or '').strip()
             fish_key = os.getenv('FISH_AUDIO_API_KEY', '').strip()
             el_key = os.getenv('ELEVENLABS_API_KEY', '').strip()
             firebase_key = (keys.get('FIREBASE_API_KEY') or '').strip()
@@ -661,10 +669,22 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
                 'success': True,
                 'settings': {
                     'claude_api_key': self._mask(claude_key),
-                    'claude_api_key_set': bool(claude_key),
+                    'claude_api_key_set': _is_real_secret(claude_key),
+                    'openai_api_key': self._mask(openai_key),
+                    'openai_api_key_set': _is_real_secret(openai_key),
+                    'openai_model': keys.get('OPENAI_MODEL') or 'gpt-4o',
                     'groq_api_key': self._mask(groq_key),
-                    'groq_api_key_set': bool(groq_key),
+                    'groq_api_key_set': _is_real_secret(groq_key),
                     'groq_model': keys.get('GROQ_MODEL') or 'llama-3.3-70b-versatile',
+                    'nvidia_nim_api_key': self._mask(nvidia_key),
+                    'nvidia_nim_api_key_set': _is_real_secret(nvidia_key),
+                    'nvidia_model': keys.get('NVIDIA_MODEL') or 'nvidia/llama-3.1-nemotron-70b',
+                    'mistral_api_key': self._mask(mistral_key),
+                    'mistral_api_key_set': _is_real_secret(mistral_key),
+                    'mistral_model': keys.get('MISTRAL_MODEL') or 'mistral-large-latest',
+                    'together_api_key': self._mask(together_key),
+                    'together_api_key_set': _is_real_secret(together_key),
+                    'together_model': keys.get('TOGETHER_MODEL') or 'meta-llama/Llama-3-70b',
                     'ollama_url': keys.get('OLLAMA_URL') or '',
                     'ollama_model': keys.get('OLLAMA_MODEL') or 'llama3.2',
                     'fish_audio_api_key': self._mask(fish_key),
@@ -706,8 +726,19 @@ class DashboardAPIHandler(BaseHTTPRequestHandler):
 
             ENV_MAP = {
                 'claude_api_key': 'CLAUDE_API_KEY',
+                'anthropic_api_key': 'ANTHROPIC_API_KEY',
+                'openai_api_key': 'OPENAI_API_KEY',
+                'openai_model': 'OPENAI_MODEL',
+                'gemini_api_key': 'GEMINI_API_KEY',
+                'gemini_model': 'GEMINI_MODEL',
                 'groq_api_key': 'GROQ_API_KEY',
                 'groq_model': 'GROQ_MODEL',
+                'nvidia_nim_api_key': 'NVIDIA_NIM_API_KEY',
+                'nvidia_model': 'NVIDIA_MODEL',
+                'mistral_api_key': 'MISTRAL_API_KEY',
+                'mistral_model': 'MISTRAL_MODEL',
+                'together_api_key': 'TOGETHER_API_KEY',
+                'together_model': 'TOGETHER_MODEL',
                 'ollama_url': 'OLLAMA_URL',
                 'ollama_model': 'OLLAMA_MODEL',
                 'fish_audio_api_key': 'FISH_AUDIO_API_KEY',
@@ -1256,9 +1287,10 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
                    'm4a' if 'm4a' in ctype or 'mp4' in ctype else 'mp3')
 
             resp = req_lib.post(
-                'https://api.fish.audio/v1/model',
+                'https://api.fish.audio/model',
                 headers={'Authorization': f'Bearer {fish_key}'},
                 data={
+                    'type': 'tts',
                     'title': name,
                     'train_mode': 'fast',
                     'enhance_audio_quality': 'true',
@@ -1267,7 +1299,9 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
                 files={'voices': (f'voice.{ext}', audio_bytes, ctype)},
                 timeout=120,
             )
-            resp.raise_for_status()
+            if resp.status_code not in (200, 201):
+                self.send_json({'error': f'Fish Audio error: {resp.text}'}, resp.status_code)
+                return
             result   = resp.json()
             model_id = result.get('_id') or result.get('id', '')
 
@@ -1575,7 +1609,7 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
 
 
 def start_server(port=5000):
-    server = HTTPServer(('0.0.0.0', port), DashboardAPIHandler)
+    server = ThreadingHTTPServer(('0.0.0.0', port), DashboardAPIHandler)
     print(f"Airis Backend API — port {port}")
     print("Ready: /api/request  /api/settings  /api/capabilities  /api/system/layers")
     server.serve_forever()

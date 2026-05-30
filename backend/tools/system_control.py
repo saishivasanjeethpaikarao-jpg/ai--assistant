@@ -5,7 +5,7 @@ System Control Tool — Power, restart, volume, settings.
 import os
 import subprocess
 from typing import Optional
-from backend.tools import ToolResult, tool_registry
+from tools import ToolResult, tool_registry
 
 
 def poweroff(delay: int = 0) -> ToolResult:
@@ -77,7 +77,7 @@ def get_system_info() -> ToolResult:
             "system": platform.system(),
             "release": platform.release(),
             "version": platform.version(),
-            "processor": platform.processor(),
+            "machine": platform.machine(),
         }
         return ToolResult(
             success=True,

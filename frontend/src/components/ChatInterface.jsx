@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { FiSend, FiVolume2, FiVolumeX, FiPaperclip, FiX, FiImage, FiFileText, FiMonitor } from 'react-icons/fi';
 import AIVoiceOrb from './AIVoiceOrb';
-import { api, speakText } from '../services/api';
+import { api, speakText, stopSpeech } from '../services/api';
 
 const SpeechRecognitionAPI =
   typeof window !== 'undefined' &&
@@ -28,7 +28,7 @@ function useSpeechToText({ onResult, onStateChange }) {
 }
 
 function stopAllSpeech() {
-  window.speechSynthesis?.cancel();
+  stopSpeech();
 }
 
 // ── Icons ────────────────────────────────────────────────────────────────────

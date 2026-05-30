@@ -1,6 +1,13 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://ai-assistant-8r3x.onrender.com';
+const getDefaultBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (import.meta.env.DEV) return 'http://127.0.0.1:8000';
+  if (typeof window !== 'undefined' && window.__TAURI__) return 'http://127.0.0.1:8000';
+  return 'https://ai-assistant-8r3x.onrender.com';
+};
+
+const BASE_URL = getDefaultBaseUrl();
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL + '/api',
@@ -191,6 +198,32 @@ const chatApi = {
 
     // Sync to backend
     axiosInstance.post('/history', { role: 'user', content: text }).catch(() => {});
+
+    // Prefer the backend orchestrator so desktop actions, trading, reminders,
+    // and verified tool execution work from the main chat surface.
+    try {
+      const backend = await axiosInstance.post('/request', {
+        message: text,
+        history: recentHistory,
+        ...(appState ? { app_state: appState } : {}),
+      });
+
+      const reply = backend?.reply || backend?.response || backend?.text || backend?.message;
+      if (backend?.success && reply) {
+        updatedHistory.push({
+          role: 'assistant',
+          content: reply,
+          timestamp: Date.now(),
+          provider: 'Airis Backend',
+          mode: backend.mode || backend.intent,
+        });
+        localSettings.setHistory(updatedHistory.slice(-50));
+        axiosInstance.post('/history', { role: 'assistant', content: reply }).catch(() => {});
+        return { ...backend, response: reply, text: reply };
+      }
+    } catch (e) {
+      console.warn('Backend orchestrator unavailable, trying browser providers...', e);
+    }
 
     const providers = [
       {
@@ -399,7 +432,7 @@ export const api = {
        return { reply: data.content[0].text };
     }
   },
-  run: (cmd) => chatApi.chat(cmd),
+  run: (cmd) => axiosInstance.post('/request', { message: cmd }),
   health: () => axiosInstance.get('/health'),
 
   // History (persistent localStorage — never lost on refresh)
@@ -431,7 +464,10 @@ export const api = {
   saveSettings: settingsApi.saveSettings,
   getProviderStatus: async () => {
     const localS = localSettings.get();
-    const hasProvider = bool(localS.groq_api_key);
+    const hasProvider = bool(localS.groq_api_key) || bool(localS.anthropic_api_key) ||
+      bool(localS.claude_api_key) || bool(localS.openai_api_key) || bool(localS.gemini_api_key) ||
+      bool(localS.nvidia_nim_api_key) || bool(localS.mistral_api_key) ||
+      bool(localS.together_api_key) || bool(localS.ollama_enabled);
     try {
       const r = await axiosInstance.get('/provider/status');
       return { has_provider: r.has_provider || hasProvider };
@@ -471,6 +507,11 @@ export const api = {
    getMarketQuote: (symbol) => axiosInstance.get(`/market/quote?symbol=${encodeURIComponent(symbol)}`),
    searchStocks: (q) => axiosInstance.get(`/market/search?q=${encodeURIComponent(q)}`),
    getMarketMovers: () => axiosInstance.get('/market/movers'),
+   tradingChat: (message, context, preferences) => axiosInstance.post('/trading/chat', {
+     message,
+     context,
+     preferences,
+   }),
 
    // Tauri shell (desktop only)
    openApp: tauriShell.openApp,
@@ -529,62 +570,52 @@ const browserSpeak = (text) => {
   }
 };
 
-const speakText = (text) => {
-  const settings = JSON.parse(localStorage.getItem('airis_settings') || '{}');
-  const fishKey = settings.fish_audio_api_key;
-  const referenceId = settings.fish_audio_reference_id;
-  const elevenKey = settings.elevenlabs_api_key;
-  const provider = settings.preferred_voice_provider;
+let currentPremiumAudio = null;
 
-  // Bug 5 logic: Prioritize set provider, but fall back if keys/IDs exist
-  if ((provider === 'fish' || (!provider && referenceId)) && fishKey && referenceId) {
-    fetch('https://api.fish.audio/v1/tts', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${fishKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text: text,
-        reference_id: referenceId,
-        model: settings.fish_audio_model || 's2-pro',
-        format: 'mp3',
-      }),
-    })
-    .then(r => {
-      if (!r.ok) throw new Error('Fish Audio TTS failed');
-      return r.arrayBuffer();
-    })
-    .then(buffer => {
-      const blob = new Blob([buffer], { type: 'audio/mpeg' });
-      const audio = new Audio(URL.createObjectURL(blob));
-      audio.play();
-    })
-    .catch(() => browserSpeak(text));
-  } else if ((provider === 'eleven' || (!provider && elevenKey)) && elevenKey) {
-    fetch(`https://api.elevenlabs.io/v1/text-to-speech/${settings.elevenlabs_voice_id || '21m00Tcm4TlvDq8ikWAM'}`, {
-      method: 'POST',
-      headers: {
-        'xi-api-key': settings.elevenlabs_api_key,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text: text,
-        model_id: 'eleven_monolingual_v1',
-      }),
-    })
-    .then(r => r.arrayBuffer())
-    .then(buffer => {
-      const audio = new Audio(URL.createObjectURL(new Blob([buffer], { type: 'audio/mpeg' })));
-      audio.play();
-    })
-    .catch(() => browserSpeak(text));
-  } else {
-    browserSpeak(text);
+const stopSpeech = () => {
+  window.speechSynthesis?.cancel();
+  if (currentPremiumAudio) {
+    currentPremiumAudio.pause();
+    currentPremiumAudio.src = '';
+    currentPremiumAudio = null;
   }
 };
 
-export { speakText, browserSpeak };
+const speakText = async (text) => {
+  const settings = JSON.parse(localStorage.getItem('airis_settings') || '{}');
+  const referenceId = settings.fish_audio_reference_id;
+  const provider = settings.preferred_voice_provider;
+
+  if ((provider === 'fish' || (!provider && referenceId)) && referenceId) {
+    try {
+      const buffer = await api.tts(text, referenceId, settings.fish_audio_model || 's2-pro');
+      if (currentPremiumAudio) {
+        currentPremiumAudio.pause();
+        currentPremiumAudio.src = '';
+      }
+      const audioUrl = URL.createObjectURL(new Blob([buffer], { type: 'audio/mpeg' }));
+      const audio = new Audio(audioUrl);
+      currentPremiumAudio = audio;
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        if (currentPremiumAudio === audio) currentPremiumAudio = null;
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(audioUrl);
+        if (currentPremiumAudio === audio) currentPremiumAudio = null;
+        browserSpeak(text);
+      };
+      await audio.play();
+      return;
+    } catch (e) {
+      console.warn('Premium TTS failed, falling back to browser voice:', e);
+    }
+  }
+
+  browserSpeak(text);
+};
+
+export { speakText, browserSpeak, stopSpeech };
 
 // Standalone portfolio API (for Portfolio.jsx page)
 export const portfolioAPI = {

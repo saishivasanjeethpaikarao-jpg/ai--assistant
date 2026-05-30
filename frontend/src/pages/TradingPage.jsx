@@ -21,9 +21,9 @@ const BL     = '#437DFD';
 const GR     = '#00C48C';
 const RD     = '#FD5B5D';
 const OR     = '#FF8C42';
-const DK     = '#F0F0F0';
-const BG     = '#0A0A0F';
-const BORDER = 'rgba(255,255,255,0.08)';
+const DK     = '#111827';
+const BG     = '#F5F7FB';
+const BORDER = 'rgba(15,23,42,0.10)';
 const FONT   = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
 
 const uid      = () => Math.random().toString(36).slice(2, 10);
@@ -354,12 +354,12 @@ const QuoteModal = ({ quote, loading, onClose, onAddWatchlist, onAddPortfolio })
 
 // ── Markdown renderer with stock ticker highlighting ──────────────────────────
 const renderMarkdown = (text, onTickerAction) => {
-  return text.split('\n').map((line, i) => {
+  const clean = String(text || '').replace(/\*\*/g, '').replace(/\*/g, '');
+  return clean.split('\n').map((line, i) => {
     const segments = [];
-    let remaining = line.replace(/\*\*(.*?)\*\*/g, '\x01$1\x02').replace(/\*(.*?)\*/g, '\x03$1\x04');
     let key = 0;
 
-    const parts = remaining.split(/(\b[A-Z][A-Z0-9&-]{1,14}\b)/g);
+    const parts = line.split(/(\b[A-Z][A-Z0-9&-]{1,14}\b)/g);
     parts.forEach(part => {
       if (NSE_TICKERS.has(part)) {
         segments.push(
@@ -372,33 +372,7 @@ const renderMarkdown = (text, onTickerAction) => {
           </span>
         );
       } else {
-        const parts = [];
-        let last = 0;
-        const boldRe = /\x01(.*?)\x02/g;
-        let m;
-        while ((m = boldRe.exec(part)) !== null) {
-          if (m.index > last) parts.push(part.slice(last, m.index));
-          parts.push(<strong key={`b${key}`}>{m[1]}</strong>); key++;
-          last = m.index + m[0].length;
-        }
-        if (last < part.length) parts.push(part.slice(last));
-        const emParts = [];
-        let emLast = 0;
-        const emRe = /\x03(.*?)\x04/g;
-        for (const p of parts) {
-          if (typeof p === 'string') {
-            while ((m = emRe.exec(p)) !== null) {
-              if (m.index > emLast) emParts.push(p.slice(emLast, m.index));
-              emParts.push(<em key={`e${key}`}>{m[1]}</em>); key++;
-              emLast = m.index + m[0].length;
-            }
-            if (emLast < p.length) emParts.push(p.slice(emLast));
-            emLast = 0;
-          } else {
-            emParts.push(p);
-          }
-        }
-        segments.push(<span key={key++}>{emParts}</span>);
+        segments.push(<span key={key++}>{part}</span>);
       }
     });
 
@@ -1634,18 +1608,18 @@ export default function TradingPage() {
   const niftyUp = (nifty?.change_pct || 0) >= 0;
 
   return (
-    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: BG, fontFamily: FONT, overflow: 'hidden', color: '#F0F0F0' }}>
+    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: BG, fontFamily: FONT, overflow: 'hidden', color: DK }}>
 
       {/* ── Header ── */}
-      <header style={{ height: 54, flexShrink: 0, background: 'rgba(255,255,255,0.02)', borderBottom: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', padding: '0 14px', gap: 10, zIndex: 10, backdropFilter: 'blur(10px)' }}>
+      <header style={{ height: 54, flexShrink: 0, background: '#0A0A0F', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', padding: '0 14px', gap: 10, zIndex: 10, backdropFilter: 'blur(10px)' }}>
         <button onClick={() => navigate('/app')}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#666', background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 10, padding: '6px 12px', cursor: 'pointer', fontFamily: FONT, flexShrink: 0, fontWeight: 500 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#CBD5E1', background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 10, padding: '6px 12px', cursor: 'pointer', fontFamily: FONT, flexShrink: 0, fontWeight: 500 }}>
           ← Back
         </button>
 
         {isMobile && (
           <button onClick={() => setSidebarOpen(true)}
-            style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 10, padding: '5px 10px', cursor: 'pointer', fontSize: 13, color: '#666', fontFamily: FONT, flexShrink: 0 }}>
+            style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '5px 10px', cursor: 'pointer', fontSize: 13, color: '#CBD5E1', fontFamily: FONT, flexShrink: 0 }}>
             📊
           </button>
         )}
@@ -1653,8 +1627,8 @@ export default function TradingPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
           <div style={{ width: 30, height: 30, borderRadius: 10, background: `${GR}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>📈</div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: isMobile ? 13.5 : 15, fontWeight: 700, color: DK, lineHeight: 1.2 }}>Trading Intelligence</div>
-            {!isMobile && <div style={{ fontSize: 10.5, color: '#aaa' }}>AI-powered NSE/BSE analysis · Live data</div>}
+            <div style={{ fontSize: isMobile ? 13.5 : 15, fontWeight: 700, color: '#F8FAFC', lineHeight: 1.2 }}>Trading Intelligence</div>
+            {!isMobile && <div style={{ fontSize: 10.5, color: '#94A3B8' }}>AI-powered NSE/BSE analysis · Live data</div>}
           </div>
         </div>
 

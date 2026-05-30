@@ -14,6 +14,15 @@ current_index = 0
 PROVIDERS: list = []
 
 
+def _is_real_secret(value: str) -> bool:
+    val = (value or "").strip()
+    if not val:
+        return False
+    lowered = val.lower()
+    placeholders = ("your_", "your-", "placeholder", "api_key_here", "key_here", "xxxx", "sk-...")
+    return not any(token in lowered for token in placeholders)
+
+
 def __getattr__(name: str):
     if name == "DOTENV_PATH":
         return get_dotenv_path()
@@ -32,9 +41,17 @@ def _load_env_keys() -> dict:
     load_dotenv(path, override=True)
     keys = {
         "GROQ_API_KEY": os.getenv("GROQ_API_KEY", ""),
+        "GROQ_MODEL": os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
+        "OPENAI_MODEL": os.getenv("OPENAI_MODEL", "gpt-4o"),
+        "NVIDIA_NIM_API_KEY": os.getenv("NVIDIA_NIM_API_KEY", ""),
+        "NVIDIA_MODEL": os.getenv("NVIDIA_MODEL", "nvidia/llama-3.1-nemotron-70b"),
+        "MISTRAL_API_KEY": os.getenv("MISTRAL_API_KEY", ""),
+        "MISTRAL_MODEL": os.getenv("MISTRAL_MODEL", "mistral-large-latest"),
+        "TOGETHER_API_KEY": os.getenv("TOGETHER_API_KEY", ""),
+        "TOGETHER_MODEL": os.getenv("TOGETHER_MODEL", "meta-llama/Llama-3-70b"),
         "OLLAMA_URL": os.getenv("OLLAMA_URL", ""),
         "OLLAMA_MODEL": os.getenv("OLLAMA_MODEL", "llama3.2"),
-        "GROQ_MODEL": os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
         "FIREBASE_API_KEY": os.getenv("FIREBASE_API_KEY", ""),
     }
     try:
@@ -103,17 +120,25 @@ def _build_providers():
                 }
             )
 
-    gkey = (settings.get("GROQ_API_KEY") or "").strip()
-    groq_model = (settings.get("GROQ_MODEL") or "llama-3.3-70b-versatile").strip()
-    out.append(
-        {
-            "name": "Groq",
-            "model": groq_model,
-            "api_key": gkey,
-            "base_url": "https://api.groq.com/openai/v1",
-            "enabled": bool(gkey),
-        }
-    )
+    openai_compatible = [
+        ("Groq", "GROQ_API_KEY", "GROQ_MODEL", "llama-3.3-70b-versatile", "https://api.groq.com/openai/v1"),
+        ("OpenAI", "OPENAI_API_KEY", "OPENAI_MODEL", "gpt-4o", "https://api.openai.com/v1"),
+        ("NVIDIA", "NVIDIA_NIM_API_KEY", "NVIDIA_MODEL", "nvidia/llama-3.1-nemotron-70b", "https://integrate.api.nvidia.com/v1"),
+        ("Mistral", "MISTRAL_API_KEY", "MISTRAL_MODEL", "mistral-large-latest", "https://api.mistral.ai/v1"),
+        ("Together", "TOGETHER_API_KEY", "TOGETHER_MODEL", "meta-llama/Llama-3-70b", "https://api.together.xyz/v1"),
+    ]
+
+    for name, key_name, model_name, default_model, base_url in openai_compatible:
+        api_key = (settings.get(key_name) or "").strip()
+        out.append(
+            {
+                "name": name,
+                "model": (settings.get(model_name) or default_model).strip(),
+                "api_key": api_key,
+                "base_url": base_url,
+                "enabled": _is_real_secret(api_key),
+            }
+        )
 
     return out
 
@@ -211,6 +236,8 @@ def print_provider_status():
 def with_fallback(func, *args, **kwargs):
     """Run function with auto provider fallback"""
     global current_index
+    refresh_providers()
+    current_index = 0
     for attempt in range(len(PROVIDERS)):
         try:
             provider = get_active_provider()

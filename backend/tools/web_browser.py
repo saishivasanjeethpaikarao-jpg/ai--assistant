@@ -5,7 +5,7 @@ Web Browser Tool — Open URLs, search, navigate.
 import webbrowser
 from urllib.parse import quote
 from typing import Optional
-from backend.tools import ToolResult, tool_registry
+from tools import ToolResult, tool_registry
 
 
 def open_url(url: str) -> ToolResult:

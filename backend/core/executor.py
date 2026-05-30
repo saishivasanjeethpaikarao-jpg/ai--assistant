@@ -5,6 +5,13 @@ from typing import List, Optional
 from tools import ToolResult, tool_registry
 from tools.verifier import verify_command_success
 
+# Import tool modules for their registration side effects.
+# The registry is intentionally simple, so tools must be loaded before execution.
+try:
+    from tools import app_launcher, file_editor, powershell, system_control, trading_tools, web_browser  # noqa: F401
+except Exception as exc:
+    print(f"[Airis] Tool registration warning: {exc}")
+
 
 class VerifiedExecutor:
     """Execution layer that verifies every action and never fakes results.

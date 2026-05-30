@@ -36,11 +36,11 @@ class IntentRouter:
     ]
 
     WEB_PATTERNS = [
-        (r"\b(?:search|google|look\s+up|find)\s+(.+?)\b", "search"),
+        (r"\b(?:search|google|look\s+up|find)\s+(.+)$", "search"),
         (r"\b(?:open|go\s+to|navigate\s+to)\s+(https?://\S+|www\.\S+)\b", "open_url"),
         (r"\b(?:open|go\s+to)\s+(\w+(?:\.\w+)+)\b", "open_domain"),
-        (r"\b(?:youtube|yt)\s+(.+?)\b", "youtube"),
-        (r"\b(?:download)\s+(.+?)\b", "download"),
+        (r"\b(?:youtube|yt)\s+(.+)$", "youtube"),
+        (r"\b(?:download)\s+(.+)$", "download"),
     ]
 
     REMINDER_PATTERNS = [

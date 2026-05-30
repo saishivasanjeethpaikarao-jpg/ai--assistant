@@ -5,7 +5,7 @@ File Editor Tool — Create, read, edit, delete files.
 import os
 from pathlib import Path
 from typing import Optional
-from backend.tools import ToolResult, tool_registry
+from tools import ToolResult, tool_registry
 
 
 def create_file(filepath: str, content: str = "") -> ToolResult:

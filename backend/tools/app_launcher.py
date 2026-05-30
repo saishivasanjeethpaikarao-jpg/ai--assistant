@@ -6,7 +6,7 @@ import subprocess
 import os
 import platform
 from typing import Dict
-from backend.tools import ToolResult, tool_registry
+from tools import ToolResult, tool_registry
 
 
 # Common Windows app paths
@@ -86,7 +86,6 @@ def is_app_running(app_name: str) -> ToolResult:
             capture_output=True, text=True
         )
         is_running = app_name.lower() in result.stdout.lower()
-        is_running = result.returncode == 0
         return ToolResult(
             success=True,
             message=f"{app_name} is {'running' if is_running else 'not running'}",

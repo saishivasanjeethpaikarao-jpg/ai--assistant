@@ -83,7 +83,7 @@ class AirisOrchestrator:
             "response": response,
             "intent": intent.type,
             "confidence": intent.confidence,
-            "action_taken": action_result.get("action") if action_result else None,
+            "action_taken": action_result.get("tool") if action_result else None,
             "verified": action_result.get("verified") if action_result else None,
             "session_id": self._session_id,
         }
@@ -330,6 +330,7 @@ class AirisOrchestrator:
         client = OpenAI(
             api_key=provider.get("api_key"),
             base_url=provider.get("base_url", ""),
+            timeout=25,
         )
         resp = client.chat.completions.create(
             model=provider.get("model", "llama-3.3-70b-versatile"),

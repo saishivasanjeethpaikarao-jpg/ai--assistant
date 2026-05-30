@@ -209,13 +209,13 @@ async def clone_voice(request: Request):
 
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            "https://api.fish.audio/v1/model",
+            "https://api.fish.audio/model",
             headers={"Authorization": f"Bearer {fish_key}"},
             files={"voices": (f"voice.{content_type.split('/')[-1]}", audio_bytes, content_type)},
-            data={"title": name, "train_mode": "fast"}
+            data={"type": "tts", "title": name, "train_mode": "fast", "visibility": "private"}
         )
 
-    if response.status_code != 200:
+    if response.status_code not in (200, 201):
         raise HTTPException(status_code=400, detail=f"Fish Audio error: {response.text}")
 
     result = response.json()
