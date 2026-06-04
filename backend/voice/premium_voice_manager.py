@@ -68,7 +68,7 @@ class PremiumVoiceManager:
             return None
         
         try:
-            from backend.voice.fish_audio import fish_tts_to_file
+            from fish_audio import fish_tts_to_file
             
             audio_path = fish_tts_to_file(
                 text=text,

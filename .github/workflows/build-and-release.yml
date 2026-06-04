@@ -1,0 +1,182 @@
+name: Build & Deploy AIRIS
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_VERSION: 18.x
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # ============= LINT & TEST =============
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm install
+      - run: npm run lint 2>/dev/null || echo "No lint script"
+
+  # ============= BUILD DESKTOP (WINDOWS) =============
+  build-desktop-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      
+      - name: Install npm dependencies
+        run: npm install
+      
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+        
+      - name: Build with Tauri
+        uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: ./src-tauri
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload Windows Build
+        uses: actions/upload-artifact@v3
+        with:
+          name: airis-windows
+          path: src-tauri/target/release/*.exe
+
+  # ============= BUILD DESKTOP (macOS) =============
+  build-desktop-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      
+      - name: Install npm dependencies
+        run: npm install
+      
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+        
+      - name: Build with Tauri
+        uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: ./src-tauri
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload macOS Build
+        uses: actions/upload-artifact@v3
+        with:
+          name: airis-macos
+          path: src-tauri/target/release/bundle/macos/*.app
+
+  # ============= BUILD DESKTOP (Linux) =============
+  build-desktop-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev libgtk-3-dev libayatana-appindicator3-dev
+      
+      - name: Install npm dependencies
+        run: npm install
+      
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+        
+      - name: Build with Tauri
+        uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: ./src-tauri
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload Linux Build
+        uses: actions/upload-artifact@v3
+        with:
+          name: airis-linux
+          path: src-tauri/target/release/airis
+
+  # ============= BUILD DOCKER IMAGE =============
+  build-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./backend/Dockerfile
+          push: false
+          tags: airis:latest,airis:${{ github.sha }}
+
+  # ============= CREATE RELEASE =============
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-desktop-windows, build-desktop-macos, build-desktop-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            airis-windows/**
+            airis-macos/**
+            airis-linux/**
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from backend.tools import ToolResult
+from tools import ToolResult
 
 
 class InteractionLogger:

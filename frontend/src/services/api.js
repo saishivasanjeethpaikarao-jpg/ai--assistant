@@ -617,6 +617,55 @@ const speakText = async (text) => {
 
 export { speakText, browserSpeak, stopSpeech };
 
+// Stock Market API
+export const stockAPI = {
+  getGainers: async () => {
+    try {
+      const res = await axiosInstance.get('/market/movers');
+      return { data: res.data?.gainers || [] };
+    } catch (e) {
+      console.error('Get gainers error:', e);
+      return { data: [] };
+    }
+  },
+  getLosers: async () => {
+    try {
+      const res = await axiosInstance.get('/market/movers');
+      return { data: res.data?.losers || [] };
+    } catch (e) {
+      console.error('Get losers error:', e);
+      return { data: [] };
+    }
+  },
+  getIndices: async () => {
+    try {
+      const res = await axiosInstance.get('/market/indices');
+      return { data: res.data || [] };
+    } catch (e) {
+      console.error('Get indices error:', e);
+      return { data: [] };
+    }
+  },
+  getQuote: async (symbol) => {
+    try {
+      const res = await axiosInstance.get(`/market/quote?symbol=${symbol}`);
+      return res.data;
+    } catch (e) {
+      console.error('Get quote error:', e);
+      return null;
+    }
+  },
+  search: async (query) => {
+    try {
+      const res = await axiosInstance.get(`/market/search?q=${query}`);
+      return { data: res.data || [] };
+    } catch (e) {
+      console.error('Search error:', e);
+      return { data: [] };
+    }
+  },
+};
+
 // Standalone portfolio API (for Portfolio.jsx page)
 export const portfolioAPI = {
   get: async () => axiosInstance.get('/trading/portfolio'),

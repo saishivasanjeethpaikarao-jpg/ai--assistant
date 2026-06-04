@@ -26,8 +26,11 @@ except ImportError:
     pyttsx3 = None
 
 # AI System imports
-from backend.system_coordinator import process_user_request
-from backend.memory.adaptive_memory import log_interaction
+from system_coordinator import process_user_request
+from self_improve.logger import InteractionLogger
+
+# Initialize logger for learning
+_interaction_logger = InteractionLogger()
 
 
 class VoiceAssistantState(Enum):
@@ -186,7 +189,7 @@ class VoiceAssistant:
             
             # Log interaction for learning
             try:
-                log_interaction(command, response)
+                _interaction_logger.log_interaction(command, response)
             except Exception as e:
                 if self.debug:
                     print(f"[{self.name}] Memory log error: {e}")

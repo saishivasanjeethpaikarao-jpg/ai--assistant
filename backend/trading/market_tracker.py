@@ -11,10 +11,26 @@ from dataclasses import dataclass, asdict, field
 import logging
 
 from indian_stock_api import get_api, StockData
+try:
+    from config_paths import memory_package_dir, user_data_dir
+except ImportError:
+    memory_package_dir = None
+    user_data_dir = None
 
 logger = logging.getLogger(__name__)
 
-WATCHLIST_DIR = "memory"
+def _trading_data_dir() -> str:
+    configured_dir = os.environ.get("AIRIS_TRADING_DATA_DIR")
+    if configured_dir:
+        return configured_dir
+    if user_data_dir:
+        return os.path.join(user_data_dir(), "trading")
+    if memory_package_dir:
+        return memory_package_dir()
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "memory")
+
+
+WATCHLIST_DIR = _trading_data_dir()
 WATCHLIST_FILE = os.path.join(WATCHLIST_DIR, "watchlist.json")
 PORTFOLIO_FILE = os.path.join(WATCHLIST_DIR, "portfolio.json")
 

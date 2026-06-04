@@ -32,6 +32,32 @@ def _cached(key, fn):
     _market_cache[key] = (now, val)
     return val
 
+def _import_yfinance():
+    try:
+        import yfinance as yf
+        return yf
+    except ImportError:
+        return None
+
+def _empty_index_rows():
+    return [
+        {'symbol': sym, 'name': name, 'price': 0, 'change': 0, 'change_pct': 0}
+        for sym, name in INDICES
+    ]
+
+def _empty_movers_rows():
+    fallback = []
+    for sym in NIFTY50_MOVERS[:8]:
+        display = sym.replace('.NS', '').replace('.BO', '')
+        fallback.append({
+            'symbol': display,
+            'yf_symbol': sym,
+            'price': 0,
+            'change': 0,
+            'change_pct': 0,
+        })
+    return {'gainers': fallback[:4], 'losers': fallback[4:8]}
+
 INDICES = [
     ('^NSEI',      'NIFTY 50'),
     ('^BSESN',     'SENSEX'),
@@ -351,94 +377,6 @@ LAYERS = [
     {"n": 4,  "name": "Execution Engine",   "desc": "Converts each step into runnable commands/tools"},
     {"n": 5,  "name": "Decision Engine",    "desc": "Picks the best option when multiple paths exist"},
     {"n": 6,  "name": "Safety Filter",      "desc": "Checks commands for safety before running them"},
-    {"n": 7,  "name": "Self-Reflection",    "desc": "Evaluates the outcome — did the goal succeed?"},
-    {"n": 8,  "name": "Adaptive Memory",    "desc": "Stores lessons, preferences, and patterns"},
-    {"n": 9,  "name": "Re-Planning",        "desc": "Recovers from failures with a better plan"},
-    {"n": 10, "name": "Chat Mode",          "desc": "Natural conversation with bilingual support"},
-    {"n": 11, "name": "Meta-Improvement",   "desc": "Analyses the system and proposes upgrades"},
-    {"n": 12, "name": "Orchestrator",       "desc": "Coordinates all 11 layers in optimal sequence"},
-]
-
-
-class DashboardAPIHandler(BaseHTTPRequestHandler):
-
-    # ── Routing ─────────────────────────────────────────────────────────────
-
-    def do_GET(self):
-        path = urlparse(self.path).path
-        routes = {
-            '/': self.serve_dashboard,
-            '/api/health': self.api_health,
-            '/api/system/status': self.api_system_status,
-            '/api/system/knowledge': self.api_system_knowledge,
-            '/api/system/layers': self.api_system_layers,
-            '/api/history': self.api_history,
-            '/api/settings': self.api_get_settings,
-            '/api/provider/status': self.api_provider_status,
-            '/api/reminders': self.api_get_reminders,
-            '/api/memory/stats': self.api_memory_stats,
-            '/api/system/prompt': self.api_get_system_prompt,
-            '/api/capabilities': self.api_capabilities,
-            '/api/analytics': self.api_analytics,
-            '/api/vibe/agents': self.api_vibe_agents,
-            '/api/vibe/detect': self.api_vibe_detect_get,
-            '/api/tts/config': self.api_tts_config,
-            '/api/market/indices': self.api_market_indices,
-            '/api/market/quote':   self.api_market_quote,
-            '/api/market/search':  self.api_market_search,
-            '/api/market/movers':  self.api_market_movers,
-            '/api/market/history': self.api_market_history,
-            '/api/trading/chat':       self.api_trading_chat_get,
-            '/api/trading/portfolio':  self.api_trading_portfolio_get,
-            '/api/trading/watchlist':  self.api_trading_watchlist_get,
-            '/api/reminders/delete': self.api_delete_reminder,
-            '/api/reminders/complete': self.api_complete_reminder,
-        }
-        handler = routes.get(path)
-        if handler:
-            handler()
-        else:
-            self.send_error(404)
-
-    def do_POST(self):
-        content_length = int(self.headers.get('Content-Length', 0))
-        body = self.rfile.read(content_length)
-        path = urlparse(self.path).path
-        try:
-            data = json.loads(body.decode('utf-8'))
-        except Exception:
-            data = {}
-
-        routes = {
-            '/api/request': lambda: self.api_request(data),
-            '/api/history/clear': self.api_history_clear,
-            '/api/settings': lambda: self.api_save_settings(data),
-            '/api/system/prompt': lambda: self.api_save_system_prompt(data),
-            '/api/reminders': lambda: self.api_add_reminder(data),
-            '/api/reminders/delete': lambda: self.api_delete_reminder(data),
-            '/api/reminders/complete': lambda: self.api_complete_reminder(data),
-            '/api/vibe/code': lambda: self.api_vibe_code(data),
-            '/api/vibe/run': lambda: self.api_vibe_run(data),
-            '/api/vibe/fix': lambda: self.api_vibe_fix(data),
-            '/api/vibe/chat': lambda: self.api_vibe_chat(data),
-            '/api/vibe/detect': lambda: self.api_vibe_detect(data),
-            '/api/trading/chat':      lambda: self.api_trading_chat(data),
-            '/api/trading/portfolio': lambda: self.api_trading_portfolio_save(data),
-            '/api/trading/watchlist': lambda: self.api_trading_watchlist_save(data),
-            '/mobile/chat':           lambda: self.api_mobile_chat(data),
-            '/api/tts': lambda: self.api_tts(data),
-            '/api/voice/clone': lambda: self.api_voice_clone(data),
-            '/api/vision/chat': lambda: self.api_vision_chat(data),
-        }
-        handler = routes.get(path)
-        if handler:
-            handler()
-        else:
-            self.send_error(404)
-
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
@@ -1385,7 +1323,9 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
     def api_market_indices(self):
         try:
             def fetch():
-                import yfinance as yf
+                yf = _import_yfinance()
+                if yf is None:
+                    return _empty_index_rows()
                 result = []
                 for sym, name in INDICES:
                     try:
@@ -1425,6 +1365,24 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
                 yf_sym = raw + '.NS'
 
             def fetch():
+                if _import_yfinance() is None:
+                    return {
+                        'symbol': yf_sym,
+                        'display_symbol': raw,
+                        'name': name,
+                        'price': 0,
+                        'change': 0,
+                        'change_pct': 0,
+                        'open': 0,
+                        'high': 0,
+                        'low': 0,
+                        'prev_close': 0,
+                        'year_high': 0,
+                        'year_low': 0,
+                        'market_cap': 0,
+                        'volume': 0,
+                        'timestamp': datetime.now().isoformat(),
+                    }
                 d = _yf_detail(yf_sym)
                 d['name'] = name
                 d['display_symbol'] = raw
@@ -1458,7 +1416,9 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
     def api_market_movers(self):
         try:
             def fetch():
-                import yfinance as yf
+                yf = _import_yfinance()
+                if yf is None:
+                    return _empty_movers_rows()
                 quotes = []
                 for sym in NIFTY50_MOVERS:
                     try:
@@ -1502,7 +1462,9 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
             if period not in valid_periods:
                 period = '30d'
             def fetch():
-                import yfinance as yf
+                yf = _import_yfinance()
+                if yf is None:
+                    return []
                 t = yf.Ticker(yf_sym)
                 yf_period = '1mo' if period == '30d' else ('3mo' if period == '90d' else '7d')
                 hist = t.history(period=yf_period, interval='1d')

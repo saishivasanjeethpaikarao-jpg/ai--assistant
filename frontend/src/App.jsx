@@ -78,6 +78,12 @@ function ProtectedApp() {
   }, []);
 
   useEffect(() => {
+    const openTrading = () => navigate('/trading');
+    window.addEventListener('airis_go_trading', openTrading);
+    return () => window.removeEventListener('airis_go_trading', openTrading);
+  }, [navigate]);
+
+  useEffect(() => {
     const down = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); setCommandOpen(true); }
       if ((e.ctrlKey || e.metaKey) && e.key === '/') { e.preventDefault(); document.querySelector('textarea')?.focus(); }

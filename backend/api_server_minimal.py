@@ -5,6 +5,10 @@ from pydantic import BaseModel
 from datetime import datetime
 import json, os, sqlite3, base64, httpx, logging
 from core.event_bus import EventBus
+try:
+    from config_paths import user_data_dir
+except ImportError:
+    user_data_dir = None
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,7 +29,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DB_PATH = os.environ.get('RENDER_DATA_DIR', '/opt/render/project/data') + '/settings.db'
+def _default_db_path():
+    render_data_dir = os.environ.get("RENDER_DATA_DIR")
+    if render_data_dir:
+        return os.path.join(render_data_dir, "settings.db")
+    if user_data_dir:
+        return os.path.join(user_data_dir(), "settings.db")
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "settings.db")
+
+
+DB_PATH = os.environ.get("AIRIS_DB_PATH", _default_db_path())
 
 def get_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)

@@ -55,6 +55,10 @@ export default function LandingPage() {
   useEffect(() => { if (!isMobile) setMenuOpen(false); }, [isMobile]);
 
   const cols = (d, t, m) => `repeat(${isMobile ? m : isTablet ? t : d}, 1fr)`;
+  const scrollToSection = (id) => {
+    setMenuOpen(false);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const capabilities = [
     { icon: '💬', title: 'Smart Chat', desc: 'Context-aware conversations with memory across sessions. Understands nuance, tone, and follow-ups.' },
@@ -143,8 +147,14 @@ export default function LandingPage() {
         {/* Desktop nav links */}
         {!isMobile && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.75)', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 100, padding: '5px 6px' }}>
-            {['Features', 'Brain', 'Voice', 'Trading', 'Pricing'].map(l => (
-              <button key={l} style={{ fontSize: 13, fontWeight: 500, color: '#555', padding: '6px 15px', borderRadius: 100, border: 'none', background: 'transparent', cursor: 'pointer' }}>{l}</button>
+            {[
+              ['Features', 'features'],
+              ['Brain', 'brain'],
+              ['Voice', 'voice'],
+              ['Trading', 'trading'],
+              ['Pricing', 'pricing'],
+            ].map(([l, id]) => (
+              <button key={l} onClick={() => scrollToSection(id)} style={{ fontSize: 13, fontWeight: 500, color: '#555', padding: '6px 15px', borderRadius: 100, border: 'none', background: 'transparent', cursor: 'pointer' }}>{l}</button>
             ))}
             <button onClick={() => navigate('/download')} style={{ fontSize: 13, fontWeight: 600, color: S.blue, padding: '6px 15px', borderRadius: 100, border: 'none', background: 'rgba(67,125,253,0.08)', cursor: 'pointer' }}>Download</button>
           </div>
@@ -173,8 +183,14 @@ export default function LandingPage() {
       {/* Mobile menu */}
       {isMobile && menuOpen && (
         <div style={{ position: 'fixed', top: 57, left: 0, right: 0, zIndex: 190, background: 'rgba(245,244,242,0.97)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(0,0,0,0.08)', padding: '12px 20px 20px' }}>
-          {['Features', 'Brain', 'Voice', 'Trading', 'Pricing'].map(l => (
-            <button key={l} onClick={() => setMenuOpen(false)} style={{ display: 'block', width: '100%', textAlign: 'left', fontSize: 15, fontWeight: 500, color: '#333', padding: '12px 0', borderBottom: '1px solid rgba(0,0,0,0.05)', border: 'none', background: 'transparent', cursor: 'pointer' }}>{l}</button>
+          {[
+            ['Features', 'features'],
+            ['Brain', 'brain'],
+            ['Voice', 'voice'],
+            ['Trading', 'trading'],
+            ['Pricing', 'pricing'],
+          ].map(([l, id]) => (
+            <button key={l} onClick={() => scrollToSection(id)} style={{ display: 'block', width: '100%', textAlign: 'left', fontSize: 15, fontWeight: 500, color: '#333', padding: '12px 0', borderBottom: '1px solid rgba(0,0,0,0.05)', border: 'none', background: 'transparent', cursor: 'pointer' }}>{l}</button>
           ))}
           <button onClick={() => { setMenuOpen(false); navigate('/download'); }} style={{ display: 'block', width: '100%', textAlign: 'left', fontSize: 15, fontWeight: 600, color: S.blue, padding: '12px 0', borderBottom: '1px solid rgba(0,0,0,0.05)', border: 'none', background: 'transparent', cursor: 'pointer' }}>📲 Download App</button>
           <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
@@ -204,7 +220,7 @@ export default function LandingPage() {
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6.5" fill="rgba(255,255,255,0.2)"/><path d="M6 4.5l4.5 3L6 10.5V4.5z" fill="white"/></svg>
             Try Airis free
           </button>
-          <button style={{ fontSize: isMobile ? 14 : 15, fontWeight: 500, color: S.dark, background: 'rgba(255,255,255,0.75)', border: '1px solid rgba(0,0,0,0.13)', cursor: 'pointer', padding: isMobile ? '13px 26px' : '15px 34px', borderRadius: 100 }}>
+          <button onClick={() => scrollToSection('demo')} style={{ fontSize: isMobile ? 14 : 15, fontWeight: 500, color: S.dark, background: 'rgba(255,255,255,0.75)', border: '1px solid rgba(0,0,0,0.13)', cursor: 'pointer', padding: isMobile ? '13px 26px' : '15px 34px', borderRadius: 100 }}>
             Watch demo
           </button>
         </div>
@@ -228,7 +244,7 @@ export default function LandingPage() {
       </div>
 
       {/* ── CAPABILITIES GRID ── */}
-      <div style={{ marginTop: isMobile ? 60 : 100 }}>
+      <div id="features" style={{ marginTop: isMobile ? 60 : 100, scrollMarginTop: 90 }}>
         <Sect pad={pad}>
           <SectTitle pre="Capabilities" main="Everything you need," bold="nothing you don't." sub="29+ built-in capabilities spanning voice, intelligence, trading, and automation." isMobile={isMobile} />
           <div style={{ display: 'grid', gridTemplateColumns: cols(3, 2, 1), gap: 12 }}>
@@ -244,7 +260,7 @@ export default function LandingPage() {
       </div>
 
       {/* ── AI MODES ── */}
-      <div style={{ marginTop: isMobile ? 60 : 100 }}>
+      <div id="demo" style={{ marginTop: isMobile ? 60 : 100, scrollMarginTop: 90 }}>
         <Sect pad={pad}>
           <SectTitle pre="AI Modes" main="Six modes," bold="one assistant." sub="Switch between modes seamlessly — Airis adapts its entire behavior to what you need right now." isMobile={isMobile} />
           <div style={{ display: 'grid', gridTemplateColumns: cols(3, 2, 1), gap: 12 }}>
@@ -260,7 +276,7 @@ export default function LandingPage() {
       </div>
 
       {/* ── 12-LAYER BRAIN ── */}
-      <div style={{ marginTop: isMobile ? 60 : 100, background: 'linear-gradient(180deg, transparent 0%, rgba(67,125,253,0.04) 50%, transparent 100%)', padding: `${isMobile ? 48 : 80}px 0` }}>
+      <div id="brain" style={{ marginTop: isMobile ? 60 : 100, background: 'linear-gradient(180deg, transparent 0%, rgba(67,125,253,0.04) 50%, transparent 100%)', padding: `${isMobile ? 48 : 80}px 0`, scrollMarginTop: 90 }}>
         <Sect pad={pad}>
           <SectTitle pre="12-Layer Brain" main="Reasoning architecture" bold="built for depth." sub="Every response flows through 12 specialized layers — from raw intent to autonomous execution to self-improvement." isMobile={isMobile} />
           <div style={{ display: 'grid', gridTemplateColumns: cols(2, 2, 1), gap: 10 }}>
@@ -278,7 +294,7 @@ export default function LandingPage() {
       </div>
 
       {/* ── VOICE SECTION ── */}
-      <div style={{ marginTop: isMobile ? 60 : 100 }}>
+      <div id="voice" style={{ marginTop: isMobile ? 60 : 100, scrollMarginTop: 90 }}>
         <Sect pad={pad}>
           <div style={{ display: 'grid', gridTemplateColumns: cols(2, 2, 1), gap: isMobile ? 28 : 60, alignItems: 'center' }}>
             <div>
@@ -332,7 +348,7 @@ export default function LandingPage() {
       </div>
 
       {/* ── TRADING ── */}
-      <div style={{ marginTop: isMobile ? 60 : 100, background: 'linear-gradient(180deg, transparent 0%, rgba(0,196,140,0.04) 50%, transparent 100%)', padding: `${isMobile ? 48 : 80}px 0` }}>
+      <div id="trading" style={{ marginTop: isMobile ? 60 : 100, background: 'linear-gradient(180deg, transparent 0%, rgba(0,196,140,0.04) 50%, transparent 100%)', padding: `${isMobile ? 48 : 80}px 0`, scrollMarginTop: 90 }}>
         <Sect pad={pad}>
           <div style={{ display: 'grid', gridTemplateColumns: cols(2, 2, 1), gap: isMobile ? 28 : 60, alignItems: 'center' }}>
             {/* On mobile, show text first, then card */}
@@ -386,7 +402,7 @@ export default function LandingPage() {
       </div>
 
       {/* ── HOW IT WORKS ── */}
-      <div style={{ marginTop: isMobile ? 60 : 100 }}>
+      <div id="pricing" style={{ marginTop: isMobile ? 60 : 100, scrollMarginTop: 90 }}>
         <Sect pad={pad}>
           <SectTitle pre="How It Works" main="From first word" bold="to finished task." sub="Airis turns a single spoken or typed request into a fully executed outcome — in seconds." isMobile={isMobile} />
           <div style={{ display: 'grid', gridTemplateColumns: cols(4, 2, 2), gap: 12, position: 'relative' }}>
