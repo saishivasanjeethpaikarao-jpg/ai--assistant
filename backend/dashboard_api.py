@@ -32,6 +32,32 @@ def _cached(key, fn):
     _market_cache[key] = (now, val)
     return val
 
+def _import_yfinance():
+    try:
+        import yfinance as yf
+        return yf
+    except ImportError:
+        return None
+
+def _empty_index_rows():
+    return [
+        {'symbol': sym, 'name': name, 'price': 0, 'change': 0, 'change_pct': 0}
+        for sym, name in INDICES
+    ]
+
+def _empty_movers_rows():
+    fallback = []
+    for sym in NIFTY50_MOVERS[:8]:
+        display = sym.replace('.NS', '').replace('.BO', '')
+        fallback.append({
+            'symbol': display,
+            'yf_symbol': sym,
+            'price': 0,
+            'change': 0,
+            'change_pct': 0,
+        })
+    return {'gainers': fallback[:4], 'losers': fallback[4:8]}
+
 INDICES = [
     ('^NSEI',      'NIFTY 50'),
     ('^BSESN',     'SENSEX'),
@@ -1385,7 +1411,9 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
     def api_market_indices(self):
         try:
             def fetch():
-                import yfinance as yf
+                yf = _import_yfinance()
+                if yf is None:
+                    return _empty_index_rows()
                 result = []
                 for sym, name in INDICES:
                     try:
@@ -1425,6 +1453,24 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
                 yf_sym = raw + '.NS'
 
             def fetch():
+                if _import_yfinance() is None:
+                    return {
+                        'symbol': yf_sym,
+                        'display_symbol': raw,
+                        'name': name,
+                        'price': 0,
+                        'change': 0,
+                        'change_pct': 0,
+                        'open': 0,
+                        'high': 0,
+                        'low': 0,
+                        'prev_close': 0,
+                        'year_high': 0,
+                        'year_low': 0,
+                        'market_cap': 0,
+                        'volume': 0,
+                        'timestamp': datetime.now().isoformat(),
+                    }
                 d = _yf_detail(yf_sym)
                 d['name'] = name
                 d['display_symbol'] = raw
@@ -1458,7 +1504,9 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
     def api_market_movers(self):
         try:
             def fetch():
-                import yfinance as yf
+                yf = _import_yfinance()
+                if yf is None:
+                    return _empty_movers_rows()
                 quotes = []
                 for sym in NIFTY50_MOVERS:
                     try:
@@ -1502,7 +1550,9 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
             if period not in valid_periods:
                 period = '30d'
             def fetch():
-                import yfinance as yf
+                yf = _import_yfinance()
+                if yf is None:
+                    return []
                 t = yf.Ticker(yf_sym)
                 yf_period = '1mo' if period == '30d' else ('3mo' if period == '90d' else '7d')
                 hist = t.history(period=yf_period, interval='1d')
