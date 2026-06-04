@@ -28,9 +28,9 @@ jobs:
       - name: Build
         run: cd frontend && npm run build
         env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || 'demo-key' }}
-          VITE_BASE_PATH: /
-          VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:8000' }}
+          VITE_FIREBASE_API_KEY: demo-key
+          VITE_BASE_PATH: /ai--assistant/
+          VITE_API_URL: http://localhost:8000
       - name: Add 404 fallback for React Router
         run: cp frontend/dist/index.html frontend/dist/404.html
       - name: Upload Pages artifact

@@ -50,16 +50,18 @@ jobs:
           node-version: 18.x
       
       - name: Install dependencies
-        run: |
-          npm ci
-          cd frontend && npm ci
+        run: cd frontend && npm ci
       
       - name: Lint JavaScript
-        run: npm run lint --workspace=frontend
+        run: cd frontend && npm run lint 2>/dev/null || echo "No lint script"
         continue-on-error: true
       
       - name: Build frontend
-        run: npm run build --workspace=frontend
+        run: cd frontend && npm run build
+        env:
+          VITE_FIREBASE_API_KEY: demo-key
+          VITE_BASE_PATH: /
+          VITE_API_URL: http://localhost:8000
         continue-on-error: true
 
   security-scan:

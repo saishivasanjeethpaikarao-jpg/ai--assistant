@@ -22,8 +22,8 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: npm install
-      - run: npm run lint 2>/dev/null || echo "No lint script"
+      - run: cd frontend && npm install
+      - run: cd frontend && npm run lint 2>/dev/null || echo "No lint script"
 
   # ============= BUILD DESKTOP (WINDOWS) =============
   build-desktop-windows:
@@ -43,11 +43,14 @@ jobs:
           override: true
       
       - name: Install npm dependencies
-        run: npm install
+        run: cd frontend && npm install
       
       - name: Build frontend
-        run: npm run build
-        working-directory: frontend
+        run: cd frontend && npm run build
+        env:
+          VITE_FIREBASE_API_KEY: demo-key
+          VITE_BASE_PATH: /
+          VITE_API_URL: http://localhost:8000
         
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@v0
@@ -80,11 +83,14 @@ jobs:
           override: true
       
       - name: Install npm dependencies
-        run: npm install
+        run: cd frontend && npm install
       
       - name: Build frontend
-        run: npm run build
-        working-directory: frontend
+        run: cd frontend && npm run build
+        env:
+          VITE_FIREBASE_API_KEY: demo-key
+          VITE_BASE_PATH: /
+          VITE_API_URL: http://localhost:8000
         
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@v0
@@ -122,11 +128,14 @@ jobs:
           sudo apt-get install -y libssl-dev libgtk-3-dev libayatana-appindicator3-dev
       
       - name: Install npm dependencies
-        run: npm install
+        run: cd frontend && npm install
       
       - name: Build frontend
-        run: npm run build
-        working-directory: frontend
+        run: cd frontend && npm run build
+        env:
+          VITE_FIREBASE_API_KEY: demo-key
+          VITE_BASE_PATH: /
+          VITE_API_URL: http://localhost:8000
         
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@v0
