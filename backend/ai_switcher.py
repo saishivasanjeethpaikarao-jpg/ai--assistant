@@ -157,11 +157,6 @@ def refresh_providers():
 _init_providers()
 
 
-def refresh_providers():
-    global PROVIDERS
-    PROVIDERS = _build_providers()
-
-
 def save_provider_setting(name: str, value: str) -> None:
     path = _env_file()
     set_key(path, name, value)
@@ -201,9 +196,9 @@ def get_active_provider():
 def next_provider():
     """Switch to next provider"""
     global current_index
-    current_index += 1
-    if current_index >= len(PROVIDERS):
-        current_index = len(PROVIDERS) - 1
+    if not PROVIDERS:
+        raise RuntimeError("No AI providers are configured. Set GROQ_API_KEY and/or OLLAMA_URL in Settings or .env.")
+    current_index = (current_index + 1) % len(PROVIDERS)
     return get_active_provider()
 
 

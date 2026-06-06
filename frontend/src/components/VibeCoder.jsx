@@ -34,6 +34,40 @@ function getFileIcon(name) {
   return map[t] || '📄';
 }
 
+// ── airisVibe parent-injected bridge (Phase 1: replaces allow-same-origin) ─
+// Injected into the iframe's srcDoc so the iframe can call into the parent
+// without sharing an origin. Replaces the prior allow-same-origin sandbox.
+const AIRIS_VIBE_BRIDGE = `<script>(function(){
+  if (window.airisVibe) return;
+  var pending = Object.create(null);
+  var counter = 0;
+  function send(type, payload) {
+    return new Promise(function(resolve, reject) {
+      var id = ++counter;
+      pending[id] = { resolve: resolve, reject: reject };
+      parent.postMessage({ source: 'airisVibe', type: type, id: id, payload: payload || {} }, '*');
+      setTimeout(function() {
+        if (pending[id]) { delete pending[id]; reject(new Error('airisVibe: timeout')); }
+      }, 3000);
+    });
+  }
+  window.addEventListener('message', function(e) {
+    var d = e.data;
+    if (!d || d.source !== 'airisVibe' || d.type !== 'response' || !pending[d.id]) return;
+    var p = pending[d.id]; delete pending[d.id];
+    d.error ? p.reject(new Error(d.error)) : p.resolve(d.value);
+  });
+  window.airisVibe = {
+    version: '1.0',
+    isAvailable: function() { return true; },
+    projectStorage: {
+      getItem: function(k) { return send('storage.get', { key: String(k) }); },
+      setItem: function(k, v) { return send('storage.set', { key: String(k), value: String(v) }); },
+      removeItem: function(k) { return send('storage.remove', { key: String(k) }); },
+    },
+  };
+})();</script>`;
+
 // ── Preview builder (CDN links are kept as-is — critical fix) ───────────────
 function buildPreview(files) {
   if (!files.length) return null;
@@ -58,6 +92,16 @@ function buildPreview(files) {
     const f = files.find(f => f.name === name || f.name === src);
     return f ? `<script${pre}>${f.content}</script>` : match;
   });
+
+  // Inject the airisVibe bridge so the iframe can call parent-side storage
+  // without sharing an origin (Phase 1: replaces allow-same-origin sandbox).
+  if (/<head>/i.test(html)) {
+    html = html.replace(/<head>/i, '<head>' + AIRIS_VIBE_BRIDGE);
+  } else if (/<html>/i.test(html)) {
+    html = html.replace(/<html>/i, '<html><head>' + AIRIS_VIBE_BRIDGE + '</head>');
+  } else {
+    html = AIRIS_VIBE_BRIDGE + html;
+  }
 
   return html;
 }
@@ -817,13 +861,46 @@ const VIEWPORTS = {
   mobile:  { width: '375px', label: 'Mobile',  icon: FiSmartphone },
 };
 
-const LivePreview = ({ html, viewport, onRefresh }) => {
+const LivePreview = ({ html, viewport, onRefresh, onAirisMessage }) => {
   const [key, setKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const w = VIEWPORTS[viewport]?.width || '100%';
   const isConstrained = w !== '100%';
 
   useEffect(() => { setLoading(true); setKey(k => k + 1); }, [html]);
+
+  useEffect(() => {
+    if (!onAirisMessage) return undefined;
+    const handler = (event) => {
+      const d = event.data;
+      if (!d || d.source !== 'airisVibe' || d.type === 'response') return undefined;
+      let responded = false;
+      const reply = (value, error) => {
+        if (responded) return;
+        responded = true;
+        try {
+          if (event.source && typeof event.source.postMessage === 'function') {
+            event.source.postMessage(
+              { source: 'airisVibe', type: 'response', id: d.id, value: value, error: error ? String(error.message || error) : null },
+              '*'
+            );
+          }
+        } catch (e) { /* ignore */ }
+      };
+      try {
+        const result = onAirisMessage(d);
+        if (result && typeof result.then === 'function') {
+          result.then((v) => reply(v), (e) => reply(null, e));
+        } else {
+          reply(result);
+        }
+      } catch (e) {
+        reply(null, e);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [onAirisMessage]);
 
   if (!html) return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, background: '#F5F4F2' }}>
@@ -849,7 +926,7 @@ const LivePreview = ({ html, viewport, onRefresh }) => {
       <iframe
         key={key}
         srcDoc={html}
-        sandbox="allow-scripts allow-modals allow-forms allow-same-origin"
+        sandbox="allow-scripts allow-modals allow-forms"
         title="Live Preview"
         onLoad={() => setLoading(false)}
         style={{
@@ -1084,6 +1161,42 @@ const VibeCoder = ({ isMobile = false, initialPrompt = '' }) => {
   };
 
   const updateContent = (id, content) => setFiles(f => f.map(x => x.id === id ? { ...x, content } : x));
+
+  // Phase 1: parent-side handler for airisVibe bridge messages from the iframe.
+  // Returns a Promise so LivePreview can await and reply. Persists the changed
+  // file back to localStorage so it survives reload.
+  const handleAirisMessage = useCallback((msg) => {
+    if (!msg || !activeProj) return Promise.resolve(null);
+    if (msg.type === 'storage.get' || msg.type === 'storage.set' || msg.type === 'storage.remove') {
+      const key = msg.payload && msg.payload.key;
+      if (!key || typeof key !== 'string') return Promise.reject(new Error('storage: key required'));
+      const found = files.find(f => f.name === key);
+      if (msg.type === 'storage.get') {
+        return Promise.resolve(found ? found.content : null);
+      }
+      if (msg.type === 'storage.set') {
+        const value = msg.payload.value == null ? '' : String(msg.payload.value);
+        setFiles(prev => {
+          const next = found
+            ? prev.map(x => x.id === found.id ? { ...x, content: value } : x)
+            : [...prev, { id: uid(), projectId: activeProj.id, name: key, content: value, type: getFileType(key), createdAt: ts() }];
+          try { SF(activeProj.id, next); } catch (e) { /* ignore quota */ }
+          return next;
+        });
+        return Promise.resolve(null);
+      }
+      // storage.remove
+      if (found) {
+        setFiles(prev => {
+          const next = prev.filter(x => x.id !== found.id);
+          try { SF(activeProj.id, next); } catch (e) { /* ignore */ }
+          return next;
+        });
+      }
+      return Promise.resolve(null);
+    }
+    return Promise.reject(new Error('airisVibe: unknown message type ' + String(msg.type)));
+  }, [activeProj, files]);
 
   const openTab = (id) => {
     if (!openTabs.includes(id)) setOpenTabs(t => [...t, id]);
@@ -1543,7 +1656,7 @@ User request: ${msg}`;
                 </button>
               </div>
             </div>
-            <LivePreview html={displayHtml} viewport={viewport}/>
+            <LivePreview html={displayHtml} viewport={viewport} onAirisMessage={handleAirisMessage}/>
           </div>}
         </div>
       )}
@@ -1674,7 +1787,7 @@ User request: ${msg}`;
                 <FiRefreshCw size={12}/>
               </button>
             </div>
-            <LivePreview html={displayHtml} viewport={viewport}/>
+            <LivePreview html={displayHtml} viewport={viewport} onAirisMessage={handleAirisMessage}/>
           </div>
         )}
       </div>

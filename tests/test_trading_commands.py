@@ -30,15 +30,21 @@ from trading_commands import (
 
 class TestIndianStockAPI(unittest.TestCase):
     """Test Indian Stock API client"""
-    
+
     def setUp(self):
         """Initialize API client"""
         self.api = IndianStockAPI()
-    
+
     def test_api_initialization(self):
-        """Test API client initializes correctly"""
+        """Test API client initializes correctly.
+
+        Phase 1: the previous default ``http://65.0.104.9`` (private IP, no
+        TLS) was a leaked operational endpoint. We now require an explicit
+        ``STOCK_API_BASE_URL`` env var and default to a safe placeholder.
+        """
         self.assertIsNotNone(self.api)
-        self.assertEqual(self.api.base_url, "http://65.0.104.9")
+        self.assertTrue(self.api.base_url.startswith("https://"))
+        self.assertNotEqual(self.api.base_url, "http://65.0.104.9")
         self.assertTrue(len(self.api.popular_stocks) > 0)
     
     def test_singleton_instance(self):
@@ -46,6 +52,18 @@ class TestIndianStockAPI(unittest.TestCase):
         api1 = get_api()
         api2 = get_api()
         self.assertIs(api1, api2)
+
+    def test_http_base_url_refused_in_production(self):
+        """Phase 1: cleartext HTTP base URL must be rejected when AIRIS_ENV=prod."""
+        with patch.dict(
+            os.environ,
+            {"STOCK_API_BASE_URL": "http://65.0.104.9", "AIRIS_ENV": "prod"},
+        ):
+            with self.assertRaises(RuntimeError):
+                # Force re-import so the module-level guard re-runs.
+                import importlib
+                import indian_stock_api
+                importlib.reload(indian_stock_api)
     
     @patch('indian_stock_api.requests.Session.get')
     def test_search_stocks(self, mock_get):

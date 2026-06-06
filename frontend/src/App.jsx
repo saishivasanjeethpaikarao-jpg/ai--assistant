@@ -67,7 +67,7 @@ function ProtectedApp() {
   const [vibeInitialPrompt, setVibeInitialPrompt] = useState('');
 
   const { isMobile, isTablet, isDesktop } = useBreakpoint();
-  const { messages, isTyping, tasks, addMessage, setTyping, addTask, updateTask } = useStore();
+  const { messages, isTyping, tasks, addMessage, setTyping, addTask, updateTask, setMessages, clearMessages } = useStore();
 
   useEffect(() => {
     if (isDesktop && SIDEBAR_PANELS.includes(activePanel)) setSidebarOpen(true);
@@ -175,11 +175,8 @@ function ProtectedApp() {
       const saved = localStorage.getItem('airis_chat_messages');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.length > 0) {
-          // Restore messages without triggering re-save
-          parsed.forEach(m => {
-            // Use direct state update to avoid infinite loop
-          });
+        if (Array.isArray(parsed) && parsed.length > 0 && messages.length === 0) {
+          setMessages(parsed);
         }
       }
     } catch {}
@@ -187,7 +184,7 @@ function ProtectedApp() {
 
   const handleNewChat = () => {
     window.localStorage.removeItem('airis_chat_messages');
-    window.location.reload();
+    clearMessages();
   };
 
   const handleOpenConversation = (convo) => {

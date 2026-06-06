@@ -16,33 +16,43 @@ class TechnicalIndicators:
     @staticmethod
     def calculate_rsi(prices: List[float], period: int = 14) -> List[float]:
         """
-        Calculate Relative Strength Index (RSI).
-        
+        Calculate Relative Strength Index (RSI) using Wilder's smoothing method.
+
         Args:
             prices: List of closing prices
             period: RSI period (default 14)
-            
+
         Returns:
-            List of RSI values
+            List of RSI values aligned with input prices
         """
-        if len(prices) < period + 1:
-            return [50.0] * len(prices)  # Default neutral
-        
-        prices = np.array(prices)
+        if len(prices) <= period:
+            return [50.0] * len(prices)  # Default neutral (insufficient data)
+
+        prices = np.array(prices, dtype=float)
         deltas = np.diff(prices)
-        
-        gains = np.where(deltas > 0, deltas, 0)
-        losses = np.where(deltas < 0, -deltas, 0)
-        
-        avg_gains = np.convolve(gains, np.ones(period)/period, mode='valid')
-        avg_losses = np.convolve(losses, np.ones(period)/period, mode='valid')
-        
+
+        gains = np.where(deltas > 0, deltas, 0.0)
+        losses = np.where(deltas < 0, -deltas, 0.0)
+
+        # Wilder's smoothing (equivalent to EMA with alpha=1/period)
+        avg_gains = np.empty(len(prices) - 1, dtype=float)
+        avg_losses = np.empty(len(prices) - 1, dtype=float)
+
+        # Seed with simple average of the first `period` deltas
+        avg_gains[period - 1] = gains[:period].mean()
+        avg_losses[period - 1] = losses[:period].mean()
+
+        # Apply Wilder smoothing for the rest
+        for i in range(period, len(gains)):
+            avg_gains[i] = (avg_gains[i - 1] * (period - 1) + gains[i]) / period
+            avg_losses[i] = (avg_losses[i - 1] * (period - 1) + losses[i]) / period
+
         rs = avg_gains / (avg_losses + 1e-10)  # Avoid division by zero
-        rsi = 100 - (100 / (1 + rs))
-        
-        # Pad with neutral values
-        rsi_full = [50.0] * period + rsi.tolist()
-        
+        rsi = 100.0 - (100.0 / (1.0 + rs))
+
+        # Pad with neutral values for the initial period where RSI is undefined
+        rsi_full = [50.0] * period + rsi[period - 1:].tolist()
+
         return rsi_full
     
     @staticmethod

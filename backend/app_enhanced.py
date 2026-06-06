@@ -11,6 +11,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 
+from cors_allowlist import allowed_origins
+
 # Load environment variables
 load_dotenv()
 
@@ -22,7 +24,7 @@ from src.enhanced_stock_api import (
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": allowed_origins()}})
 
 # Configuration
 app.config['JSON_SORT_KEYS'] = False

@@ -28,6 +28,7 @@ def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("CREATE TABLE IF NOT EXISTS brain_memory (key TEXT PRIMARY KEY, value TEXT)")
     conn.commit()
+    conn.row_factory = sqlite3.Row
     return conn
 
 def _publish_memory_updated(key, value):
@@ -43,29 +44,25 @@ def _publish_memory_updated(key, value):
 
 
 def remember_fact(key, value):
-    conn = get_db()
-    conn.execute("INSERT OR REPLACE INTO brain_memory (key, value) VALUES (?, ?)", (key, json.dumps(value)))
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        conn.execute("INSERT OR REPLACE INTO brain_memory (key, value) VALUES (?, ?)", (key, json.dumps(value)))
+        conn.commit()
     _publish_memory_updated(key, value)
     return f"Remembered {key}."
 
 def recall_fact(key):
-    conn = get_db()
-    row = conn.execute("SELECT value FROM brain_memory WHERE key = ?", (key,)).fetchone()
-    conn.close()
+    with get_db() as conn:
+        row = conn.execute("SELECT value FROM brain_memory WHERE key = ?", (key,)).fetchone()
     return json.loads(row[0]) if row else None
 
 def forget_fact(key):
-    conn = get_db()
-    conn.execute("DELETE FROM brain_memory WHERE key = ?", (key,))
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        conn.execute("DELETE FROM brain_memory WHERE key = ?", (key,))
+        conn.commit()
 
 def list_memories():
-    conn = get_db()
-    rows = conn.execute("SELECT key, value FROM brain_memory").fetchall()
-    conn.close()
+    with get_db() as conn:
+        rows = conn.execute("SELECT key, value FROM brain_memory").fetchall()
     return {k: json.loads(v) for k, v in rows}
 
 def memory_context():

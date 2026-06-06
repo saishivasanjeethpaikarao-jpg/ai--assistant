@@ -8,13 +8,20 @@ from typing import Optional
 from tools import ToolResult, tool_registry
 
 
-def poweroff(delay: int = 0) -> ToolResult:
+def poweroff(delay: int = 0, confirm: bool = False) -> ToolResult:
     """
     Power off the system.
-    
+
     Args:
         delay: Delay in seconds before poweroff
+        confirm: Must be True to actually invoke shutdown. Callers (dashboard
+            "are you sure?" button, orchestrator confirm) must pass True.
     """
+    if not confirm:
+        return ToolResult(
+            success=False,
+            message="Refused: poweroff() requires confirm=True",
+        )
     try:
         if delay > 0:
             os.system(f"shutdown /s /t {delay}")
@@ -29,13 +36,19 @@ def poweroff(delay: int = 0) -> ToolResult:
         return ToolResult(success=False, message=f"Poweroff failed: {e}")
 
 
-def restart(delay: int = 0) -> ToolResult:
+def restart(delay: int = 0, confirm: bool = False) -> ToolResult:
     """
     Restart the system.
-    
+
     Args:
         delay: Delay in seconds before restart
+        confirm: Must be True to actually invoke restart.
     """
+    if not confirm:
+        return ToolResult(
+            success=False,
+            message="Refused: restart() requires confirm=True",
+        )
     try:
         if delay > 0:
             os.system(f"shutdown /r /t {delay}")

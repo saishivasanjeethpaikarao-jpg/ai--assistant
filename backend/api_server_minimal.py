@@ -10,6 +10,8 @@ try:
 except ImportError:
     user_data_dir = None
 
+from cors_allowlist import allowed_origins
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -18,12 +20,7 @@ bus = EventBus()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://airis-9ox.pages.dev",
-        "https://ai-assistant-8r3x.onrender.com",
-        "http://localhost:5173",
-        "http://localhost:5000",
-    ],
+    allow_origins=allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

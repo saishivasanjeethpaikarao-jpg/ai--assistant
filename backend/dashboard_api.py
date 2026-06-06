@@ -377,9 +377,13 @@ LAYERS = [
     {"n": 4,  "name": "Execution Engine",   "desc": "Converts each step into runnable commands/tools"},
     {"n": 5,  "name": "Decision Engine",    "desc": "Picks the best option when multiple paths exist"},
     {"n": 6,  "name": "Safety Filter",      "desc": "Checks commands for safety before running them"},
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
+    {"n": 7,  "name": "Self-Reflection",    "desc": "Evaluates execution outcomes and extracts lessons"},
+    {"n": 8,  "name": "Adaptive Memory",    "desc": "Stores learnings and recalls relevant context"},
+    {"n": 9,  "name": "Replanning Engine",  "desc": "Recovers from failures with adjusted strategies"},
+    {"n": 10, "name": "Chat Mode",          "desc": "Natural conversation handling"},
+    {"n": 11, "name": "Meta-Improvement",   "desc": "Optimises system performance over time"},
+    {"n": 12, "name": "Orchestrator",       "desc": "Coordinates all 12 layers as a unified system"},
+]
 
     def send_json(self, data, status=200):
         body = json.dumps(data, default=str).encode('utf-8')
