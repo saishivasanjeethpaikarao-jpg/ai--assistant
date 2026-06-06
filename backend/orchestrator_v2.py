@@ -12,6 +12,10 @@ from datetime import datetime
 from assistant_core import generate_text
 from tools import tool_registry
 from brain.brain import memory_context, learn_text
+try:
+    from core.command_engine import command_engine
+except ImportError:
+    command_engine = None  # tools_run() will raise a clear error if invoked
 
 # Import Multi-Agent system
 try:
@@ -398,6 +402,11 @@ Output ONLY the command, no explanation."""
     
     def tools_run(self, cmd: str) -> str:
         """Execute command using existing command engine."""
+        if command_engine is None:
+            raise RuntimeError(
+                "Command engine unavailable: core.command_engine could not be imported. "
+                "Check that the 'core' package exists on the Python path."
+            )
         try:
             result = command_engine.execute(cmd)
             return result

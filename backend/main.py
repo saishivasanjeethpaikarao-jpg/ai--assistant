@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import json, os
+import json, os, tempfile
 
 from cors_allowlist import allowed_origins
 
@@ -14,7 +14,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-SETTINGS_FILE = "/tmp/settings.json"
+SETTINGS_FILE = os.path.join(tempfile.gettempdir(), "airis_settings.json")
 
 def load():
     if os.path.exists(SETTINGS_FILE):
