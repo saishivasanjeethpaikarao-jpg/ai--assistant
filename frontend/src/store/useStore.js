@@ -32,6 +32,10 @@ const useStore = create(
       messages: [...state.messages, message]
     })),
 
+    setMessages: (messages) => set({ messages }),
+
+    clearMessages: () => set({ messages: [] }),
+
     setTyping: (isTyping) => set({ isTyping }),
 
     addTask: (task) => set((state) => ({

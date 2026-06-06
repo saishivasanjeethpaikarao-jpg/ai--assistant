@@ -15,11 +15,6 @@ const axiosInstance = axios.create({
   timeout: 120000,
 });
 
-axiosInstance.interceptors.response.use(
-  (r) => r.data,
-  (e) => { console.error('API Error:', e); throw e }
-);
-
 // ── Detect Tauri Desktop ────────────────────────────────────────────────
 export const isTauri = () => {
   return typeof window !== 'undefined' && window.__TAURI__ !== undefined;
@@ -125,10 +120,11 @@ const settingsApi = {
 
     if (localS && Object.keys(localS).length > 0) {
       axiosInstance.get('/settings').then((res) => {
-        if (res?.settings) {
-          const merged = { ...res.settings, ...localS };
+        const data = res?.data;
+        if (data?.settings) {
+          const merged = { ...data.settings, ...localS };
           localSettings.set(merged);
-          if (res.preferences) localSettings.setPrefs({ ...res.preferences, ...localP });
+          if (data.preferences) localSettings.setPrefs({ ...data.preferences, ...localP });
         }
       }).catch(() => {});
       return buildSettingsResponse(localS, localP);
@@ -136,10 +132,11 @@ const settingsApi = {
 
     try {
       const res = await axiosInstance.get('/settings');
-      if (res?.settings) {
-        localSettings.set(res.settings);
-        if (res.preferences) localSettings.setPrefs(res.preferences);
-        return res;
+      const data = res?.data;
+      if (data?.settings) {
+        localSettings.set(data.settings);
+        if (data.preferences) localSettings.setPrefs(data.preferences);
+        return data;
       }
     } catch {}
 
@@ -202,11 +199,12 @@ const chatApi = {
     // Prefer the backend orchestrator so desktop actions, trading, reminders,
     // and verified tool execution work from the main chat surface.
     try {
-      const backend = await axiosInstance.post('/request', {
+      const backendRes = await axiosInstance.post('/request', {
         message: text,
         history: recentHistory,
         ...(appState ? { app_state: appState } : {}),
       });
+      const backend = backendRes?.data;
 
       const reply = backend?.reply || backend?.response || backend?.text || backend?.message;
       if (backend?.success && reply) {
@@ -405,7 +403,9 @@ export const api = {
         })
       });
       const data = await res.json();
-      return { reply: data.choices[0].message.content };
+      const reply = data?.choices?.[0]?.message?.content;
+      if (!reply) throw new Error(data?.error?.message || 'OpenAI vision returned no content');
+      return { reply };
     } else {
        // Anthropic Vision
        const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -429,7 +429,9 @@ export const api = {
          })
        });
        const data = await res.json();
-       return { reply: data.content[0].text };
+       const reply = data?.content?.[0]?.text;
+       if (!reply) throw new Error(data?.error?.message || 'Anthropic vision returned no content');
+       return { reply };
     }
   },
   run: (cmd) => axiosInstance.post('/request', { message: cmd }),
@@ -470,7 +472,7 @@ export const api = {
       bool(localS.together_api_key) || bool(localS.ollama_enabled);
     try {
       const r = await axiosInstance.get('/provider/status');
-      return { has_provider: r.has_provider || hasProvider };
+      return { has_provider: r?.data?.has_provider ?? hasProvider };
     } catch {
       return { has_provider: hasProvider };
     }
@@ -622,7 +624,8 @@ export const stockAPI = {
   getGainers: async () => {
     try {
       const res = await axiosInstance.get('/market/movers');
-      return { data: res.data?.gainers || [] };
+      const data = res?.data || {};
+      return { data: data.gainers || [] };
     } catch (e) {
       console.error('Get gainers error:', e);
       return { data: [] };
@@ -631,7 +634,8 @@ export const stockAPI = {
   getLosers: async () => {
     try {
       const res = await axiosInstance.get('/market/movers');
-      return { data: res.data?.losers || [] };
+      const data = res?.data || {};
+      return { data: data.losers || [] };
     } catch (e) {
       console.error('Get losers error:', e);
       return { data: [] };
@@ -640,7 +644,8 @@ export const stockAPI = {
   getIndices: async () => {
     try {
       const res = await axiosInstance.get('/market/indices');
-      return { data: res.data || [] };
+      const data = res?.data;
+      return { data: Array.isArray(data) ? data : (data?.indices || []) };
     } catch (e) {
       console.error('Get indices error:', e);
       return { data: [] };
@@ -648,8 +653,8 @@ export const stockAPI = {
   },
   getQuote: async (symbol) => {
     try {
-      const res = await axiosInstance.get(`/market/quote?symbol=${symbol}`);
-      return res.data;
+      const res = await axiosInstance.get(`/market/quote?symbol=${encodeURIComponent(symbol)}`);
+      return res?.data || null;
     } catch (e) {
       console.error('Get quote error:', e);
       return null;
@@ -657,8 +662,9 @@ export const stockAPI = {
   },
   search: async (query) => {
     try {
-      const res = await axiosInstance.get(`/market/search?q=${query}`);
-      return { data: res.data || [] };
+      const res = await axiosInstance.get(`/market/search?q=${encodeURIComponent(query)}`);
+      const data = res?.data;
+      return { data: Array.isArray(data) ? data : (data?.results || []) };
     } catch (e) {
       console.error('Search error:', e);
       return { data: [] };
