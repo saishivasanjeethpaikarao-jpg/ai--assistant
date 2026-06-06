@@ -6,8 +6,11 @@ Provides live updates of agent thinking and execution steps.
 import sys
 import os
 import asyncio
+import hashlib
+import hmac
 import json
 import logging
+import secrets
 import websockets
 
 # Setup path
@@ -29,10 +32,67 @@ logger = logging.getLogger(__name__)
 orchestrator = SmartOrchestrator(max_loops=3)
 
 
+# Phase 1: WebSocket auth. Without this, anyone reaching ws://localhost:8765
+# could run the orchestrator (which can call PowerShell etc.). The secret is
+# derived from AIRIS_WS_SECRET; clients must present a token = sha256(secret).
+_WS_SECRET = os.environ.get("AIRIS_WS_SECRET", "")
+if not _WS_SECRET:
+    # Generate a per-process secret if none provided so dev "just works" but
+    # the token is logged at startup so the dev can copy it. In production
+    # (AIRIS_ENV=prod) the secret MUST be set explicitly.
+    if os.environ.get("AIRIS_ENV", "dev") == "prod":
+        raise RuntimeError(
+            "AIRIS_WS_SECRET must be set in production (AIRIS_ENV=prod)"
+        )
+    _WS_SECRET = secrets.token_hex(32)
+    logger.warning(
+        "AIRIS_WS_SECRET not set; generated ephemeral dev secret. "
+        "Connections will require the token printed at startup."
+    )
+_WS_EXPECTED_TOKEN = hashlib.sha256(_WS_SECRET.encode("utf-8")).hexdigest()
+
+
+def _extract_token(websocket) -> str:
+    """Pull the bearer token from query string, header, or first message."""
+    # 1. Query string: ?token=<...>
+    try:
+        from urllib.parse import urlparse, parse_qs
+        path = getattr(websocket, "path", "") or ""
+        qs = parse_qs(urlparse(path).query)
+        if "token" in qs and qs["token"]:
+            return qs["token"][0]
+    except Exception:
+        pass
+    # 2. Header (some clients)
+    try:
+        req_headers = websocket.request_headers
+        auth = req_headers.get("Authorization", "") or req_headers.get("authorization", "")
+        if auth.lower().startswith("bearer "):
+            return auth[7:].strip()
+        custom = req_headers.get("X-Airis-Token", "")
+        if custom:
+            return custom.strip()
+    except Exception:
+        pass
+    return ""
+
+
 async def handler(websocket):
     """Handle WebSocket connections and messages."""
-    logger.info("New WebSocket connection established")
-    
+    # Phase 1: enforce auth on connection. Without a valid token we close
+    # with code 1008 (policy violation). The orchestrator is NOT exposed
+    # to unauthenticated clients.
+    provided = _extract_token(websocket)
+    if not hmac.compare_digest(provided, _WS_EXPECTED_TOKEN):
+        logger.warning("WebSocket connection rejected: invalid token")
+        try:
+            await websocket.close(code=1008, reason="Unauthorized")
+        except Exception:
+            pass
+        return
+
+    logger.info("New WebSocket connection established (authenticated)")
+
     try:
         async for message in websocket:
             try:
@@ -119,6 +179,10 @@ async def main():
     print("🚀 WebSocket Server started")
     print("📍 ws://localhost:8765")
     print("📡 Ready for connections...")
+    # Phase 1: print the expected token so dev can use it. In prod this is
+    # a per-process ephemeral secret and the token is meaningless to anyone
+    # who did not start the process.
+    print(f"🔐 Expected token (Phase 1, dev only): {_WS_EXPECTED_TOKEN}")
     
     async with websockets.serve(handler, "localhost", 8765):
         await asyncio.Future()  # Run forever

@@ -1,7 +1,7 @@
 """
 Indian Stock Market API Client
 Wrapper for free NSE & BSE real-time stock data API
-Base URL: http://65.0.104.9/
+Base URL: configured via STOCK_API_BASE_URL env (default is a safe placeholder)
 """
 
 import os
@@ -13,7 +13,18 @@ from dataclasses import dataclass, asdict
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = os.environ.get("STOCK_API_BASE_URL", "http://65.0.104.9")
+BASE_URL = os.environ.get("STOCK_API_BASE_URL", "https://api.example.com")
+# Phase 1: refuse cleartext-HTTP base URL in production. The previous default
+# was http://65.0.104.9 (a private IP, no auth, no TLS) for every NSE/BSE
+# query the assistant makes.
+if (
+    not BASE_URL.startswith("https://")
+    and os.environ.get("AIRIS_ENV", "dev") == "prod"
+):
+    raise RuntimeError(
+        "STOCK_API_BASE_URL must be https:// in production (AIRIS_ENV=prod). "
+        f"Got: {BASE_URL!r}"
+    )
 
 
 @dataclass

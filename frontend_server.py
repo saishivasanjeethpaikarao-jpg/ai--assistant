@@ -10,12 +10,22 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
 class FrontendHandler(SimpleHTTPRequestHandler):
-    """Serve frontend files with CORS headers"""
-    
+    """Serve frontend files with CORS headers (loopback-only)."""
+
+    _ALLOWED_ORIGINS = {
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    }
+
     def end_headers(self):
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        origin = self.headers.get("Origin", "")
+        if origin in self._ALLOWED_ORIGINS:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         super().end_headers()
     
     def do_OPTIONS(self):

@@ -2,6 +2,7 @@
 App Launcher Tool — Open applications by name.
 """
 
+import re
 import subprocess
 import os
 import platform
@@ -28,6 +29,12 @@ COMMON_APPS = {
     "task-manager": "taskmgr.exe",
     "settings": "ms-settings:",
 }
+
+
+# Phase 1: allowlist for app names. The previous code passed f'{app_name}.exe'
+# to taskkill, which accepts wildcards — app_name="*" would kill every
+# process. Allow only safe names.
+_APP_NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 
 
 def launch_app(app_name: str, args: str = "") -> ToolResult:
@@ -97,6 +104,11 @@ def is_app_running(app_name: str) -> ToolResult:
 
 def close_app(app_name: str) -> ToolResult:
     """Close an application."""
+    if not _APP_NAME_RE.match(app_name or ""):
+        return ToolResult(
+            success=False,
+            message=f"Invalid app_name: {app_name!r}",
+        )
     try:
         subprocess.run(['taskkill', '/IM', f'{app_name}.exe', '/F'])
         return ToolResult(

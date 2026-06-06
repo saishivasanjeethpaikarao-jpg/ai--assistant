@@ -3,6 +3,7 @@ VibeCoder — Multi-Agent Specialist Coding System
 6 specialist agents, auto-routing, code execution, fix, and chat.
 """
 
+import ast
 import re
 import subprocess
 import sys
@@ -506,46 +507,150 @@ def run_code(code: str, language: str = "python") -> dict:
     clean = code
     if "```python" in clean:
         clean = clean.split("```python", 1)[1].split("```")[0]
+    elif "```py" in clean:
+        clean = clean.split("```py", 1)[1].split("```")[0]
     elif "```" in clean:
         clean = clean.split("```", 1)[1].split("```")[0]
     clean = clean.strip()
 
-    dangerous = [
-        "import os", "import sys", "subprocess", "shutil.rmtree",
-        "os.remove", "os.unlink", "__import__", "eval(", "exec(",
-        "open(", "os.system", "os.popen",
-    ]
+    # Phase 1: AST-based blocklist. Reject scripts that touch dangerous modules
+    # or call dangerous builtins. Substring matching was trivially bypassed.
+    _FORBIDDEN_MODULES = {
+        "os", "sys", "subprocess", "shutil", "socket", "urllib",
+        "urllib.request", "urllib.parse", "http", "http.client",
+        "requests", "ctypes", "ctypes.util", "multiprocessing",
+        "fcntl", "pty", "pwd", "spwd", "grp", "resource",
+    }
+    _FORBIDDEN_BUILTINS = {
+        "exec", "eval", "compile", "__import__", "open", "input",
+        "globals", "locals", "vars", "dir", "getattr", "setattr",
+        "delattr",
+    }
+    _FORBIDDEN_ATTRS = {
+        "os.system", "os.popen", "os.remove", "os.unlink", "os.rmdir",
+        "shutil.rmtree",
+    }
     warnings = []
-    for d in dangerous:
-        if d in clean:
-            warnings.append(f"⚠️ Sensitive operation: `{d}`")
+    try:
+        tree = ast.parse(clean, mode="exec")
+    except SyntaxError as e:
+        return {
+            "success": False,
+            "output": "",
+            "error": f"SyntaxError: {e}",
+            "runtime_ms": 0,
+        }
+
+    def _walk(node):
+        for child in ast.walk(node):
+            if isinstance(child, ast.Import):
+                for alias in child.names:
+                    root = alias.name.split(".", 1)[0]
+                    full = alias.name
+                    if root in _FORBIDDEN_MODULES or full in _FORBIDDEN_MODULES:
+                        warnings.append(f"⚠️ Sensitive module: `{full}`")
+            elif isinstance(child, ast.ImportFrom):
+                if child.module:
+                    root = child.module.split(".", 1)[0]
+                    if root in _FORBIDDEN_MODULES or child.module in _FORBIDDEN_MODULES:
+                        warnings.append(f"⚠️ Sensitive module: `{child.module}`")
+            elif isinstance(child, ast.Call):
+                func = child.func
+                if isinstance(func, ast.Name) and func.id in _FORBIDDEN_BUILTINS:
+                    warnings.append(f"⚠️ Sensitive builtin: `{func.id}(...)`")
+                elif isinstance(func, ast.Attribute):
+                    attr_chain = []
+                    cur = func
+                    while isinstance(cur, ast.Attribute):
+                        attr_chain.append(cur.attr)
+                        cur = cur.value
+                    if isinstance(cur, ast.Name):
+                        attr_chain.append(cur.id)
+                    chain = ".".join(reversed(attr_chain))
+                    if chain in _FORBIDDEN_ATTRS:
+                        warnings.append(f"⚠️ Sensitive call: `{chain}(...)`")
+    _walk(tree)
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as f:
         f.write(clean)
         tmp_path = f.name
 
+    # Phase 1: build a clean child env that does NOT inherit the parent's
+    # API keys, OAuth tokens, or other secrets.
+    clean_env = {
+        "PATH": os.environ.get("PATH", ""),
+        "HOME": os.environ.get("HOME", ""),
+        "LANG": os.environ.get("LANG", "C.UTF-8"),
+        "LC_ALL": os.environ.get("LC_ALL", "C.UTF-8"),
+        "TMPDIR": tempfile.gettempdir(),
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONUNBUFFERED": "1",
+    }
+
+    # Phase 1: hard-cap stdout to 1 MB and timeout to 10 s.
+    _MAX_OUTPUT_BYTES = 1_048_576
+    _TIMEOUT_SEC = 10
+
+    def _run_capped(argv, *, stdin=None, timeout=None):
+        """Run argv and return (returncode, stdout, stderr, killed_reason)."""
+        try:
+            proc = subprocess.Popen(
+                argv,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.PIPE if stdin is not None else None,
+                env=clean_env,
+                cwd=tempfile.gettempdir(),
+                text=True,
+            )
+        except FileNotFoundError as e:
+            return -1, "", f"interpreter not found: {e}", "not_found"
+        try:
+            stdout_b, stderr_b = proc.communicate(input=stdin, timeout=timeout or _TIMEOUT_SEC)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            try:
+                stdout_b, stderr_b = proc.communicate(timeout=2)
+            except Exception:
+                stdout_b, stderr_b = b"", b""
+            return -1, (stdout_b or b"").decode("utf-8", "replace"), (stderr_b or b"").decode("utf-8", "replace"), "timeout"
+        truncated = False
+        if len(stdout_b) > _MAX_OUTPUT_BYTES:
+            stdout_b = stdout_b[:_MAX_OUTPUT_BYTES]
+            truncated = True
+        if len(stderr_b) > _MAX_OUTPUT_BYTES:
+            stderr_b = stderr_b[:_MAX_OUTPUT_BYTES]
+            truncated = True
+        out = stdout_b.decode("utf-8", "replace")
+        err = stderr_b.decode("utf-8", "replace")
+        if truncated:
+            err = (err + "\n[output truncated at 1 MB]") if err else "[output truncated at 1 MB]"
+        return proc.returncode, out, err, None
+
     try:
         start = time.time()
-        result = subprocess.run(
-            [sys.executable, tmp_path],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            cwd=tempfile.gettempdir(),
+        returncode, output, error, killed = _run_capped(
+            [sys.executable, "-I", "-S", tmp_path],
+            timeout=_TIMEOUT_SEC,
         )
         elapsed = int((time.time() - start) * 1000)
-        output = result.stdout.strip()
-        error = result.stderr.strip()
+        output = output.strip()
+        error = error.strip()
+        if killed == "timeout":
+            return {
+                "success": False,
+                "output": "",
+                "error": f"⏱️ Execution timed out after {_TIMEOUT_SEC} seconds.",
+                "runtime_ms": _TIMEOUT_SEC * 1000,
+            }
         header = ("\n".join(warnings) + "\n\n") if warnings else ""
         return {
-            "success": result.returncode == 0,
+            "success": returncode == 0,
             "output": header + output if output else header,
             "error": error,
             "runtime_ms": elapsed,
-            "return_code": result.returncode,
+            "return_code": returncode,
         }
-    except subprocess.TimeoutExpired:
-        return {"success": False, "output": "", "error": "⏱️ Execution timed out after 15 seconds.", "runtime_ms": 15000}
     except Exception as e:
         return {"success": False, "output": "", "error": str(e), "runtime_ms": 0}
     finally:

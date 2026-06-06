@@ -1,3 +1,4 @@
+import re
 import subprocess
 import os
 import time
@@ -6,13 +7,20 @@ from typing import Tuple
 from tools import ToolResult
 
 
+# Phase 1: allowlist for app names. The previous code interpolated `app_name`
+# unescaped into a PowerShell string, allowing arbitrary command execution
+# (e.g. app_name = "'; Stop-Computer -Force; '").
+_APP_NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+
+
 def verify_app_launched(app_name: str) -> Tuple[bool, str]:
     """Verify an application is actually running after launch."""
+    if not _APP_NAME_RE.match(app_name or ""):
+        return False, f"Invalid app_name: {app_name!r}"
     try:
         result = subprocess.run(
-            ["powershell", "-Command",
-             f"Get-Process | Where-Object {{ $_.MainWindowTitle -ne '' }} | "
-             f"Select-Object -ExpandProperty ProcessName | Select-String -Pattern '{app_name}'"],
+            ["powershell", "-NoProfile", "-Command",
+             f"Get-Process | Where-Object {{ $_.ProcessName -eq '{app_name}' }}"],
             capture_output=True, text=True, timeout=5
         )
         if result.stdout.strip():

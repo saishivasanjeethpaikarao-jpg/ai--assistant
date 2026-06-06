@@ -4,10 +4,36 @@ import subprocess
 import sys
 import threading
 import time
+import array
+import math
 try:
     import audioop
+    def _rms(data: bytes, width: int = 2) -> int:
+        """Compute RMS over signed PCM samples (Python <3.13 path)."""
+        if width not in (1, 2, 4):
+            raise ValueError(f"unsupported sample width: {width}")
+        return audioop.rms(data, width)
 except ImportError:
-    audioop = None
+    def _rms(data: bytes, width: int = 2) -> int:
+        """Compute RMS over signed PCM samples (Python 3.13+ compatible).
+
+        The ``audioop`` module was removed in Python 3.13. Compute RMS manually
+        via ``array.array`` so wake-word / VAD still work.
+        """
+        if not data:
+            return 0
+        if width == 2:
+            samples = array.array('h', data)
+        elif width == 4:
+            samples = array.array('i', data)
+        elif width == 1:
+            samples = array.array('b', data)
+        else:
+            raise ValueError(f"unsupported sample width: {width}")
+        if not samples:
+            return 0
+        mean_sq = sum(s * s for s in samples) / len(samples)
+        return int(math.sqrt(mean_sq))
 import warnings
 import difflib
 import json
@@ -70,6 +96,10 @@ from system_prompt_config import load_system_prompt, is_system_prompt_enabled
 from advanced_system import is_advanced_system_enabled, get_all_layers, get_layer_count
 from autonomous_executor import get_executor, execute as autonomous_execute
 from memory.adaptive_memory import get_memory, store_learning, get_memory_stats
+try:
+    from tools.system_control import poweroff as _sys_poweroff, restart as _sys_restart
+except Exception:
+    _sys_poweroff = _sys_restart = None
 try:
     from actions.data_agent import execute_python_code
 except ImportError:
@@ -155,8 +185,65 @@ LANGUAGE_CODES = {
 
 SAFE_MODE = True
 PENDING_CONFIRMATION = None
+_PENDING_TTL_SEC = 30
+_PENDING_LOCK = threading.Lock()
+_PENDING_EXPIRES_AT = 0.0
+_PENDING_OWNER = None  # user_id (str); a "yes" only consumes the matching owner
 _REMINDER_MONITOR_THREAD = None
 _REMINDER_MONITOR_LOCK = threading.Lock()
+
+
+def _current_user_id() -> str:
+    """Return the current user id, or 'default' if not set."""
+    try:
+        user = get_active_user() or {}
+        return str(
+            user.get("uid")
+            or user.get("localId")
+            or user.get("id")
+            or "default"
+        )
+    except Exception:
+        return "default"
+
+
+def _set_pending(action: dict, user_id: str | None = None) -> None:
+    """Set a pending confirmation. Expires in _PENDING_TTL_SEC seconds."""
+    global PENDING_CONFIRMATION, _PENDING_EXPIRES_AT, _PENDING_OWNER
+    with _PENDING_LOCK:
+        PENDING_CONFIRMATION = action
+        _PENDING_EXPIRES_AT = time.monotonic() + _PENDING_TTL_SEC
+        _PENDING_OWNER = user_id if user_id is not None else _current_user_id()
+
+
+def _consume_pending_if_valid(user_id: str | None = None) -> dict | None:
+    """Return and clear the pending confirmation if it has not expired and
+    belongs to ``user_id``. Otherwise return None and (if expired) clear it."""
+    global PENDING_CONFIRMATION, _PENDING_EXPIRES_AT, _PENDING_OWNER
+    with _PENDING_LOCK:
+        if PENDING_CONFIRMATION is None:
+            return None
+        if time.monotonic() > _PENDING_EXPIRES_AT:
+            PENDING_CONFIRMATION = None
+            _PENDING_EXPIRES_AT = 0.0
+            _PENDING_OWNER = None
+            return None
+        owner = user_id if user_id is not None else _current_user_id()
+        if _PENDING_OWNER != owner:
+            return None
+        action = PENDING_CONFIRMATION
+        PENDING_CONFIRMATION = None
+        _PENDING_EXPIRES_AT = 0.0
+        _PENDING_OWNER = None
+        return action
+
+
+def _clear_pending() -> None:
+    global PENDING_CONFIRMATION, _PENDING_EXPIRES_AT, _PENDING_OWNER
+    with _PENDING_LOCK:
+        PENDING_CONFIRMATION = None
+        _PENDING_EXPIRES_AT = 0.0
+        _PENDING_OWNER = None
 
 # Smart Orchestrator V2 instance
 _smart_orchestrator = SmartOrchestrator(max_loops=3) if _orchestrator_available else None
@@ -166,7 +253,13 @@ SELF_IMPROVE_EXCLUDE_DIRS = {
 }
 SELF_IMPROVE_EXTENSIONS = {".py"}
 SELF_IMPROVE_ALLOWED_FILES = None  # allow all .py files
-SELF_IMPROVE_AUTO_APPLY = True  # Auto-apply improvements without confirmation
+# Phase 1: opt-in. The previous default of True meant code edits could be
+# applied without a human in the loop. Now requires both
+# AIRIS_SELF_IMPROVE_ALLOW=1 AND AIRIS_SAFE_MODE=0.
+SELF_IMPROVE_AUTO_APPLY = (
+    os.environ.get("AIRIS_SELF_IMPROVE_ALLOW", "0") == "1"
+    and os.environ.get("AIRIS_SAFE_MODE", "1") == "0"
+)
 SELF_IMPROVE_CREATE_NEW_FILES = True  # Allow creating new feature files
 SELF_IMPROVE_FEATURE_DETECT = True  # Auto-detect feature requests
 
@@ -258,7 +351,6 @@ def _should_create_new_file(user_request: str) -> bool:
 
 
 def propose_self_improvement(user_request: str) -> str:
-    global PENDING_CONFIRMATION
     if not has_provider_configured():
         return "No AI provider configured. Open Settings and set at least one provider key."
 
@@ -360,7 +452,7 @@ def propose_self_improvement(user_request: str) -> str:
         return f"✓ Self-improvement applied automatically!\\n\\n{result}\\n\\nPreview:\\n{preview}"
     else:
         # Require confirmation for new files or when auto-apply is disabled
-        PENDING_CONFIRMATION = action
+        _set_pending(action)
         file_type = "NEW FILE" if is_new_file else "existing file"
         return (
             f"Proposed self-improvement for: {file_type} {target_file}\\n\\n"
@@ -741,8 +833,7 @@ def chat(message: str) -> str:
             script_code = python_match.group(1).strip()
             
             if SAFE_MODE:
-                global PENDING_CONFIRMATION
-                PENDING_CONFIRMATION = {"type": "python_agent", "value": script_code}
+                _set_pending({"type": "python_agent", "value": script_code})
                 result = "I have written an agent script to perform this data operation. Safe mode is enabled. Say 'yes' to execute it or 'no' to cancel."
                 speak(result)
                 return result
@@ -891,17 +982,22 @@ def indian_options_assistant(query: str) -> str:
 
 
 def run_command(cmd: str) -> str:
-    """Run Windows PowerShell command"""
+    """Run Windows PowerShell command (Phase 1: routed through safety wrapper).
+
+    The previous implementation called ``subprocess.run(["powershell", ...])``
+    directly, bypassing the cmdlet allowlist in ``tools.powershell``. Now we
+    route through that wrapper with ``allow_extended=True`` because callers
+    here are the assistant's own internal commands (e.g. ``Start-Process
+    chrome``), not raw user input. User-supplied PowerShell must go through
+    the dashboard / voice path which still requires ``allow_extended=True``
+    AND a human confirm.
+    """
     try:
-        result = subprocess.run(
-            ["powershell", "-Command", cmd],
-            capture_output=True, text=True
-        )
-        if result.stdout:
-            print(f"✅ Output:\n{result.stdout}")
-        if result.stderr:
-            print(f"❌ Error:\n{result.stderr}")
-        return result.stdout or result.stderr
+        from tools.powershell import run_powershell
+        result = run_powershell(cmd, allow_extended=True)
+        if not result.success:
+            return result.message
+        return result.message or "(no output)"
     except Exception as e:
         error_message = f"Command failed: {e}"
         print(f"❌ {error_message}")
@@ -1020,7 +1116,7 @@ def detect_double_clap(max_wait_seconds: float = 5.0) -> bool:
         start = time.time()
         while time.time() - start < max_wait_seconds:
             data = stream.read(1024, exception_on_overflow=False)
-            rms = audioop.rms(data, 2) if audioop else 0
+            rms = _rms(data, 2)
             now = time.time()
             if rms > threshold and now - last_peak_time > 0.2:
                 claps += 1
@@ -1091,7 +1187,7 @@ def voice_loop():
 
 
 def handle_command(command: str) -> str:
-    global SAFE_MODE, PENDING_CONFIRMATION, VOICE_LANGUAGE
+    global SAFE_MODE, VOICE_LANGUAGE
     normalized = command.strip().lower()
     if not normalized:
         response = "No command provided."
@@ -1100,9 +1196,10 @@ def handle_command(command: str) -> str:
 
     if PENDING_CONFIRMATION is not None:
         if normalized in {"yes", "confirm", "ok", "do it", "proceed"}:
-            action = PENDING_CONFIRMATION
-            PENDING_CONFIRMATION = None
-            if action["type"] == "run":
+            action = _consume_pending_if_valid()
+            if action is None:
+                response = "No pending action to confirm (or it expired)."
+            elif action["type"] == "run":
                 response = run_command(action["value"])
             elif action["type"] == "python_agent":
                 exe_out = execute_python_code(action["value"])
@@ -1111,11 +1208,17 @@ def handle_command(command: str) -> str:
                 else:
                     response = "Code executed successfully."
             elif action["type"] == "shutdown":
-                run_command("Stop-Computer -Force")
-                response = "Shutting down your PC now."
+                if _sys_poweroff is not None:
+                    out = _sys_poweroff(confirm=True)
+                    response = out.message if out else "Shutdown refused."
+                else:
+                    response = "Shutdown unavailable: tools.system_control not importable."
             elif action["type"] == "restart":
-                run_command("Restart-Computer -Force")
-                response = "Restarting your PC now."
+                if _sys_restart is not None:
+                    out = _sys_restart(confirm=True)
+                    response = out.message if out else "Restart refused."
+                else:
+                    response = "Restart unavailable: tools.system_control not importable."
             elif action["type"] == "self_improve":
                 response = apply_self_improvement(action)
                 extract_facts_bg(command, response)  # Learn from the improvement
@@ -1124,7 +1227,7 @@ def handle_command(command: str) -> str:
             speak(response)
             return response
         if normalized in {"no", "cancel", "stop", "don't", "dont"}:
-            PENDING_CONFIRMATION = None
+            _clear_pending()
             response = "Cancelled."
             speak(response)
             return response
@@ -1372,7 +1475,7 @@ I can analyze stocks, monitor news, and suggest trades based on your profile!"""
     elif normalized.startswith("run "):
         dangerous_cmd = command[4:].strip()
         if SAFE_MODE:
-            PENDING_CONFIRMATION = {"type": "run", "value": dangerous_cmd}
+            _set_pending({"type": "run", "value": dangerous_cmd})
             response = f"Safe mode: confirm run command: {dangerous_cmd}. Say yes or no."
         else:
             response = run_command(dangerous_cmd)
@@ -1562,18 +1665,22 @@ I can analyze stocks, monitor news, and suggest trades based on your profile!"""
         response = git_commit(message)
     elif normalized in {"power off", "shutdown pc", "shut down pc", "turn off pc"}:
         if SAFE_MODE:
-            PENDING_CONFIRMATION = {"type": "shutdown", "value": ""}
+            _set_pending({"type": "shutdown", "value": ""})
             response = "Safe mode: confirm shutdown. Say yes or no."
+        elif _sys_poweroff is not None:
+            out = _sys_poweroff(confirm=True)
+            response = out.message
         else:
-            run_command("Stop-Computer -Force")
-            response = "Shutting down your PC now."
+            response = "Shutdown unavailable: tools.system_control not importable."
     elif normalized in {"restart pc", "reboot pc"}:
         if SAFE_MODE:
-            PENDING_CONFIRMATION = {"type": "restart", "value": ""}
+            _set_pending({"type": "restart", "value": ""})
             response = "Safe mode: confirm restart. Say yes or no."
+        elif _sys_restart is not None:
+            out = _sys_restart(confirm=True)
+            response = out.message
         else:
-            run_command("Restart-Computer -Force")
-            response = "Restarting your PC now."
+            response = "Restart unavailable: tools.system_control not importable."
     elif normalized == "chat":
         response = "Use the UI to chat directly."
 
