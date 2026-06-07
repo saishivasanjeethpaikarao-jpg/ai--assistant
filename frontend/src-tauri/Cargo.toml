@@ -1,7 +1,7 @@
 [package]
 name = "airis"
-version = "2.0.0"
-description = "Airis AI Assistant"
+version = "3.0.0"
+description = "AIRIS - AI Personal Assistant"
 authors = ["Airis Team"]
 license = ""
 repository = ""

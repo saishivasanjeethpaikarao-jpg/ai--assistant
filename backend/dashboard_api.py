@@ -385,11 +385,21 @@ LAYERS = [
     {"n": 12, "name": "Orchestrator",       "desc": "Coordinates all 12 layers as a unified system"},
 ]
 
+
+class DashboardAPIHandler(BaseHTTPRequestHandler):
+    """HTTP request handler for the Airis dashboard API."""
+
+    def _cors_headers(self):
+        origin = self.headers.get('Origin', '')
+        if origin in allowed_origins():
+            self.send_header('Access-Control-Allow-Origin', origin)
+            self.send_header('Vary', 'Origin')
+
     def send_json(self, data, status=200):
         body = json.dumps(data, default=str).encode('utf-8')
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self._cors_headers()
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -403,7 +413,7 @@ LAYERS = [
             body = html.encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type', 'text/html')
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self._cors_headers()
             self.end_headers()
             self.wfile.write(body)
         except Exception:
@@ -846,24 +856,6 @@ LAYERS = [
             import traceback; traceback.print_exc()
             self.send_json({'success': False, 'error': str(e)}, 500)
 
-    def api_vibe_code(self, data):
-        try:
-            from vibe_coder import generate_code
-            prompt = (data.get('prompt') or '').strip()
-            agent_id = (data.get('agent_id') or 'auto').strip()
-            if not prompt:
-                self.send_json({'error': 'No prompt provided'}, 400)
-                return
-            result = generate_code(prompt, agent_id)
-            resp_data = {'success': True}
-            resp_data.update(result)
-            self.send_json(resp_data)
-        except RuntimeError as e:
-            self.send_json({'success': False, 'error': str(e), 'message': 'Please configure a Groq API key in Settings to use Vibe Coder.'}, 400)
-        except Exception as e:
-            import traceback; traceback.print_exc()
-            self.send_json({'success': False, 'error': str(e)}, 500)
-
     def api_vibe_fix(self, data):
         try:
             from vibe_coder import fix_code
@@ -1178,7 +1170,7 @@ You are confident, direct, and data-driven — like a sharp fund manager who exp
     def send_audio(self, audio_bytes, mime='audio/mpeg'):
         self.send_response(200)
         self.send_header('Content-Type', mime)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self._cors_headers()
         self.send_header('Content-Length', str(len(audio_bytes)))
         self.end_headers()
         self.wfile.write(audio_bytes)

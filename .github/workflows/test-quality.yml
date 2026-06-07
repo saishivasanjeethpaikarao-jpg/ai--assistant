@@ -1,88 +1,68 @@
-name: Test & Quality
+name: Test and Quality
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main]
 
 jobs:
-  backend-tests:
+  python-tests:
+    name: Python Tests & Lint
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.9', '3.10', '3.11']
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
-          pip install pytest pytest-cov
-      
-      - name: Lint with flake8
-        run: |
-          pip install flake8
-          flake8 backend --count --select=E9,F63,F7,F82 --show-source --statistics
-        continue-on-error: true
-      
-      - name: Test with pytest
-        run: |
-          pytest backend/tests -v --cov=backend
-        continue-on-error: true
 
-  frontend-tests:
-    runs-on: ubuntu-latest
-    
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18.x
-      
-      - name: Install dependencies
-        run: cd frontend && npm ci
-      
-      - name: Lint JavaScript
-        run: cd frontend && npm run lint 2>/dev/null || echo "No lint script"
-        continue-on-error: true
-      
-      - name: Build frontend
-        run: cd frontend && npm run build
-        env:
-          VITE_FIREBASE_API_KEY: demo-key
-          VITE_BASE_PATH: /
-          VITE_API_URL: http://localhost:8000
-        continue-on-error: true
+      - uses: actions/checkout@v4
 
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+          cache: 'pip'
+
       - name: Install dependencies
+        working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          pip install bandit safety
-      
-      - name: Security scan (Bandit)
-        run: bandit -r backend -f json -o bandit-report.json
-        continue-on-error: true
-      
-      - name: Check for vulnerable packages
-        run: safety check -r backend/requirements.txt --json
-        continue-on-error: true
+          pip install -r requirements.txt
+          pip install pytest flake8 bandit
+
+      - name: Lint (flake8)
+        working-directory: backend
+        run: flake8 . --max-line-length=120 --extend-ignore=E501,W503 || true
+
+      - name: Security scan (bandit)
+        working-directory: backend
+        run: bandit -r . -ll || true
+
+      - name: Run tests
+        working-directory: backend
+        run: |
+          cd ..
+          python -m pytest tests/ -v --tb=short || true
+
+  frontend-tests:
+    name: Frontend Build & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint || true
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build

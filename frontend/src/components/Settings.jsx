@@ -508,7 +508,7 @@ const CloneTab = ({ status, currentRefId, onCloneSuccess, isMobile }) => {
 
       {phaseLabel[phase] && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontSize: '12px', color: '#437DFD', fontWeight: '600' }}>
-          <FiRefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
+          <FiRefreshCw size={12} className="spin" />
           {phaseLabel[phase]}
         </div>
       )}
@@ -527,7 +527,7 @@ const CloneTab = ({ status, currentRefId, onCloneSuccess, isMobile }) => {
         }}
       >
         {phase === 'uploading' || phase === 'reading'
-          ? <><FiRefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> Creating voice clone…</>
+          ? <><FiRefreshCw size={13} className="spin" /> Creating voice clone…</>
           : '🎭 Create Voice Clone'}
       </button>
 
@@ -570,7 +570,7 @@ const PromptTab = ({ prompt, setPrompt, saving, onSave }) => (
     />
     <button onClick={onSave} disabled={saving}
       style={{ marginTop: '12px', padding: '10px 20px', background: 'linear-gradient(135deg,var(--primary),var(--secondary))', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(67,125,253,0.3)' }}>
-      {saving ? <><FiRefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><FiSave size={12} /> Save System Prompt</>}
+      {saving ? <><FiRefreshCw size={12} className="spin" /> Saving...</> : <><FiSave size={12} /> Save System Prompt</>}
     </button>
   </div>
 );
@@ -733,7 +733,7 @@ const Settings = ({ isMobile = false }) => {
 
   if (loading) return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', gap: '8px', background: 'var(--bg)' }}>
-      <FiRefreshCw size={16} style={{ animation: 'spin 1s linear infinite', color: 'var(--primary)' }} /> Loading settings...
+      <FiRefreshCw size={16} className="spin" style={{ color: 'var(--primary)' }} /> Loading settings...
     </div>
   );
 
@@ -807,7 +807,7 @@ const Settings = ({ isMobile = false }) => {
                 {saved && <div style={{ padding: '10px 14px', background: 'rgba(0,196,140,0.1)', border: '1px solid rgba(0,196,140,0.3)', borderRadius: '10px', color: '#00C48C', fontSize: '12px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}><FiCheckCircle size={13} /> Saved successfully!</div>}
                 <button onClick={handleSave} disabled={saving}
                   style={{ marginTop: '20px', width: '100%', padding: '11px', background: saving ? 'rgba(67,125,253,0.5)' : `linear-gradient(135deg,var(--primary),var(--secondary))`, border: 'none', borderRadius: '10px', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px', boxShadow: saving ? 'none' : '0 4px 14px rgba(67,125,253,0.3)' }}>
-                  {saving ? <><FiRefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><FiSave size={14} /> Save Settings</>}
+                  {saving ? <><FiRefreshCw size={14} className="spin" /> Saving...</> : <><FiSave size={14} /> Save Settings</>}
                 </button>
               </>
             )}

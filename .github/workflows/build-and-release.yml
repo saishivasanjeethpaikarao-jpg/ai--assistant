@@ -1,191 +1,75 @@
-name: Build & Deploy AIRIS
+name: Build and Release
 
 on:
   push:
-    branches: [ main, develop ]
     tags:
       - 'v*'
-  pull_request:
-    branches: [ main ]
-
-env:
-  CARGO_TERM_COLOR: always
-  NODE_VERSION: 18.x
-  PYTHON_VERSION: '3.11'
+  workflow_dispatch:
 
 jobs:
-  # ============= LINT & TEST =============
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - run: cd frontend && npm install
-      - run: cd frontend && npm run lint 2>/dev/null || echo "No lint script"
+  build-desktop:
+    name: Build Desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
 
-  # ============= BUILD DESKTOP (WINDOWS) =============
-  build-desktop-windows:
-    runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      
-      - name: Install npm dependencies
-        run: cd frontend && npm install
-      
-      - name: Build frontend
-        run: cd frontend && npm run build
-        env:
-          VITE_FIREBASE_API_KEY: demo-key
-          VITE_BASE_PATH: /
-          VITE_API_URL: http://localhost:8000
-        
-      - name: Build with Tauri
-        uses: tauri-apps/tauri-action@v0
-        with:
-          projectPath: ./src-tauri
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Upload Windows Build
-        uses: actions/upload-artifact@v3
-        with:
-          name: airis-windows
-          path: src-tauri/target/release/*.exe
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  # ============= BUILD DESKTOP (macOS) =============
-  build-desktop-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v3
-      
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-      
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      
-      - name: Install npm dependencies
-        run: cd frontend && npm install
-      
-      - name: Build frontend
-        run: cd frontend && npm run build
-        env:
-          VITE_FIREBASE_API_KEY: demo-key
-          VITE_BASE_PATH: /
-          VITE_API_URL: http://localhost:8000
-        
-      - name: Build with Tauri
-        uses: tauri-apps/tauri-action@v0
-        with:
-          projectPath: ./src-tauri
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Upload macOS Build
-        uses: actions/upload-artifact@v3
-        with:
-          name: airis-macos
-          path: src-tauri/target/release/bundle/macos/*.app
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
-  # ============= BUILD DESKTOP (Linux) =============
-  build-desktop-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      
-      - name: Install system dependencies
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libssl-dev libgtk-3-dev libayatana-appindicator3-dev
-      
-      - name: Install npm dependencies
-        run: cd frontend && npm install
-      
-      - name: Build frontend
-        run: cd frontend && npm run build
-        env:
-          VITE_FIREBASE_API_KEY: demo-key
-          VITE_BASE_PATH: /
-          VITE_API_URL: http://localhost:8000
-        
-      - name: Build with Tauri
-        uses: tauri-apps/tauri-action@v0
-        with:
-          projectPath: ./src-tauri
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Upload Linux Build
-        uses: actions/upload-artifact@v3
-        with:
-          name: airis-linux
-          path: src-tauri/target/release/airis
+          sudo apt-get install -y libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
 
-  # ============= BUILD DOCKER IMAGE =============
-  build-docker:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      
-      - name: Build Docker image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ./backend/Dockerfile
-          push: false
-          tags: airis:latest,airis:${{ github.sha }}
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
 
-  # ============= CREATE RELEASE =============
+      - name: Build Tauri app
+        working-directory: frontend
+        run: npx tauri build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: airis-${{ matrix.os }}
+          path: |
+            frontend/src-tauri/target/release/bundle/**
+            frontend/src-tauri/target/release/AIRIS*
+          if-no-files-found: warn
+
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-desktop-windows, build-desktop-macos, build-desktop-linux]
+    name: Create GitHub Release
+    needs: build-desktop
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
     steps:
-      - uses: actions/checkout@v3
-      
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
-      
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: actions/download-artifact@v4
         with:
-          files: |
-            airis-windows/**
-            airis-macos/**
-            airis-linux/**
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

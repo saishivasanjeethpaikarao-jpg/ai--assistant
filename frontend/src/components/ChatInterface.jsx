@@ -401,7 +401,13 @@ const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceS
       onStateChange: useCallback((s) => { onVoiceStateChange?.(s); }, [onVoiceStateChange]),
     });
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, isTyping, listening, speaking]);
+  useEffect(() => {
+    if (!messagesEndRef.current) return;
+    const id = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 120);
+    return () => clearTimeout(id);
+  }, [messages?.length]);
 
   useEffect(() => {
     if (!ttsEnabled) return;
@@ -588,6 +594,7 @@ const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceS
         </div>
         <div style={{ display:'flex', alignItems:'center', paddingRight:isMobile ? '10px' : '16px', gap:'8px' }}>
           <button onClick={toggleTts}
+            aria-label={ttsEnabled ? 'Disable text-to-speech' : 'Enable text-to-speech'}
             style={{
               display:'flex', alignItems:'center', gap:'6px',
               padding: isMobile ? '6px 10px' : '6px 14px', borderRadius:'99px',
@@ -722,6 +729,7 @@ const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceS
             {/* Paperclip */}
             <button onClick={() => fileInputRef.current?.click()}
               title="Attach file or image"
+              aria-label="Attach file or image"
               style={{
                 width:`${btnSize}px`, height:`${btnSize}px`,
                 display:'flex', alignItems:'center', justifyContent:'center',
@@ -738,6 +746,7 @@ const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceS
             {/* Share Screen */}
             <button
               onClick={handleScreenShare}
+              aria-label={screenSharing ? 'Stop sharing screen' : 'Share screen — let Airis see'}
               title={screenSharing ? 'Stop sharing screen' : 'Share screen — let Airis see'}
               style={{
                 width:`${btnSize}px`, height:`${btnSize}px`,
@@ -755,6 +764,7 @@ const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceS
             </button>
             {micSupported && (
               <button onClick={toggleMic}
+                aria-label={listening ? 'Stop listening' : 'Start voice input'}
                 style={{
                   width:`${btnSize}px`, height:`${btnSize}px`,
                   display:'flex', alignItems:'center', justifyContent:'center',
@@ -769,6 +779,7 @@ const ChatInterface = ({ messages, onSendMessage, onVisionSend, isTyping, voiceS
               </button>
             )}
             <button onClick={handleSend} disabled={!hasContent}
+              aria-label="Send message"
               style={{
                 width:`${btnSize}px`, height:`${btnSize}px`,
                 display:'flex', alignItems:'center', justifyContent:'center',

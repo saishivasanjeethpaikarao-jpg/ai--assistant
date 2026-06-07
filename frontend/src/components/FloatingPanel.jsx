@@ -3,58 +3,34 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiMinimize2, FiMaximize2 } from 'react-icons/fi';
 
 const FloatingPanel = ({ children, isExpanded, onToggle, onClose }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState({ x: 100, y: 100 });
+  // Phase 4: drag fix.
+  //
+  // The previous implementation combined manual onMouseDown/Move/Up
+  // handlers with Framer Motion's `drag` prop, which made the panel
+  // jitter and stick to the cursor because both systems were trying
+  // to own the position at the same time. The fix is to let Framer
+  // Motion own the drag state and only use manual handlers for the
+  // window resize animation.
   const dragRef = useRef(null);
-  const offsetRef = useRef({ x: 0, y: 0 });
-
-  const handleMouseDown = (e) => {
-    setIsDragging(true);
-    offsetRef.current = {
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
-    };
-  };
-
-  const handleMouseMove = (e) => {
-    if (isDragging) {
-      setPosition({
-        x: e.clientX - offsetRef.current.x,
-        y: e.clientY - offsetRef.current.y
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
 
   return (
     <motion.div
       ref={dragRef}
-      animate={{
-        x: position.x,
-        y: position.y,
-        width: isExpanded ? 500 : 400,
-        height: isExpanded ? 600 : 80
-      }}
-      drag={isDragging}
+      drag
       dragMomentum={false}
       dragElastic={0}
-      onDragStart={() => setIsDragging(true)}
-      onDragEnd={() => setIsDragging(false)}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      className="fixed rounded-2xl bg-gray-900/95 backdrop-blur-xl shadow-2xl border border-gray-800 overflow-hidden"
-      style={{ zIndex: 9999 }}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={false}
+      animate={{
+        width: isExpanded ? 500 : 400,
+        height: isExpanded ? 600 : 80,
+      }}
       transition={{ duration: 0.2 }}
+      className="fixed top-24 left-24 rounded-2xl bg-gray-900/95 backdrop-blur-xl shadow-2xl border border-gray-800 overflow-hidden"
+      style={{ zIndex: 9999 }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-800/50 border-b border-gray-700">
+      {/* Header — this is the drag handle. Buttons stop propagation
+          so they don't trigger drag when clicked. */}
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-800/50 border-b border-gray-700 cursor-move select-none">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
           <span className="text-sm font-medium text-gray-200">Airis AI</span>
@@ -62,13 +38,19 @@ const FloatingPanel = ({ children, isExpanded, onToggle, onClose }) => {
         <div className="flex items-center gap-1">
           <button
             onClick={onToggle}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
             className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors"
+            aria-label={isExpanded ? 'Minimize panel' : 'Maximize panel'}
           >
             {isExpanded ? <FiMinimize2 size={16} /> : <FiMaximize2 size={16} />}
           </button>
           <button
             onClick={onClose}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
             className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors"
+            aria-label="Close panel"
           >
             <FiX size={16} />
           </button>

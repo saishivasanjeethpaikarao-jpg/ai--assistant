@@ -8,9 +8,11 @@ const CommandInput = ({ onCommand, suggestions }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef(null);
 
-  const filteredSuggestions = suggestions.filter(s =>
-    s.toLowerCase().includes(input.toLowerCase())
-  );
+  const filteredSuggestions = Array.isArray(suggestions)
+    ? suggestions.filter(s =>
+        typeof s === 'string' && s.toLowerCase().includes(input.toLowerCase())
+      )
+    : [];
 
   useEffect(() => {
     setSelectedIndex(0);
