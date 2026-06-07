@@ -1,81 +1,80 @@
 # Setting Up Real Desktop & Mobile Downloads
 
-This guide explains how to trigger the automated builds so users get real .exe/.msi and .apk files.
-
----
+This guide explains how to trigger the automated builds so users can
+download real `.exe` / `.msi` and `.apk` files from GitHub Releases.
 
 ## How It Works
 
-Two GitHub Actions workflows build the apps automatically and upload the files to GitHub Releases.
-The download page then links directly to those release files.
+Two GitHub Actions workflows build the apps automatically and upload the
+files to GitHub Releases. Once a release exists, the download page
+links directly to those release files.
 
----
+## Step 1 — Push to GitHub
 
-## Step 1 — Push this code to GitHub
+The workflows are already in the repo under `.github/workflows/`:
 
-Make sure all these new files are pushed to `main`:
-- `.github/workflows/build-desktop.yml`
-- `.github/workflows/build-mobile.yml`
-- `frontend/src-tauri/Cargo.toml`
-- `frontend/src-tauri/src/main.rs`
-- `frontend/src-tauri/build.rs`
-- `mobile-app/eas.json`
+- `build-and-release.yml` — desktop Tauri builds (Windows / macOS / Linux)
+- `build-mobile.yml` — Android APK via EAS
 
----
+Both run on tag push (e.g. `v3.0.0`) and can also be triggered
+manually from the Actions tab.
 
-## Step 2 — Set up Expo account (for APK only)
+## Step 2 — Set up Expo (for APK builds)
 
-1. Go to https://expo.dev and create a free account
-2. Go to **Account Settings → Access Tokens**
-3. Create a new token, copy it
-4. In your GitHub repo: **Settings → Secrets and variables → Actions**
-5. Add a new secret named `EXPO_TOKEN` with your token value
+1. Go to <https://expo.dev> and create a free account
+2. **Account Settings → Access Tokens** — create a token, copy it
+3. In your GitHub repo: **Settings → Secrets and variables → Actions**
+4. Add a new secret named `EXPO_TOKEN` with the token value
 
-> **Free tier**: EAS Build gives you 30 free builds/month — more than enough.
-
----
+> The EAS Build free tier gives 30 builds per month — more than enough.
 
 ## Step 3 — Trigger the builds
 
 ### Option A — Tag-based (recommended)
-Push a version tag to trigger both builds automatically:
+
+Push a version tag to trigger both desktop and mobile builds:
+
 ```bash
-git tag v2.0.0
-git push origin v2.0.0
+git tag v3.0.0
+git push origin v3.0.0
 ```
 
 ### Option B — Manual trigger
+
 1. Go to your GitHub repo → **Actions** tab
-2. Click **"Build Desktop App"** or **"Build Mobile APK"**
+2. Click **"Build and Release"** or **"Build Mobile APK"**
 3. Click **"Run workflow"** → **"Run workflow"**
 
----
+## Step 4 — Wait for the builds
 
-## Step 4 — Wait for builds to finish
+- **Desktop builds**: ~10–20 minutes (compiles Rust + bundles app)
+- **Mobile APK**: ~10–15 minutes (EAS cloud build)
 
-- **Desktop build**: ~10–20 minutes (compiles Rust + bundles app)
-- **Mobile APK build**: ~10–15 minutes (EAS cloud build)
-
-When done, go to your repo's **Releases** page — you'll see the files attached.
-
----
+When done, the artifacts are attached to the GitHub Release.
 
 ## What Gets Built
 
-| File | Platform |
-|------|----------|
-| `Airis_2.0.0_x64_en-US.msi` | Windows installer |
-| `airis_2.0.0_amd64.deb` | Linux (Debian/Ubuntu) |
-| `airis_2.0.0_amd64.AppImage` | Linux (any distro) |
-| `airis-android.apk` | Android phones/tablets |
+Desktop bundle (`frontend/src-tauri/target/release/bundle/...`):
 
----
+| File                              | Platform         |
+| --------------------------------- | ---------------- |
+| `AIRIS_3.0.0_x64_en-US.msi`       | Windows          |
+| `airis_3.0.0_amd64.deb`           | Debian / Ubuntu  |
+| `airis_3.0.0_amd64.AppImage`      | Any Linux distro |
+| `AIRIS.app`                       | macOS            |
+
+Mobile (`airis-android.apk`):
+
+| File                  | Platform    |
+| --------------------- | ----------- |
+| `airis-android.apk`   | Android     |
 
 ## Download Page
 
-`/download` already links to these files via:
+The download buttons on the dashboard link to the latest release:
+
 ```
-https://github.com/saishivasanjeethpaikarao-jpg/ai--assistant/releases/latest/download/<filename>
+https://github.com/<owner>/<repo>/releases/latest/download/<filename>
 ```
 
-Once a release exists, the download buttons serve real files immediately.
+Once a release exists, the buttons serve real files immediately.
