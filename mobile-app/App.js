@@ -1,14 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   StyleSheet, View, Text, TextInput, TouchableOpacity,
   ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
-  SafeAreaView, StatusBar as RNStatusBar
+  SafeAreaView, StatusBar as RNStatusBar, Alert, Switch
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as Speech from 'expo-speech';
+import Voice from '@react-native-voice/voice';
 import axios from 'axios';
 
-// Point at your deployed backend; override with env var via app.config.js if needed
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://airis-backend.onrender.com';
+// Backend URL — set via EXPO_PUBLIC_API_URL in .env, or override here
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+// Set to false in .env to hide voice features entirely
+const ENABLE_VOICE = (process.env.EXPO_PUBLIC_ENABLE_VOICE ?? 'true') !== 'false';
 
 const COLORS = {
   bg: '#0C0C0C',
@@ -22,9 +26,9 @@ const COLORS = {
   aiBubble: '#1E1E1E',
 };
 
-function Orb({ speaking }) {
+function Orb({ speaking, listening }) {
   return (
-    <View style={[orbStyles.container, speaking && orbStyles.active]}>
+    <View style={[orbStyles.container, (speaking || listening) && orbStyles.active]}>
       <View style={orbStyles.inner}>
         <Text style={{ fontSize: 22 }}>✦</Text>
       </View>
@@ -55,27 +59,81 @@ export default function App() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [connected, setConnected] = useState(null);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(true);
+  const [voiceAvailable, setVoiceAvailable] = useState(false);
   const scrollRef = useRef(null);
+
+  // Wire up voice recognition lifecycle once on mount
+  useEffect(() => {
+    if (!ENABLE_VOICE) {
+      setVoiceAvailable(false);
+      return;
+    }
+    setVoiceAvailable(true);
+
+    const onSpeechStart = () => setIsListening(true);
+    const onSpeechEnd = () => setIsListening(false);
+    const onSpeechResults = (e) => {
+      const text = e.value?.[0];
+      if (text) setInput(text);
+    };
+    const onSpeechError = (e) => {
+      setIsListening(false);
+      const code = e?.error?.code ?? 'unknown';
+      if (code !== 'recognition_fail' && code !== '7') {
+        // 7 / recognition_fail = no speech detected — keep quiet
+        console.warn('Voice error:', code, e?.error?.message);
+      }
+    };
+
+    Voice.onSpeechStart = onSpeechStart;
+    Voice.onSpeechEnd = onSpeechEnd;
+    Voice.onSpeechResults = onSpeechResults;
+    Voice.onSpeechError = onSpeechError;
+
+    // Clean up on unmount
+    return () => {
+      try {
+        Voice.removeAllListeners();
+        Voice.destroy().then(Voice.removeAllListeners);
+      } catch (_) {}
+      Speech.stop();
+    };
+  }, []);
 
   useEffect(() => {
     checkConnection();
     setMessages([{
       role: 'assistant',
-      content: "Hi, I'm Airis. Your personal AI assistant. How can I help you today?",
+      content: "Hi, I'm AIRIS. Your personal AI assistant. How can I help you today?",
       ts: Date.now(),
     }]);
   }, []);
 
-  const checkConnection = async () => {
+  const checkConnection = useCallback(async () => {
     try {
-      await axios.get(`${API_URL}/health`, { timeout: 5000 });
+      // /mobile/status is the canonical mobile health endpoint
+      await axios.get(`${API_URL}/mobile/status`, { timeout: 5000 });
       setConnected(true);
     } catch {
       setConnected(false);
     }
-  };
+  }, []);
 
-  const sendMessage = async () => {
+  const speak = useCallback((text) => {
+    if (!voiceOutputEnabled || !text) return;
+    setIsSpeaking(true);
+    Speech.stop();
+    Speech.speak(text, {
+      onDone: () => setIsSpeaking(false),
+      onStopped: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
+  }, [voiceOutputEnabled]);
+
+  const sendMessage = useCallback(async () => {
     const text = input.trim();
     if (!text || isLoading) return;
     setInput('');
@@ -90,24 +148,52 @@ export default function App() {
         { text },
         { timeout: 30000 }
       );
+      // Tolerate both response shapes: {reply} (dashboard_api) and {response} (api_server)
       const reply = res.data?.reply || res.data?.response || 'No response.';
-      setMessages(prev => [...prev, { role: 'assistant', content: reply, ts: Date.now() }]);
+      const aiMsg = { role: 'assistant', content: reply, ts: Date.now() };
+      setMessages(prev => [...prev, aiMsg]);
+      speak(reply);
     } catch (err) {
-      const errMsg = err.response?.data?.error || 'Could not reach Airis backend. Make sure it is running.';
+      const errMsg = err.response?.data?.error
+        || err.response?.data?.detail
+        || 'Could not reach AIRIS backend. Make sure it is running.';
       setMessages(prev => [...prev, { role: 'system', content: errMsg, ts: Date.now() }]);
     } finally {
       setIsLoading(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
-  };
+  }, [input, isLoading, speak]);
 
-  const clearChat = () => {
+  const startListening = useCallback(async () => {
+    if (!voiceAvailable || isListening) return;
+    try {
+      await Voice.start('en-US');
+    } catch (e) {
+      Alert.alert('Voice input unavailable', e?.message || 'Could not start speech recognition.');
+    }
+  }, [voiceAvailable, isListening]);
+
+  const stopListening = useCallback(async () => {
+    if (!isListening) return;
+    try {
+      await Voice.stop();
+    } catch (_) {}
+  }, [isListening]);
+
+  const stopSpeaking = useCallback(() => {
+    Speech.stop();
+    setIsSpeaking(false);
+  }, []);
+
+  const clearChat = useCallback(() => {
+    Speech.stop();
+    setIsSpeaking(false);
     setMessages([{
       role: 'assistant',
       content: "Chat cleared. How can I help you?",
       ts: Date.now(),
     }]);
-  };
+  }, []);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -116,20 +202,37 @@ export default function App() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Orb speaking={isLoading} />
+          <Orb speaking={isLoading || isSpeaking} listening={isListening} />
           <View style={{ marginLeft: 12 }}>
-            <Text style={styles.headerTitle}>Airis</Text>
+            <Text style={styles.headerTitle}>AIRIS</Text>
             <View style={styles.statusRow}>
-              <View style={[styles.dot, { backgroundColor: connected === null ? '#777' : connected ? '#00C48C' : '#FD5B5D' }]} />
+              <View style={[styles.dot, {
+                backgroundColor: connected === null ? '#777' : connected ? '#00C48C' : '#FD5B5D'
+              }]} />
               <Text style={styles.statusText}>
                 {connected === null ? 'Connecting…' : connected ? 'Connected' : 'Offline'}
               </Text>
+              {isListening && <Text style={[styles.statusText, { color: COLORS.coral }]}>• Listening</Text>}
+              {isSpeaking && <Text style={[styles.statusText, { color: COLORS.blue }]}>• Speaking</Text>}
             </View>
           </View>
         </View>
-        <TouchableOpacity onPress={clearChat} style={styles.clearBtn}>
-          <Text style={styles.clearBtnText}>Clear</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          {ENABLE_VOICE && (
+            <View style={styles.ttsRow}>
+              <Text style={styles.ttsLabel}>TTS</Text>
+              <Switch
+                value={voiceOutputEnabled}
+                onValueChange={setVoiceOutputEnabled}
+                trackColor={{ false: '#333', true: COLORS.blue }}
+                thumbColor="#fff"
+              />
+            </View>
+          )}
+          <TouchableOpacity onPress={clearChat} style={styles.clearBtn}>
+            <Text style={styles.clearBtnText}>Clear</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Messages */}
@@ -150,7 +253,18 @@ export default function App() {
             ]}
           >
             {msg.role === 'assistant' && (
-              <Text style={styles.bubbleLabel}>Airis</Text>
+              <View style={styles.aiHeader}>
+                <Text style={styles.bubbleLabel}>AIRIS</Text>
+                {voiceOutputEnabled && msg.content && (
+                  <TouchableOpacity
+                    onPress={isSpeaking ? stopSpeaking : () => speak(msg.content)}
+                    style={styles.bubbleSpeakBtn}
+                    accessibilityLabel={isSpeaking ? 'Stop speaking' : 'Read aloud'}
+                  >
+                    <Text style={styles.bubbleSpeakIcon}>{isSpeaking ? '■' : '▶'}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
             <Text style={[
               styles.bubbleText,
@@ -163,7 +277,7 @@ export default function App() {
         ))}
         {isLoading && (
           <View style={styles.aiBubble}>
-            <Text style={styles.bubbleLabel}>Airis</Text>
+            <Text style={styles.bubbleLabel}>AIRIS</Text>
             <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', paddingVertical: 2 }}>
               <ActivityIndicator size="small" color={COLORS.blue} />
               <Text style={[styles.bubbleText, { marginLeft: 8, color: COLORS.muted }]}>Thinking…</Text>
@@ -182,7 +296,7 @@ export default function App() {
             style={styles.input}
             value={input}
             onChangeText={setInput}
-            placeholder="Message Airis…"
+            placeholder="Message AIRIS…"
             placeholderTextColor={COLORS.muted}
             multiline
             maxLength={2000}
@@ -190,10 +304,20 @@ export default function App() {
             onSubmitEditing={sendMessage}
             blurOnSubmit={false}
           />
+          {ENABLE_VOICE && voiceAvailable && (
+            <TouchableOpacity
+              onPress={isListening ? stopListening : startListening}
+              style={[styles.voiceBtn, isListening && styles.voiceBtnActive]}
+              accessibilityLabel={isListening ? 'Stop listening' : 'Start voice input'}
+            >
+              <Text style={styles.voiceBtnIcon}>{isListening ? '■' : '🎙'}</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={sendMessage}
             style={[styles.sendBtn, (!input.trim() || isLoading) && styles.sendBtnDisabled]}
             disabled={!input.trim() || isLoading}
+            accessibilityLabel="Send message"
           >
             <Text style={styles.sendBtnText}>↑</Text>
           </TouchableOpacity>
@@ -221,6 +345,12 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   headerTitle: {
     fontSize: 20,
@@ -242,6 +372,16 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 11,
     color: COLORS.muted,
+  },
+  ttsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ttsLabel: {
+    fontSize: 10,
+    color: COLORS.muted,
+    fontWeight: '600',
   },
   clearBtn: {
     paddingHorizontal: 14,
@@ -287,13 +427,26 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(253,91,93,0.25)',
     maxWidth: '90%',
   },
+  aiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
   bubbleLabel: {
     fontSize: 10,
     fontWeight: '700',
     color: COLORS.blue,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    marginBottom: 4,
+  },
+  bubbleSpeakBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  bubbleSpeakIcon: {
+    fontSize: 12,
+    color: COLORS.muted,
   },
   bubbleText: {
     fontSize: 15,
@@ -320,6 +473,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     maxHeight: 120,
+  },
+  voiceBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceBtnActive: {
+    backgroundColor: COLORS.coral,
+    borderColor: COLORS.coral,
+  },
+  voiceBtnIcon: {
+    fontSize: 18,
+    color: COLORS.text,
   },
   sendBtn: {
     width: 42,

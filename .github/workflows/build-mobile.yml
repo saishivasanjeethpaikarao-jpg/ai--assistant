@@ -20,7 +20,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mobile-app/package-lock.json
 
       - name: Setup Expo & EAS
         uses: expo/expo-github-action@v8
@@ -29,17 +31,22 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install mobile app dependencies
-        run: cd mobile-app && npm install
+        working-directory: mobile-app
+        run: npm install
 
       - name: Build APK with EAS
-        run: cd mobile-app && eas build --platform android --profile preview --non-interactive --wait
+        working-directory: mobile-app
+        env:
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
+        run: eas build --platform android --profile preview --non-interactive --wait
 
       - name: Download APK from EAS
-        run: |
-          APK_URL=$(cd mobile-app && eas build:list --platform android --limit 1 --status finished --json | python3 -c "import sys,json; builds=json.load(sys.stdin); print(builds[0]['artifacts']['buildUrl'])")
-          curl -L "$APK_URL" -o airis-android.apk
+        working-directory: mobile-app
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          APK_URL=$(eas build:list --platform android --limit 1 --status finished --json | python3 -c "import sys,json; builds=json.load(sys.stdin); print(builds[0]['artifacts']['buildUrl'])")
+          curl -L "$APK_URL" -o ../airis-android.apk
 
       - name: Get tag name
         id: tag
@@ -49,16 +56,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.TAG }}
-          name: 'Airis ${{ steps.tag.outputs.TAG }}'
+          name: 'AIRIS ${{ steps.tag.outputs.TAG }}'
           body: |
-            ## Airis Mobile App (Android APK)
+            ## AIRIS Mobile App (Android APK)
 
             Download `airis-android.apk` below.
 
             **Install steps:**
             1. Download `airis-android.apk` to your Android phone
             2. Open the file — tap "Install anyway" if prompted
-            3. Open Airis and start chatting
+            3. Open AIRIS and start chatting
           draft: false
           prerelease: false
           files: airis-android.apk

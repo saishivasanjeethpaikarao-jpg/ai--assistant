@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Airis",
+    "name": "AIRIS",
     "slug": "airis",
-    "version": "2.0.6",
+    "version": "3.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -16,7 +16,11 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.airis.app"
+      "bundleIdentifier": "com.airis.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "AIRIS needs microphone access for voice input.",
+        "NSSpeechRecognitionUsageDescription": "AIRIS uses speech recognition to transcribe your voice input."
+      }
     },
     "android": {
       "adaptiveIcon": {

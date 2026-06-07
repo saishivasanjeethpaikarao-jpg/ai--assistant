@@ -1,30 +1,34 @@
-# Jarvis AI - React Native Mobile App
+# AIRIS Mobile App
 
-Mobile app for Jarvis AI Assistant built with React Native and Expo.
+React Native (Expo) mobile client for the AIRIS AI assistant backend.
 
-## 📱 Features
+## Features
 
-- ✅ Chat interface with AI
-- ✅ Voice input (speech-to-text)
-- ✅ Voice output (text-to-speech)
-- ✅ Dark theme
-- ✅ Connects to Python backend API
-- ✅ Cross-platform (iOS, Android)
+- Chat with the AIRIS backend (`/mobile/chat`)
+- Voice input (speech-to-text) via `@react-native-voice/voice`
+- Voice output (text-to-speech) via `expo-speech`
+- Connection status indicator (calls `/mobile/status`)
+- Auto-restart TTS on demand per message
+- Dark theme that matches the desktop app
+- Cross-platform (iOS, Android, Web)
 
-## 🛠️ Prerequisites
+## Prerequisites
 
 - Node.js 18+
-- Expo CLI
+- Expo CLI: `npm install -g expo-cli`
 - Python backend running on `http://127.0.0.1:8000`
+  - Either `backend/api_server.py` (port 8000, FastAPI) or
+  - `backend/dashboard_api.py` (port 8000, stdlib HTTP)
 
-## 🚀 Installation
+## Installation
 
 ```bash
 cd mobile-app
 npm install
+cp .env.example .env       # then edit .env if needed
 ```
 
-## 📲 Running the App
+## Running the App
 
 ### Development
 
@@ -32,117 +36,108 @@ npm install
 # Start Expo dev server
 npm start
 
-# Run on Android
+# Run on Android (emulator or device via USB)
 npm run android
 
-# Run on iOS
+# Run on iOS (Mac only, simulator or device)
 npm run ios
 
-# Run on web
+# Run on web (browser)
 npm run web
 ```
 
 ### Build for Production
 
 ```bash
-# Build Android APK
+# Build Android APK / AAB
 eas build --platform android
 
 # Build iOS IPA
 eas build --platform ios
 ```
 
-## 🔌 Backend Connection
+## Configuration
 
-The app connects to your Python backend at `http://127.0.0.1:8000`:
+Set the backend URL in `mobile-app/.env`:
 
-### Required Backend Endpoints
-
-- `POST /mobile/chat` - Chat with AI
-- `POST /run` - Execute commands
-- `GET /mobile/status` - Check system status
-
-### API Configuration
-
-Edit `App.js` to change API URL:
-
-```javascript
-const API_URL = 'http://your-backend-url:8000';
+```env
+EXPO_PUBLIC_API_URL=http://127.0.0.1:8000
+EXPO_PUBLIC_ENABLE_VOICE=true
 ```
 
-## 🎨 Features Explained
+The default `http://127.0.0.1:8000` works for local development on the
+same machine. For physical devices, replace with your machine's LAN IP
+(e.g. `http://192.168.1.42:8000`) or your deployed backend URL.
 
-### Chat Interface
-- Clean message bubbles
-- User (blue) vs AI (gray) distinction
-- Auto-scroll to latest message
-- Loading indicator
+To disable voice features entirely (e.g. backend doesn't support it),
+set `EXPO_PUBLIC_ENABLE_VOICE=false`.
 
-### Voice Input
-- Tap microphone to start listening
-- Tap stop button to stop
-- Automatic speech-to-text
-- Uses `@react-native-voice`
+## Backend Endpoints Used
 
-### Voice Output
-- AI responses spoken aloud
-- Uses `react-native-tts`
-- Configurable language
+| Endpoint             | Method | Purpose                  |
+| -------------------- | ------ | ------------------------ |
+| `/mobile/status`     | GET    | Health + capabilities    |
+| `/mobile/chat`       | POST   | Chat with AIRIS          |
+| `/voice/synthesize`  | POST   | Optional premium TTS     |
 
-### Tools Integration
-The Python backend has tools for:
-- File operations (files.py)
-- Browser automation (browser.py)
-- App launching (open_app)
-- System commands
+The mobile app accepts both response shapes:
+- `{"reply": "...", "success": true}` (from `dashboard_api.py`)
+- `{"response": "...", "status": "success"}` (from `api_server.py`)
 
-### Chat Memory
-The Python backend has:
-- Short-term memory (memory/reminders.py)
-- Long-term memory (brain/brain.py)
-- Adaptive memory (adaptive_memory.py)
+## Voice Permissions
 
-## 📁 Project Structure
+### iOS
+
+Edit `app.json` → `ios.infoPlist`:
+- `NSMicrophoneUsageDescription` — required for voice input
+- `NSSpeechRecognitionUsageDescription` — required for on-device STT
+
+Both are already set in `app.json`.
+
+### Android
+
+Edit `app.json` → `android.permissions`:
+- `RECORD_AUDIO` — voice input (already set)
+- `INTERNET` — API calls (already set)
+
+## Project Structure
 
 ```
 mobile-app/
-├── App.js              # Main app component
-├── package.json        # Dependencies
-├── app.json           # Expo configuration
-└── README.md          # This file
+├── App.js                # Main component (chat + voice UI)
+├── app.json              # Expo configuration
+├── eas.json              # EAS Build configuration
+├── package.json          # Dependencies
+├── .env.example          # Environment variables template
+├── assets/               # Icons, splash, favicon
+└── README.md             # This file
 ```
 
-## 🔧 Dependencies
+## Troubleshooting
 
-- `expo` - React Native framework
-- `react-native-voice` - Speech recognition
-- `react-native-tts` - Text-to-speech
-- `axios` - HTTP client
-- `@react-navigation/native` - Navigation
+### "Offline" status
 
-## 🚨 Troubleshooting
+- Check `EXPO_PUBLIC_API_URL` in `.env`
+- Make sure the backend is running: `curl http://127.0.0.1:8000/mobile/status`
+- If testing on a physical device, use your machine's LAN IP, not `127.0.0.1`
+- Ensure the backend has CORS configured for mobile origins
 
-### Voice Not Working
+### Voice input doesn't work
 
-Android:
-- Ensure `RECORD_AUDIO` permission is granted in app.json
-- Check device microphone permissions
+- iOS simulator has limited microphone support — test on a real device
+- Make sure microphone permission is granted (system Settings → AIRIS)
+- On Android, some emulators don't include Google speech services —
+  use a device or a Google APIs emulator image
 
-iOS:
-- Add microphone permission in Info.plist
-- Test on physical device (simulator has limited support)
+### TTS doesn't speak
 
-### Backend Connection Failed
+- The TTS toggle in the header is on by default
+- If you set `EXPO_PUBLIC_ENABLE_VOICE=false` in `.env`, voice is hidden entirely
 
-- Ensure Python backend is running
-- Check API_URL in App.js
-- Verify network connectivity
-- Check if backend allows CORS
-
-### Build Errors
+### Build errors
 
 ```bash
-# Clear cache
+# Clear Expo cache
 expo start -c
 
 # Reinstall dependencies
@@ -150,42 +145,6 @@ rm -rf node_modules
 npm install
 ```
 
-## 📱 Permissions
-
-### Android
-- `RECORD_AUDIO` - Voice input
-- `INTERNET` - API calls
-
-### iOS
-- Microphone access (auto-added by Expo)
-
-## 🚀 Deployment
-
-### Google Play Store
-
-1. Build APK with EAS
-2. Create Google Play Developer account
-3. Upload APK to Play Console
-4. Fill store listing
-5. Submit for review
-
-### Apple App Store
-
-1. Build IPA with EAS
-2. Create Apple Developer account
-3. Upload IPA to App Store Connect
-4. Fill store listing
-5. Submit for review
-
-## 🔜 Future Enhancements
-
-- [ ] Add push notifications
-- [ ] Implement chat history persistence
-- [ ] Add file upload/download
-- [ ] Implement offline mode
-- [ ] Add biometric authentication
-- [ ] Create widget support
-
-## 📄 License
+## License
 
 MIT
