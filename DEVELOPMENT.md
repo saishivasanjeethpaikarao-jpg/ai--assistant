@@ -1,207 +1,222 @@
-# 🚀 AIRIS - AI Assistant Setup & Build Guide
+# AIRIS Development Guide
+
+Setup, building, and troubleshooting for the AIRIS AI personal assistant.
 
 ## Prerequisites
 
-- **Node.js** 18.x or higher
-- **Python** 3.9+
-- **Rust** (for desktop app builds)
+- **Node.js** 18 or higher (20 recommended)
+- **Python** 3.10 or higher
+- **Rust** (only for building the Tauri desktop app from source)
 - **Git**
 
-## Quick Start
+For mobile development: Expo CLI and the EAS CLI (optional — Expo Go on a
+phone works for quick testing).
 
-### 1. Clone & Install Dependencies
+## Initial setup
+
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/yourusername/ai--assistant-pr1.git
 cd ai--assistant-pr1
+```
 
-# Install frontend dependencies
+### 2. Install frontend dependencies
+
+```bash
 cd frontend
 npm install
 cd ..
-
-# Install backend dependencies
-pip install -r backend/requirements.txt
 ```
 
-### 2. Configure Environment Variables
+### 3. Install backend dependencies
 
-Create a `.env` file in the `backend/` directory:
-
-```bash
-# LLM Providers
-GROQ_API_KEY=your_groq_key
-GROQ_MODEL=llama-3.3-70b-versatile
-CLAUDE_API_KEY=your_claude_key
-OPENAI_API_KEY=your_openai_key
-
-# Voice Services
-FISH_AUDIO_API_KEY=your_fish_audio_key
-ELEVENLABS_API_KEY=your_elevenlabs_key
-
-# Firebase
-FIREBASE_API_KEY=your_firebase_key
-FIREBASE_PROJECT_ID=your_project_id
-
-# Optional
-DEBUG=false
-LOG_LEVEL=info
-```
-
-### 3. Start Development Servers
-
-**Terminal 1 - Backend API:**
 ```bash
 cd backend
-python main.py          # Starts on http://localhost:8000
+python -m venv .venv
+# Activate the venv first (see below), then:
+pip install -r requirements.txt
+cd ..
 ```
 
-**Terminal 2 - Frontend (Vite Dev Server):**
+**Activate the venv**:
+- Windows: `.venv\Scripts\activate`
+- macOS / Linux: `source .venv/bin/activate`
+
+### 4. Configure environment
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Open `backend/.env` and set at least one provider key. The free
+[Groq console](https://console.groq.com) is the fastest way to get started.
+
+## Running in development
+
+The backend runs on port 8000. The frontend dev server runs on port 5173
+and proxies API calls to the backend.
+
+**Terminal 1 — backend**:
+
+```bash
+# stdlib HTTP server (primary)
+python backend/dashboard_api.py
+
+# OR FastAPI
+uvicorn backend.api_server:app --reload --port 8000
+# or
+python backend/main.py
+```
+
+**Terminal 2 — frontend**:
+
 ```bash
 cd frontend
-npm run dev            # Starts on http://localhost:5173
+npm run dev
 ```
 
-**Terminal 3 - Voice Assistant (Optional):**
-```bash
-cd backend
-python voice_assistant.py
-```
+Open <http://localhost:5173>.
 
-### 4. Access the Application
-
-- **Web UI:** http://localhost:5173
-- **API Docs:** http://localhost:8000/docs
-- **Settings:** http://localhost:5173/#/settings
-
----
-
-## Building Desktop Apps
-
-### Windows (Tauri)
+### Mobile app
 
 ```bash
-# Install Rust if not already installed
-rustup install stable
-
-# Build
-cd src-tauri
-cargo tauri build
-
-# Output: src-tauri/target/release/AIRIS.exe
+cd mobile-app
+cp .env.example .env       # set EXPO_PUBLIC_API_URL
+npm install
+npm start                  # then press a for Android, i for iOS
 ```
 
-### macOS (Tauri)
+For physical devices, set `EXPO_PUBLIC_API_URL` to your machine's LAN IP
+(for example `http://192.168.1.42:8000`), not `127.0.0.1`.
+
+## Building
+
+### Desktop (Tauri v1)
+
+Tauri builds the desktop app from `frontend/src-tauri/`. The repo-root
+`src-tauri/` directory is a leftover from a previous Tauri v2 attempt and
+is not used.
 
 ```bash
-# Install system dependencies
-xcode-select --install
-
-# Build
-cd src-tauri
-cargo tauri build
-
-# Output: src-tauri/target/release/bundle/macos/AIRIS.app
+cd frontend
+npm install
+npm run tauri:build
 ```
 
-### Linux (Tauri)
+Output paths:
+
+- Windows: `frontend/src-tauri/target/release/bundle/msi/`
+- macOS:   `frontend/src-tauri/target/release/bundle/macos/`
+- Linux:   `frontend/src-tauri/target/release/bundle/{deb,appimage}/`
+
+For development runs with hot-reload:
 
 ```bash
-# Install system dependencies (Ubuntu/Debian)
-sudo apt-get install -y libssl-dev libgtk-3-dev libayatana-appindicator3-dev
-
-# Build
-cd src-tauri
-cargo tauri build
-
-# Output: src-tauri/target/release/airis
+cd frontend
+npm run tauri:dev
 ```
 
----
+### Mobile (EAS Build)
 
-## GitHub Actions Workflows
-
-This project includes automated CI/CD pipelines:
-
-### Build & Release
-- Triggers on push to `main` or tag creation
-- Builds desktop apps for Windows, macOS, Linux
-- Creates Docker images
-- Publishes GitHub releases
-
-### Test & Quality
-- Runs on every pull request
-- Python lint & tests
-- JavaScript tests
-- Security scanning
-
-### Deployment
-- Auto-deploys to Render & Netlify on push to main
-- Publishes Docker images on version tags
-
----
-
-## Project Structure
-
-```
-.
-├── frontend/           # React + Vite UI
-│   ├── src/
-│   ├── vite.config.js
-│   └── package.json
-├── backend/            # Python FastAPI server
-│   ├── main.py
-│   ├── dashboard_api.py
-│   ├── system_coordinator.py
-│   ├── voice_assistant.py
-│   ├── requirements.txt
-│   └── ...
-├── src-tauri/          # Tauri desktop app (Rust)
-│   ├── src/main.rs
-│   ├── Cargo.toml
-│   └── tauri.conf.json
-├── .github/
-│   └── workflows/      # CI/CD pipelines
-└── ...
+```bash
+cd mobile-app
+npm install -g eas-cli
+eas login
+eas build --platform android    # or ios
 ```
 
----
+The build runs on Expo's cloud. Download the resulting APK / IPA via
+`eas build:list`.
 
-## API Endpoints
+### Web (Netlify)
 
-### Core
-- `POST /request` - Main chat/command endpoint
-- `GET /health` - System health check
-- `GET /api/capabilities` - List all features
-- `GET /api/system/layers` - Show 12-layer AI system status
+```bash
+cd web-deploy
+npm install -g netlify-cli
+netlify init
+netlify env:set GROQ_API_KEY your_key_here
+netlify deploy --prod
+```
 
-### Market Data
-- `GET /market/indices` - Stock indices
-- `GET /market/quote?symbol=SYMBOL` - Stock quote
-- `GET /market/search?q=QUERY` - Search stocks
-- `GET /market/movers` - Market gainers/losers
-- `GET /market/history?symbol=SYMBOL&period=30d` - Historical data
+The web build uses Netlify Functions
+(`web-deploy/netlify/functions/chat.js`) for the chat backend.
 
-### Trading
-- `GET /trading/portfolio` - Get user portfolio
-- `POST /trading/portfolio/add` - Add stock
-- `POST /trading/portfolio/remove` - Remove stock
-- `POST /trading/chat` - Trading AI chat
+## Tauri configuration
 
-### Voice
-- `POST /voice/clone` - Clone voice from audio
-- `POST /tts` - Text-to-speech
+Tauri config: `frontend/src-tauri/tauri.conf.json`
 
-### Settings
-- `GET /api/settings` - Get all settings
-- `POST /api/settings` - Save settings
-- `GET /api/analytics` - Usage analytics
+Key settings:
+- `productName`: `Airis`
+- `version`: `3.0.0`
+- `identifier`: `com.airis.app`
+- `windows[0]`: 1280x860, dark theme, frameless, transparent
+- `security.csp`: enabled
 
----
+The Tauri shell allowlist is locked down to a small set of commands
+(powershell, notepad, calc, etc.). Anything not on the allowlist will
+fail at runtime.
+
+## API surface
+
+The backend exposes endpoints on port 8000. Common ones:
+
+| Endpoint             | Method | Source            |
+| -------------------- | ------ | ----------------- |
+| `/`                  | GET    | `dashboard_api.py` / `api_server.py` |
+| `/mobile/status`     | GET    | both              |
+| `/mobile/chat`       | POST   | both (different response shapes) |
+| `/api/chat`          | POST   | dashboard_api     |
+| `/api/system/status` | GET    | dashboard_api     |
+| `/api/system/layers` | GET    | dashboard_api     |
+| `/api/capabilities`  | GET    | dashboard_api     |
+| `/api/analytics`     | GET    | dashboard_api     |
+| `/api/history`       | GET    | dashboard_api     |
+| `/voice/synthesize`  | POST   | api_server        |
+| `/trading/signal`    | POST   | api_server        |
+
+`/mobile/chat` returns either `{reply, success}` (dashboard_api) or
+`{response, status}` (api_server). Clients should accept both.
 
 ## Troubleshooting
 
-### pyaudio Installation Issues (Voice)
+### Backend won't start
+
+- Check the venv is activated and dependencies are installed.
+- Check `backend/.env` exists and is readable.
+- Look at the traceback. `dashboard_api.py` writes the full Python
+  traceback to the response on unhandled errors.
+
+### CORS errors from the browser
+
+`backend/cors_allowlist.py` controls the allowed origins. Add the
+failing origin to `AIRIS_ALLOWED_ORIGINS` (comma-separated) in
+`backend/.env`, or update the default list.
+
+### Frontend can't reach the backend
+
+- Verify the backend is running: `curl http://localhost:8000/`
+- `frontend/vite.config.js` proxies `/api` and `/mobile` to port 8000
+  in dev. If you changed the backend port, update the proxy.
+
+### Tauri build fails
+
+```bash
+# Clear target and rebuild
+cd frontend
+rm -rf src-tauri/target
+npm run tauri:build
+```
+
+Linux build hosts need:
+
+```bash
+sudo apt-get install -y libssl-dev libgtk-3-dev \
+    libayatana-appindicator3-dev librsvg2-dev
+```
+
+### pyaudio / voice input fails
+
 ```bash
 # Windows
 pip install pipwin
@@ -216,66 +231,62 @@ sudo apt-get install portaudio19-dev
 pip install pyaudio
 ```
 
-### Tauri Build Issues
-```bash
-# Clear cache and rebuild
-cargo clean
-cargo tauri build
+### Mobile voice doesn't work
+
+- iOS simulator has no microphone — test on a real device.
+- Make sure `NSMicrophoneUsageDescription` and
+  `NSSpeechRecognitionUsageDescription` are set in `mobile-app/app.json`
+  (they are by default).
+- On Android, use a Google APIs emulator image (stock emulators lack
+  speech recognition).
+
+### Self-improve refuses to apply a patch
+
+Self-improve is opt-in. To allow it:
+
+```env
+AIRIS_SELF_IMPROVE_ALLOW=1
+SELF_IMPROVE_AUTO_APPLY=False
 ```
 
-### API Connection Issues
-- Ensure backend is running: `http://localhost:8000/health`
-- Check CORS settings in `backend/dashboard_api.py`
-- Verify API key configuration in Settings
-
----
-
-## Contributing
-
-1. Create a feature branch: `git checkout -b feature/my-feature`
-2. Make changes & test locally
-3. Commit: `git commit -am 'Add feature'`
-4. Push: `git push origin feature/my-feature`
-5. Create Pull Request
-
----
+The auto-apply flag is intentionally off by default. Patches generated
+by the LLM are validated against a file allowlist before being saved.
 
 ## Deployment
 
-### Render.com
-```bash
-git push main
-# Auto-deploys via GitHub Actions
-```
+### Render (backend)
+
+The repository includes a Render deploy hook workflow. Set
+`RENDER_DEPLOY_HOOK_URL` as a GitHub secret; pushing to `main` will
+trigger a redeploy.
+
+### Netlify (frontend)
+
+`netlify.toml` at the repo root configures the build. The
+`deploy.yml` workflow uses the Netlify CLI to publish on push to `main`.
 
 ### Docker
+
+A `backend/Dockerfile` is included. Build and run:
+
 ```bash
 docker build -f backend/Dockerfile -t airis:latest .
-docker run -p 8000:8000 airis:latest
+docker run -p 8000:8000 --env-file backend/.env airis:latest
 ```
 
-### Netlify
-```bash
-# Frontend automatically deploys on push to main
-```
+## Project conventions
 
----
+- Backend entry points: `dashboard_api.py` (stdlib, primary) and
+  `api_server.py` (FastAPI, alt). Both listen on port 8000.
+- Provider routing: `ai_switcher.py` — `with_fallback()` cycles through
+  configured providers in priority order and falls back to Ollama.
+- State (frontend): Zustand store in `frontend/src/store/useStore.js`.
+- Voice: mobile uses `expo-speech` (TTS) and `@react-native-voice/voice`
+  (STT). Web falls back to the browser's Web Speech API.
 
-## Performance Tips
+## Performance tips
 
-1. **Backend**: Use Groq API (fastest LLM provider)
-2. **Voice**: Enable Fish Audio for premium voices
-3. **Memory**: Limit adaptive memory to 1000 items
-4. **Cache**: Market data cached for 60 seconds
-
----
-
-## Support
-
-- 📖 [Documentation](https://github.com/yourusername/ai--assistant-pr1/wiki)
-- 🐛 [Issues](https://github.com/yourusername/ai--assistant-pr1/issues)
-- 💬 [Discussions](https://github.com/yourusername/ai--assistant-pr1/discussions)
-
----
-
-**Made with ❤️ by AIRIS Team**
+- Use Groq for the fastest LLM response (free tier).
+- Ollama is a fully-local fallback — slower but private.
+- Market data is cached for 60 seconds by default in the trading module.
+- The adaptive memory layer keeps the most recent 1,000 items by default.
