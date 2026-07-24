@@ -14,8 +14,8 @@ AIRIS is delivered as:
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/yourusername/ai--assistant-pr1.git
-cd ai--assistant-pr1
+git clone https://github.com/saishivasanjeethpaikarao-jpg/ai--assistant.git
+cd ai--assistant
 
 # Frontend
 cd frontend && npm install && cd ..
